@@ -3,6 +3,7 @@
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Field";
+import { useToast } from "@/components/system/ToastProvider";
 import { getDrivers } from "@/lib/data";
 
 // Screen 13 — Add / Edit Truck.
@@ -13,7 +14,12 @@ export function AddTruckModal({
   open: boolean;
   onClose: () => void;
 }) {
+  const { toast } = useToast();
   const drivers = getDrivers();
+  const save = () => {
+    toast("Truck saved", { tone: "success" });
+    onClose();
+  };
   return (
     <Modal
       open={open}
@@ -25,7 +31,7 @@ export function AddTruckModal({
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={onClose}>Save Truck</Button>
+          <Button onClick={save}>Save Truck</Button>
         </>
       }
     >
@@ -76,6 +82,11 @@ export function AddDumpsterModal({
   open: boolean;
   onClose: () => void;
 }) {
+  const { toast } = useToast();
+  const save = () => {
+    toast("Dumpster saved", { tone: "success" });
+    onClose();
+  };
   return (
     <Modal
       open={open}
@@ -87,7 +98,7 @@ export function AddDumpsterModal({
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={onClose}>Save Dumpster</Button>
+          <Button onClick={save}>Save Dumpster</Button>
         </>
       }
     >

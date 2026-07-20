@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { AppProviders } from "@/components/system/AppProviders";
 
 export const metadata: Metadata = {
   title: "SSWS Operations Platform",
@@ -19,7 +20,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }

@@ -4,9 +4,10 @@ import * as React from "react";
 import { Icon } from "./Icon";
 
 /**
- * Presentational modal shell used by the Create Job / Add Truck / Add Dumpster
- * dialogs. Open/close state is owned by the parent so these read like the
- * wireframes during the walkthrough.
+ * Accessible modal shell used by the Create Job / Add Truck / Add Dumpster
+ * dialogs. Handles Escape to close, body scroll lock, focus restore to the
+ * trigger, and a focus trap so keyboard and screen-reader users stay inside
+ * the dialog.
  */
 export function Modal({
   open,
@@ -23,11 +24,52 @@ export function Modal({
   footer?: React.ReactNode;
   widthClass?: string;
 }) {
+  const panelRef = React.useRef<HTMLDivElement>(null);
+
   React.useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    // Move focus into the dialog.
+    const focusFirst = () => {
+      const focusable = panelRef.current?.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      (focusable ?? panelRef.current)?.focus();
+    };
+    focusFirst();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const nodes = panelRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!nodes || nodes.length === 0) return;
+      const list = Array.from(nodes).filter((n) => !n.hasAttribute("disabled"));
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+      previouslyFocused?.focus?.();
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -40,16 +82,19 @@ export function Modal({
         aria-hidden="true"
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
-        className={`relative w-full ${widthClass} rounded-card bg-white shadow-xl`}
+        aria-label={title}
+        tabIndex={-1}
+        className={`relative w-full ${widthClass} rounded-card bg-white shadow-xl outline-none`}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-900">{title}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-700 rounded-md p-1 hover:bg-gray-100"
-            aria-label="Close"
+            aria-label="Close dialog"
           >
             <Icon name="close" width={20} height={20} />
           </button>

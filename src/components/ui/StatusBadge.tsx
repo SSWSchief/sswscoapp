@@ -9,30 +9,42 @@ import type {
   JobStatus,
   TruckStatus,
 } from "@/lib/types";
+import { Icon, type IconName } from "./Icon";
 
 /**
- * The status pill used throughout the app. Colors follow the wireframe legend
- * (section 19 "Status Badges"): blue = in progress, amber = pending,
- * green = complete/in use, gray = in shop / out of service.
+ * Status pill. Colors follow the wireframe legend, but every badge also carries
+ * a text label (and completed/in-shop states a distinguishing glyph) so meaning
+ * never depends on color alone — important for colorblind users and fast
+ * scanning where several states share a hue. Tones use 100/700 pairings that
+ * clear WCAG AA contrast.
  */
 type Tone = "blue" | "amber" | "green" | "gray" | "slate";
 
 const toneClasses: Record<Tone, string> = {
-  blue: "bg-brand-50 text-brand-500",
-  amber: "bg-amber-50 text-amber-600",
-  green: "bg-green-50 text-green-600",
+  blue: "bg-blue-100 text-blue-700",
+  amber: "bg-amber-100 text-amber-800",
+  green: "bg-emerald-100 text-emerald-700",
   gray: "bg-gray-100 text-gray-600",
-  slate: "bg-slate-100 text-slate-600",
+  slate: "bg-slate-100 text-slate-700",
 };
 
-function Pill({ tone, label }: { tone: Tone; label: string }) {
+function Pill({
+  tone,
+  label,
+  icon,
+}: {
+  tone: Tone;
+  label: string;
+  icon?: IconName;
+}) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
         toneClasses[tone]
       )}
     >
+      {icon && <Icon name={icon} width={12} height={12} className="shrink-0" />}
       {label}
     </span>
   );
@@ -44,9 +56,15 @@ const jobTone: Record<JobStatus, Tone> = {
   completed: "green",
   cancelled: "gray",
 };
+const jobIcon: Partial<Record<JobStatus, IconName>> = {
+  completed: "check",
+  cancelled: "close",
+};
 
 export function JobStatusBadge({ status }: { status: JobStatus }) {
-  return <Pill tone={jobTone[status]} label={jobStatusLabel[status]} />;
+  return (
+    <Pill tone={jobTone[status]} label={jobStatusLabel[status]} icon={jobIcon[status]} />
+  );
 }
 
 const truckTone: Record<TruckStatus, Tone> = {
@@ -54,9 +72,14 @@ const truckTone: Record<TruckStatus, Tone> = {
   in_shop: "amber",
   available: "blue",
 };
+const truckIcon: Partial<Record<TruckStatus, IconName>> = {
+  in_shop: "settings",
+};
 
 export function TruckStatusBadge({ status }: { status: TruckStatus }) {
-  return <Pill tone={truckTone[status]} label={truckStatusLabel[status]} />;
+  return (
+    <Pill tone={truckTone[status]} label={truckStatusLabel[status]} icon={truckIcon[status]} />
+  );
 }
 
 const dumpsterTone: Record<DumpsterStatus, Tone> = {
@@ -64,9 +87,14 @@ const dumpsterTone: Record<DumpsterStatus, Tone> = {
   in_yard: "blue",
   in_shop: "amber",
 };
+const dumpsterIcon: Partial<Record<DumpsterStatus, IconName>> = {
+  in_shop: "settings",
+};
 
 export function DumpsterStatusBadge({ status }: { status: DumpsterStatus }) {
-  return <Pill tone={dumpsterTone[status]} label={dumpsterStatusLabel[status]} />;
+  return (
+    <Pill tone={dumpsterTone[status]} label={dumpsterStatusLabel[status]} icon={dumpsterIcon[status]} />
+  );
 }
 
 export { Pill as Badge };

@@ -3,19 +3,29 @@ import { cn } from "@/lib/utils";
 import { Icon } from "./Icon";
 
 const baseControl =
-  "w-full h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand";
+  "w-full h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand";
 
 export function Label({
   children,
   required,
+  htmlFor,
 }: {
   children: React.ReactNode;
   required?: boolean;
+  htmlFor?: string;
 }) {
   return (
-    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+    <label
+      htmlFor={htmlFor}
+      className="block text-sm font-medium text-gray-700 mb-1.5"
+    >
       {children}
-      {required && <span className="text-red-500"> *</span>}
+      {required && (
+        <span className="text-red-500" aria-hidden="true">
+          {" "}
+          *
+        </span>
+      )}
     </label>
   );
 }
@@ -62,20 +72,51 @@ export function Select({
   );
 }
 
-/** Labeled field wrapper. */
+/**
+ * Labeled field wrapper. Generates an id and wires the label to the control via
+ * `htmlFor`/`id` so clicks focus the input and screen readers announce it.
+ */
 export function FormField({
   label,
   required,
+  hint,
+  error,
   children,
 }: {
   label: string;
   required?: boolean;
-  children: React.ReactNode;
+  hint?: string;
+  error?: string;
+  children: React.ReactElement;
 }) {
+  const generatedId = React.useId();
+  const id = (children.props as { id?: string }).id ?? generatedId;
+  const control = React.cloneElement(
+    children as React.ReactElement<Record<string, unknown>>,
+    {
+      id,
+      "aria-invalid": error ? true : undefined,
+      "aria-describedby": hint || error ? `${id}-desc` : undefined,
+    }
+  );
+
   return (
     <div>
-      <Label required={required}>{label}</Label>
-      {children}
+      <Label htmlFor={id} required={required}>
+        {label}
+      </Label>
+      {control}
+      {(hint || error) && (
+        <p
+          id={`${id}-desc`}
+          className={cn(
+            "text-xs mt-1",
+            error ? "text-red-500" : "text-gray-400"
+          )}
+        >
+          {error ?? hint}
+        </p>
+      )}
     </div>
   );
 }
