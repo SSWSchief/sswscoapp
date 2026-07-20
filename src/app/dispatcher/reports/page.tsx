@@ -1,0 +1,55 @@
+import { Topbar } from "@/components/dispatcher/Topbar";
+import { Card } from "@/components/ui/Card";
+import { Icon, type IconName } from "@/components/ui/Icon";
+
+// Screen 11 — Reports (basic report launcher; full analytics is a Phase 2 item).
+const reports: {
+  icon: IconName;
+  title: string;
+  description: string;
+}[] = [
+  {
+    icon: "jobs",
+    title: "Jobs Report",
+    description: "View job activity, status, and completion reports.",
+  },
+  {
+    icon: "employees",
+    title: "Employee Report",
+    description: "View time clock, hours worked, and attendance.",
+  },
+  {
+    icon: "truck",
+    title: "Asset Utilization",
+    description: "View truck and dumpster utilization and activity.",
+  },
+  {
+    icon: "export",
+    title: "Export Data",
+    description: "Export data to CSV or Excel for your records.",
+  },
+];
+
+export default function ReportsPage() {
+  return (
+    <>
+      <Topbar title="Reports" />
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="grid gap-5 sm:grid-cols-2 max-w-3xl">
+          {reports.map((r) => (
+            <Card
+              key={r.title}
+              className="p-6 hover:border-brand hover:shadow-md transition cursor-pointer"
+            >
+              <div className="h-11 w-11 rounded-lg bg-brand-50 text-brand-500 flex items-center justify-center mb-4">
+                <Icon name={r.icon} />
+              </div>
+              <div className="font-semibold text-gray-900">{r.title}</div>
+              <p className="text-sm text-gray-500 mt-1">{r.description}</p>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
