@@ -11,13 +11,13 @@ interface ButtonProps
 }
 
 const variants: Record<Variant, string> = {
-  primary: "bg-brand text-white hover:bg-[#003a86] focus-visible:ring-brand",
+  primary: "bg-brand-blue text-white hover:bg-brand-navy focus-visible:ring-brand-blue",
   secondary:
-    "bg-white text-brand border border-brand/30 hover:bg-brand-50 focus-visible:ring-brand",
-  danger: "bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-500",
+    "bg-white text-brand-blue border border-brand-blue/40 hover:bg-brand-mist focus-visible:ring-brand-blue",
+  danger: "bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-600",
   success:
-    "bg-status-complete text-white hover:bg-[#1aa94f] focus-visible:ring-status-complete",
-  ghost: "text-gray-600 hover:bg-gray-100 focus-visible:ring-gray-300",
+    "bg-status-complete text-white hover:bg-emerald-800 focus-visible:ring-status-complete",
+  ghost: "text-brand-steel hover:bg-brand-mist focus-visible:ring-brand-ice",
 };
 
 const sizes: Record<Size, string> = {
@@ -35,7 +35,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center rounded-lg font-medium transition-colors",
+        "inline-flex items-center justify-center rounded font-heading font-semibold uppercase tracking-wide transition-colors",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
         "disabled:opacity-50 disabled:pointer-events-none",
         variants[variant],

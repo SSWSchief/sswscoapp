@@ -32,8 +32,9 @@ export function formatDateTime(iso: string): string {
 /** Human labels for enum values used across the UI. */
 export const jobStatusLabel: Record<JobStatus, string> = {
   pending: "Pending",
-  in_progress: "In Progress",
-  completed: "Completed",
+  en_route: "En Route",
+  arrived: "Arrived",
+  complete: "Complete",
   cancelled: "Cancelled",
 };
 

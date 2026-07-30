@@ -20,11 +20,11 @@ export default function DriverJobsPage() {
     <>
       <MobileHeader title="My Jobs" menu />
 
-      <div className="shrink-0 flex border-b border-gray-200 bg-white dark:bg-gray-900 dark:border-white/10">
-        <button className="flex-1 py-3 text-sm font-medium text-brand-500 border-b-2 border-brand-500">
+      <div className="shrink-0 flex border-b border-brand-ice/70 bg-white dark:bg-gray-900 dark:border-white/10">
+        <button className="flex-1 py-3 font-heading text-sm font-medium uppercase tracking-wide text-brand-blue border-b-2 border-brand-blue">
           Today
         </button>
-        <button className="flex-1 py-3 text-sm font-medium text-gray-400 dark:text-gray-500">
+        <button className="flex-1 py-3 font-heading text-sm font-medium uppercase tracking-wide text-brand-steel dark:text-gray-500">
           Upcoming
         </button>
       </div>
@@ -46,18 +46,18 @@ export default function DriverJobsPage() {
             return (
               <div
                 key={job.id}
-                className="rounded-card bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 shadow-card overflow-hidden"
+                className="rounded-card bg-white dark:bg-gray-900 border border-brand-ice/70 dark:border-white/10 shadow-card overflow-hidden"
               >
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold text-brand-500">
+                      <div className="font-heading text-xs font-semibold uppercase tracking-wide text-brand-blue">
                         {formatTime(job.scheduledFor)}
                       </div>
-                      <div className="font-semibold text-gray-900 dark:text-white mt-0.5">
+                      <div className="font-semibold text-brand-charcoal dark:text-white mt-0.5">
                         {customer?.name}
                       </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      <div className="text-sm text-brand-steel dark:text-gray-400 mt-0.5">
                         {job.address}
                       </div>
                     </div>
@@ -65,7 +65,7 @@ export default function DriverJobsPage() {
                   </div>
 
                   {/* At-a-glance load info so drivers don't open Details first */}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-brand-steel dark:text-gray-400">
                     <span className="inline-flex items-center gap-1">
                       <Icon name="truck" width={14} height={14} />
                       {truck?.number ?? "No truck"}
@@ -85,7 +85,7 @@ export default function DriverJobsPage() {
                     href={appleMapsUrl(job.address)}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-4 flex items-center justify-center gap-2 h-12 rounded-lg bg-brand text-white font-semibold text-sm active:bg-[#003a86]"
+                    className="mt-4 flex items-center justify-center gap-2 h-12 rounded bg-brand-blue text-white font-heading font-semibold uppercase tracking-wide text-sm active:bg-brand-navy"
                   >
                     <Icon name="pin" width={18} height={18} />
                     Open in Apple Maps
@@ -94,7 +94,7 @@ export default function DriverJobsPage() {
 
                 <Link
                   href={`/driver/jobs/${job.id}`}
-                  className="flex items-center justify-center gap-1.5 h-12 border-t border-gray-100 dark:border-white/10 text-sm font-medium text-brand-500 active:bg-brand-50 dark:active:bg-white/5"
+                  className="flex items-center justify-center gap-1.5 h-12 border-t border-brand-ice/50 dark:border-white/10 text-sm font-medium text-brand-blue active:bg-brand-mist dark:active:bg-white/5"
                 >
                   <Icon name="info" width={16} height={16} />
                   View Details

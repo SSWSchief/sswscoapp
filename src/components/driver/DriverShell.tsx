@@ -39,10 +39,10 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
 
   return (
     <DriverThemeContext.Provider value={{ dark, toggle }}>
-      <div className="min-h-screen bg-surface flex items-center justify-center sm:py-8 dark:bg-black">
-        <div className="w-full sm:max-w-[420px] sm:rounded-[2.25rem] sm:border-[10px] sm:border-gray-900 sm:shadow-2xl overflow-hidden bg-white dark:bg-gray-950">
+      <div className="min-h-screen bg-brand-navy flex items-center justify-center sm:py-8 dark:bg-black">
+        <div className="w-full max-w-full min-w-0 sm:max-w-[420px] sm:rounded-[2.25rem] sm:border-[10px] sm:border-brand-charcoal sm:shadow-2xl overflow-hidden bg-white dark:bg-gray-950">
           <div className={dark ? "dark" : undefined}>
-            <div className="flex flex-col h-screen sm:h-[860px] bg-surface dark:bg-gray-950">
+            <div className="flex min-w-0 flex-col h-screen sm:h-[860px] bg-surface dark:bg-gray-950">
               {children}
               <BottomNav />
             </div>

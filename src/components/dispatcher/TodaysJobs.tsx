@@ -23,11 +23,13 @@ export function TodaysJobs() {
   const drivers = getDrivers();
   const [jobs, setJobs] = React.useState<Job[]>(() => getJobs());
 
-  // A driver is "busy" if they already own an in-progress job.
+  // A driver is "busy" if they already own an active job.
   const busyDriverIds = React.useMemo(() => {
     const s = new Set<string>();
     jobs.forEach((j) => {
-      if (j.status === "in_progress" && j.assignedDriverId) s.add(j.assignedDriverId);
+      if ((j.status === "en_route" || j.status === "arrived") && j.assignedDriverId) {
+        s.add(j.assignedDriverId);
+      }
     });
     return s;
   }, [jobs]);
@@ -59,10 +61,10 @@ export function TodaysJobs() {
     const id = window.setTimeout(() => {
       setJobs((js) =>
         js.map((j) =>
-          j.id === pending.id ? { ...j, status: "in_progress" as JobStatus } : j
+          j.id === pending.id ? { ...j, status: "en_route" as JobStatus } : j
         )
       );
-      toast(`${pending.reference} was started by a driver`, { tone: "info" });
+      toast(`${pending.reference} marked en route by a driver`, { tone: "info" });
     }, 9000);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,7 +88,7 @@ export function TodaysJobs() {
         action={
           <Link
             href="/dispatcher/jobs"
-            className="text-sm font-medium text-brand-500 hover:underline"
+            className="text-sm font-medium text-brand-blue hover:underline"
           >
             View all jobs →
           </Link>
@@ -117,17 +119,17 @@ export function TodaysJobs() {
                   const truck = job.assignedTruckId ? getTruck(job.assignedTruckId) : null;
                   return (
                     <TR key={job.id}>
-                      <TD className="whitespace-nowrap font-medium text-gray-900">
+                      <TD className="whitespace-nowrap font-medium text-brand-charcoal">
                         {formatTime(job.scheduledFor)}
                       </TD>
                       <TD className="max-w-[220px]">
                         <Link
                           href={`/dispatcher/jobs/${job.id}`}
-                          className="font-medium text-gray-900 hover:text-brand-500"
+                          className="font-medium text-brand-charcoal hover:text-brand-blue"
                         >
                           {customer?.name}
                         </Link>
-                        <div className="text-xs text-gray-400 truncate">
+                        <div className="text-xs text-brand-steel truncate">
                           {job.address}
                         </div>
                       </TD>
@@ -159,16 +161,16 @@ export function TodaysJobs() {
                 <li key={job.id} className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="text-xs font-medium text-brand-500">
+                      <div className="text-xs font-medium text-brand-blue">
                         {formatTime(job.scheduledFor)}
                       </div>
                       <Link
                         href={`/dispatcher/jobs/${job.id}`}
-                        className="font-medium text-gray-900"
+                        className="font-medium text-brand-charcoal"
                       >
                         {customer?.name}
                       </Link>
-                      <div className="text-xs text-gray-400 truncate">
+                      <div className="text-xs text-brand-steel truncate">
                         {job.address}
                       </div>
                     </div>
@@ -215,7 +217,7 @@ function DriverSelect({
       <select
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none rounded-md border border-gray-200 bg-white pl-2 pr-7 py-1 text-sm text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand/40"
+        className="appearance-none rounded border border-brand-ice bg-white pl-2 pr-7 py-1 text-sm text-brand-charcoal hover:border-brand-skyline focus:outline-none focus:ring-2 focus:ring-brand-skyline/40"
         aria-label="Assign driver"
       >
         <option value="" disabled>
@@ -236,7 +238,7 @@ function DriverSelect({
         name="chevron-down"
         width={14}
         height={14}
-        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
+        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-brand-steel"
       />
     </div>
   );

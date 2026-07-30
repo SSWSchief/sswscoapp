@@ -1,26 +1,28 @@
 import { Topbar } from "@/components/dispatcher/Topbar";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
+import { getTrucks } from "@/lib/data";
 
 // Screen 15 — Map View (dispatcher, "future ready"). Live GPS is a Phase 2 item;
 // this lays out the shell so the transition is a drop-in later.
 export default function MapPage() {
+  const trucks = getTrucks();
   return (
     <>
       <Topbar title="Map" />
       <div className="flex-1 overflow-y-auto p-6">
         <Card className="overflow-hidden">
-          <div className="flex flex-wrap items-center gap-4 px-5 py-4 border-b border-gray-100">
-            <div className="flex gap-4 text-sm font-medium">
-              <button className="text-brand-500 border-b-2 border-brand-500 pb-1">
+          <div className="flex flex-wrap items-center gap-4 px-5 py-4 border-b border-brand-ice/60">
+            <div className="flex gap-4 font-heading text-sm font-medium uppercase tracking-wide">
+              <button className="text-brand-blue border-b-2 border-brand-blue pb-1">
                 Trucks
               </button>
-              <button className="text-gray-500 pb-1">Dumpsters</button>
+              <button className="text-brand-steel pb-1">Dumpsters</button>
             </div>
-            <div className="flex gap-4 text-sm text-gray-600 ml-auto">
+            <div className="flex gap-4 text-sm text-brand-steel ml-auto">
               {["Show Trucks", "Show Dumpsters", "Show Jobs"].map((l) => (
                 <label key={l} className="flex items-center gap-1.5">
-                  <input type="checkbox" defaultChecked className="accent-brand" />
+                  <input type="checkbox" defaultChecked className="accent-brand-blue" />
                   {l}
                 </label>
               ))}
@@ -28,7 +30,7 @@ export default function MapPage() {
           </div>
 
           {/* Map placeholder */}
-          <div className="relative h-[460px] bg-[#eef2f6] flex items-center justify-center">
+          <div className="relative h-[460px] bg-brand-mist flex items-center justify-center">
             <div
               className="absolute inset-0 opacity-40"
               style={{
@@ -43,26 +45,37 @@ export default function MapPage() {
             <Pin className="top-[62%] left-[40%]" icon="truck" tone="brand" label="T-02" />
             <Pin className="top-[55%] left-[70%]" icon="pin" tone="slate" label="Job" />
 
-            <div className="relative text-center bg-white/80 backdrop-blur rounded-xl px-6 py-5 shadow-card">
+            <div className="relative text-center bg-white/90 backdrop-blur rounded-card border border-brand-ice px-6 py-5 shadow-card">
               <Icon
                 name="map"
                 width={28}
                 height={28}
-                className="mx-auto text-brand-500 mb-2"
+                className="mx-auto text-brand-blue mb-2"
               />
-              <p className="text-sm font-medium text-gray-800">
+              <p className="font-heading text-sm font-medium uppercase tracking-wide text-brand-charcoal">
                 Live tracking coming in Phase 2 with GPS devices
               </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Asset positions shown here are based on job assignments.
+              <p className="text-xs text-brand-steel mt-1">
+                Asset positions show manual, AirTag, or GPS-placeholder sources.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-5 px-5 py-3 border-t border-gray-100 text-sm text-gray-600">
-            <LegendDot color="bg-brand-500" label="Truck" />
+          <div className="flex flex-wrap gap-5 px-5 py-3 border-t border-brand-ice/60 text-sm text-brand-steel">
+            <LegendDot color="bg-brand-blue" label="Truck" />
             <LegendDot color="bg-status-complete" label="Dumpster" />
             <LegendDot color="bg-slate-400" label="Job Location" />
+          </div>
+          <div className="grid gap-3 border-t border-brand-ice/60 p-5 md:grid-cols-3">
+            {trucks.slice(0, 3).map((truck) => (
+              <div key={truck.id} className="rounded border border-brand-ice p-3">
+                <div className="font-semibold text-brand-charcoal">{truck.number}</div>
+                <div className="text-sm text-brand-steel">{truck.lastKnownLocation}</div>
+                <div className="text-xs text-brand-silver">
+                  {truck.airTagId} · {truck.gpsSource}
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       </div>
@@ -82,7 +95,7 @@ function Pin({
   label: string;
 }) {
   const bg = {
-    brand: "bg-brand-500",
+    brand: "bg-brand-blue",
     green: "bg-status-complete",
     slate: "bg-slate-400",
   }[tone];
@@ -93,7 +106,7 @@ function Pin({
       >
         <Icon name={icon} width={18} height={18} />
       </div>
-      <span className="mt-1 text-[11px] font-medium text-gray-700 bg-white/80 px-1.5 rounded">
+      <span className="mt-1 text-[11px] font-medium text-brand-charcoal bg-white/85 px-1.5 rounded-sm">
         {label}
       </span>
     </div>

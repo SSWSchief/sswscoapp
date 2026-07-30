@@ -25,8 +25,18 @@ const reports: {
   },
   {
     icon: "export",
-    title: "Export Data",
-    description: "Export data to CSV or Excel for your records.",
+    title: "Operations Export",
+    description: "Export jobs, activity changes, and status history to CSV.",
+  },
+  {
+    icon: "invoice",
+    title: "Invoice Export",
+    description: "Export receivables, closed invoices, and reminders to CSV.",
+  },
+  {
+    icon: "clock",
+    title: "Time & PTO Export",
+    description: "Export time entries, edit requests, PTO, and absences.",
   },
 ];
 
@@ -39,13 +49,15 @@ export default function ReportsPage() {
           {reports.map((r) => (
             <Card
               key={r.title}
-              className="p-6 hover:border-brand hover:shadow-md transition cursor-pointer"
+              className="p-6 hover:border-brand-blue hover:shadow-md transition cursor-pointer"
             >
-              <div className="h-11 w-11 rounded-lg bg-brand-50 text-brand-500 flex items-center justify-center mb-4">
+              <div className="h-11 w-11 rounded bg-brand-blue text-white flex items-center justify-center mb-4">
                 <Icon name={r.icon} />
               </div>
-              <div className="font-semibold text-gray-900">{r.title}</div>
-              <p className="text-sm text-gray-500 mt-1">{r.description}</p>
+              <div className="font-heading text-lg font-semibold uppercase tracking-wide text-brand-charcoal">
+                {r.title}
+              </div>
+              <p className="text-sm text-brand-steel mt-1">{r.description}</p>
             </Card>
           ))}
         </div>

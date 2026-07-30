@@ -77,7 +77,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
       <div
-        className="fixed inset-0 bg-gray-900/40 backdrop-blur-[1px]"
+        className="fixed inset-0 bg-brand-navy/50 backdrop-blur-[1px]"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -87,13 +87,15 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`relative w-full ${widthClass} rounded-card bg-white shadow-xl outline-none`}
+        className={`relative w-full ${widthClass} rounded-card bg-white shadow-xl outline-none border border-brand-ice/70`}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+        <div className="flex items-center justify-between bg-brand-navy px-6 py-4">
+          <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-white">
+            {title}
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 rounded-md p-1 hover:bg-gray-100"
+            className="rounded p-1 text-white/70 hover:bg-white/10 hover:text-white"
             aria-label="Close dialog"
           >
             <Icon name="close" width={20} height={20} />
@@ -101,7 +103,7 @@ export function Modal({
         </div>
         <div className="px-6 py-5">{children}</div>
         {footer && (
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-brand-ice/60 bg-brand-mist/40">
             {footer}
           </div>
         )}

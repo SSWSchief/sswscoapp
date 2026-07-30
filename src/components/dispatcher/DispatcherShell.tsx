@@ -9,6 +9,7 @@ import { NotificationsPanel } from "./NotificationsPanel";
 import { DispatcherUIContext } from "./shell-context";
 import { dispatcherNav } from "./nav";
 import { Icon } from "@/components/ui/Icon";
+import { LogoFull } from "@/components/ui/Logo";
 import { getMessages } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
@@ -43,7 +44,7 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
         unreadCount,
       }}
     >
-      <div className="flex h-screen overflow-hidden bg-surface">
+      <div className="flex h-screen overflow-hidden bg-surface text-brand-charcoal">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
       </div>
@@ -52,19 +53,17 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
       {drawer && (
         <div className="fixed inset-0 z-[70] md:hidden">
           <div
-            className="absolute inset-0 bg-gray-900/40"
+            className="absolute inset-0 bg-brand-navy/50"
             onClick={() => setDrawer(false)}
             aria-hidden="true"
           />
-          <div className="absolute left-0 top-0 h-full w-64 bg-brand text-white shadow-xl flex flex-col">
-            <div className="h-16 flex items-center justify-between px-5 border-b border-white/10">
-              <span className="flex items-center gap-2 font-bold">
-                <Icon name="truck" /> SSWS
-              </span>
+          <div className="absolute left-0 top-0 h-full w-64 bg-brand-navy text-white shadow-xl flex flex-col">
+            <div className="h-20 flex items-center justify-between px-4 border-b border-white/10 bg-white">
+              <LogoFull />
               <button
                 onClick={() => setDrawer(false)}
                 aria-label="Close menu"
-                className="text-white/70 hover:text-white"
+                className="text-brand-navy hover:text-brand-blue"
               >
                 <Icon name="close" />
               </button>
@@ -78,10 +77,10 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
                     href={item.href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
+                      "flex items-center gap-3 rounded px-3 py-2.5 font-heading text-sm font-medium uppercase tracking-wide",
                       active
-                        ? "bg-white/15 text-white"
-                        : "text-white/70 hover:bg-white/10"
+                        ? "bg-brand-blue text-white"
+                        : "text-brand-ice hover:bg-white/10 hover:text-white"
                     )}
                   >
                     <Icon name={item.icon} width={18} height={18} />

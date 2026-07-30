@@ -10,11 +10,12 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { Icon } from "@/components/ui/Icon";
 import { RelativeTime } from "@/components/ui/RelativeTime";
-import { getDashboardStats } from "@/lib/data";
+import { getDashboardStats, getJobActivities } from "@/lib/data";
 
 export default function DashboardPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const stats = getDashboardStats();
+  const activity = getJobActivities().slice(0, 4);
 
   return (
     <>
@@ -32,7 +33,7 @@ export default function DashboardPage() {
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           <StatCard value={stats.totalToday} label="Total Jobs" sublabel="Today" />
           <StatCard value={stats.inProgress} label="In Progress" tone="blue" />
-          <StatCard value={stats.completed} label="Completed" tone="green" />
+          <StatCard value={stats.completed} label="Complete" tone="green" />
           <StatCard value={stats.pending} label="Pending" tone="amber" />
         </div>
 
@@ -46,21 +47,21 @@ export default function DashboardPage() {
                 <Glance label="Drivers On Duty" value={stats.driversOnDuty} />
                 <Glance label="Trucks In Use" value={stats.trucksInUse} />
                 <Glance label="Dumpsters Out" value={stats.dumpstersOut} />
-                <Glance label="Jobs Completed" value={stats.completed} />
+                <Glance label="Jobs Complete" value={stats.completed} />
               </dl>
             </Card>
 
             <Card>
               <CardHeader title="Recent Activity" />
               <ul className="px-5 py-3 space-y-3">
-                <Activity text="Job #1052 completed by Jake S." iso={activityIso(15)} />
-                <Activity text="Job #1054 started by Mike R." iso={activityIso(32)} />
-                <Activity text="New job #1055 created" iso={activityIso(45)} />
+                {activity.map((item) => (
+                  <Activity key={item.id} text={item.body} iso={item.createdAt} />
+                ))}
               </ul>
               <div className="px-5 pb-4">
                 <Link
                   href="/dispatcher/jobs"
-                  className="text-sm font-medium text-brand-500 hover:underline"
+                  className="text-sm font-medium text-brand-blue hover:underline"
                 >
                   View all activity →
                 </Link>
@@ -82,8 +83,8 @@ function activityIso(minutesAgo: number) {
 function Glance({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center justify-between py-2.5">
-      <dt className="text-sm text-gray-600">{label}</dt>
-      <dd className="text-sm font-semibold text-gray-900">{value}</dd>
+      <dt className="text-sm text-brand-steel">{label}</dt>
+      <dd className="text-sm font-semibold text-brand-charcoal">{value}</dd>
     </div>
   );
 }
@@ -91,10 +92,10 @@ function Glance({ label, value }: { label: string; value: number }) {
 function Activity({ text, iso }: { text: string; iso: string }) {
   return (
     <li className="flex items-start gap-2.5">
-      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-brand-500 shrink-0" />
+      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-brand-blue shrink-0" />
       <div>
-        <p className="text-sm text-gray-700">{text}</p>
-        <p className="text-xs text-gray-400">
+        <p className="text-sm text-brand-charcoal">{text}</p>
+        <p className="text-xs text-brand-silver">
           <RelativeTime iso={iso} />
         </p>
       </div>

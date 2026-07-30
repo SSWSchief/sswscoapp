@@ -21,11 +21,11 @@ import { Icon, type IconName } from "./Icon";
 type Tone = "blue" | "amber" | "green" | "gray" | "slate";
 
 const toneClasses: Record<Tone, string> = {
-  blue: "bg-blue-100 text-blue-700",
+  blue: "bg-brand-blue/12 text-brand-blue",
   amber: "bg-amber-100 text-amber-800",
-  green: "bg-emerald-100 text-emerald-700",
-  gray: "bg-gray-100 text-gray-600",
-  slate: "bg-slate-100 text-slate-700",
+  green: "bg-emerald-100 text-emerald-800",
+  gray: "bg-brand-mist text-brand-steel",
+  slate: "bg-brand-ice/40 text-brand-navy",
 };
 
 function Pill({
@@ -40,7 +40,7 @@ function Pill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+        "inline-flex items-center gap-1 rounded-sm px-2.5 py-0.5 font-heading text-xs font-semibold uppercase tracking-wide whitespace-nowrap",
         toneClasses[tone]
       )}
     >
@@ -52,12 +52,13 @@ function Pill({
 
 const jobTone: Record<JobStatus, Tone> = {
   pending: "amber",
-  in_progress: "blue",
-  completed: "green",
+  en_route: "blue",
+  arrived: "slate",
+  complete: "green",
   cancelled: "gray",
 };
 const jobIcon: Partial<Record<JobStatus, IconName>> = {
-  completed: "check",
+  complete: "check",
   cancelled: "close",
 };
 

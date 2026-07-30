@@ -24,11 +24,11 @@ export default function CustomersPage() {
 
       <div className="flex-1 overflow-y-auto p-6">
         <Card>
-          <div className="p-5 border-b border-gray-100">
+          <div className="p-5 border-b border-brand-ice/60">
             <div className="relative max-w-md">
               <Icon
                 name="search"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-steel"
                 width={18}
                 height={18}
               />
@@ -47,12 +47,12 @@ export default function CustomersPage() {
             <TBody>
               {customers.map((c) => (
                 <TR key={c.id}>
-                  <TD className="font-medium text-gray-900">{c.name}</TD>
+                  <TD className="font-medium text-brand-charcoal">{c.name}</TD>
                   <TD>{c.phone}</TD>
-                  <TD className="text-gray-500">{c.email}</TD>
+                  <TD className="text-brand-steel">{c.email}</TD>
                   <TD>{c.activeJobs}</TD>
                   <TD className="text-right">
-                    <button className="text-gray-400 hover:text-brand-500 inline-flex">
+                    <button className="text-brand-steel hover:text-brand-blue inline-flex">
                       <Icon name="eye" width={18} height={18} />
                     </button>
                   </TD>
@@ -61,7 +61,7 @@ export default function CustomersPage() {
             </TBody>
           </Table>
 
-          <div className="px-5 py-3 text-sm text-gray-500 border-t border-gray-100">
+          <div className="px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">
             Showing 1 to {customers.length} of 24 customers
           </div>
         </Card>

@@ -10,10 +10,16 @@
 import {
   customers,
   dumpsters,
+  absenceEvents,
+  invoices,
+  jobActivities,
   jobNotes,
+  messageThreads,
   jobs,
   messages,
+  sopItems,
   timeEntries,
+  timeRequests,
   trucks,
   users,
 } from "./mock-data";
@@ -28,6 +34,7 @@ import type {
 
 export const getUsers = () => users;
 export const getDrivers = () => users.filter((u) => u.role === "driver");
+export const getManagers = () => users.filter((u) => u.role === "management");
 export const getUser = (id: string): User | undefined =>
   users.find((u) => u.id === id);
 
@@ -37,7 +44,7 @@ export const getCustomer = (id: string): Customer | undefined =>
 
 export const getJobs = () => jobs;
 export const getJob = (id: string): Job | undefined =>
-  jobs.find((j) => j.id === id);
+  jobs.find((j) => j.id === id || j.reference === id || j.reference === `#${id}`);
 export const getJobByReference = (ref: string): Job | undefined =>
   jobs.find((j) => j.reference === ref || j.reference === `#${ref}`);
 export const getJobsForDriver = (driverId: string) =>
@@ -53,17 +60,26 @@ export const getDumpster = (id: string): Dumpster | undefined =>
 
 export const getJobNotes = (jobId: string): JobNote[] =>
   jobNotes.filter((n) => n.jobId === jobId);
+export const getJobActivities = (jobId?: string) =>
+  (jobId ? jobActivities.filter((a) => a.jobId === jobId) : jobActivities).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
 export const getTimeEntries = () => timeEntries;
+export const getTimeRequests = () => timeRequests;
+export const getAbsenceEvents = () => absenceEvents;
 export const getMessages = () => messages;
+export const getMessageThreads = () => messageThreads;
+export const getInvoices = () => invoices;
+export const getSopItems = () => sopItems;
 
 // ---- Derived / dashboard helpers ----
 
 export function getDashboardStats() {
   return {
     totalToday: jobs.length,
-    inProgress: jobs.filter((j) => j.status === "in_progress").length,
-    completed: jobs.filter((j) => j.status === "completed").length,
+    inProgress: jobs.filter((j) => j.status === "en_route" || j.status === "arrived").length,
+    completed: jobs.filter((j) => j.status === "complete").length,
     pending: jobs.filter((j) => j.status === "pending").length,
     driversOnDuty: getDrivers().length,
     trucksInUse: trucks.filter((t) => t.status === "in_use").length,

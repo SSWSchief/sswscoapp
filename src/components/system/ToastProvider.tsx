@@ -36,7 +36,7 @@ export function useToast() {
 
 const toneMeta: Record<ToastTone, { icon: IconName; className: string }> = {
   success: { icon: "check", className: "text-status-complete" },
-  info: { icon: "info", className: "text-brand-500" },
+  info: { icon: "info", className: "text-brand-skyline" },
   error: { icon: "info", className: "text-red-500" },
 };
 
@@ -76,7 +76,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           return (
             <div
               key={t.id}
-              className="w-full flex items-center gap-3 rounded-lg bg-gray-900 text-white shadow-lg px-4 py-3 animate-[toastIn_.18s_ease-out]"
+              className="w-full flex items-center gap-3 rounded bg-brand-navy text-white shadow-lg px-4 py-3 animate-[toastIn_.18s_ease-out]"
             >
               <Icon name={meta.icon} width={18} height={18} className={cn("shrink-0", meta.className)} />
               <span className="text-sm flex-1">{t.message}</span>
@@ -86,7 +86,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     t.action!.onClick();
                     dismiss(t.id);
                   }}
-                  className="text-sm font-semibold text-brand-500 hover:text-brand-500/80"
+                  className="text-sm font-semibold text-brand-skyline hover:text-brand-ice"
                 >
                   {t.action.label}
                 </button>

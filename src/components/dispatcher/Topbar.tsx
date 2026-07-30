@@ -16,33 +16,35 @@ export function Topbar({
     useDispatcherUI();
 
   return (
-    <header className="h-16 shrink-0 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 gap-3">
+    <header className="h-16 shrink-0 bg-white border-b border-brand-ice/70 flex items-center justify-between px-4 sm:px-6 gap-3">
       <div className="flex items-center gap-2 min-w-0">
         <button
           onClick={openDrawer}
-          className="md:hidden rounded-lg p-2 -ml-2 text-gray-600 hover:bg-gray-100"
+          className="md:hidden rounded p-2 -ml-2 text-brand-steel hover:bg-brand-mist"
           aria-label="Open menu"
         >
           <Icon name="menu" />
         </button>
-        <h1 className="text-lg font-semibold text-gray-900 truncate">{title}</h1>
+        <h1 className="font-heading text-xl font-semibold uppercase tracking-wide text-brand-charcoal truncate">
+          {title}
+        </h1>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={openCommand}
-          className="hidden sm:flex items-center gap-2 h-9 rounded-lg border border-gray-200 pl-3 pr-2 text-sm text-gray-400 hover:bg-gray-50"
+          className="hidden sm:flex items-center gap-2 h-9 rounded border border-brand-ice pl-3 pr-2 text-sm text-brand-steel hover:bg-brand-mist"
           aria-label="Search"
         >
           <Icon name="search" width={16} height={16} />
           <span>Search…</span>
-          <kbd className="text-[11px] text-gray-400 border border-gray-200 rounded px-1.5 py-0.5">
+          <kbd className="text-[11px] text-brand-steel border border-brand-ice rounded-sm px-1.5 py-0.5">
             ⌘K
           </kbd>
         </button>
         <button
           onClick={openCommand}
-          className="sm:hidden rounded-lg p-2 text-gray-500 hover:bg-gray-100"
+          className="sm:hidden rounded p-2 text-brand-steel hover:bg-brand-mist"
           aria-label="Search"
         >
           <Icon name="search" />
@@ -50,7 +52,7 @@ export function Topbar({
 
         <button
           onClick={openNotifications}
-          className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100"
+          className="relative rounded p-2 text-brand-steel hover:bg-brand-mist"
           aria-label={`Notifications (${unreadCount} unread)`}
         >
           <Icon name="bell" />

@@ -14,20 +14,22 @@ export function StatCard({
   tone?: "default" | "blue" | "green" | "amber";
 }) {
   const valueTone = {
-    default: "text-gray-900",
-    blue: "text-brand-500",
+    default: "text-brand-charcoal",
+    blue: "text-brand-blue",
     green: "text-status-complete",
     amber: "text-status-pending",
   }[tone];
 
   return (
     <Card className="p-5">
-      <div className={cn("text-3xl font-bold leading-none", valueTone)}>
+      <div className={cn("font-heading text-4xl font-bold leading-none", valueTone)}>
         {value}
       </div>
-      <div className="mt-2 text-sm font-medium text-gray-700">{label}</div>
+      <div className="mt-2 font-heading text-sm font-semibold uppercase tracking-wide text-brand-charcoal">
+        {label}
+      </div>
       {sublabel && (
-        <div className="text-xs text-gray-400 mt-0.5">{sublabel}</div>
+        <div className="text-xs text-brand-steel mt-0.5">{sublabel}</div>
       )}
     </Card>
   );

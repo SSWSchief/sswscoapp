@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Icon } from "./Icon";
 
 const baseControl =
-  "w-full h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand";
+  "w-full h-11 rounded border border-brand-ice bg-white px-3 text-sm text-brand-charcoal placeholder:text-brand-silver focus:outline-none focus:ring-2 focus:ring-brand-skyline/40 focus:border-brand-blue";
 
 export function Label({
   children,
@@ -17,7 +17,7 @@ export function Label({
   return (
     <label
       htmlFor={htmlFor}
-      className="block text-sm font-medium text-gray-700 mb-1.5"
+      className="block text-xs font-semibold text-brand-charcoal mb-1.5"
     >
       {children}
       {required && (
@@ -57,14 +57,14 @@ export function Select({
   return (
     <div className="relative">
       <select
-        className={cn(baseControl, "appearance-none pr-9 text-gray-700", className)}
+          className={cn(baseControl, "appearance-none pr-9 text-brand-charcoal", className)}
         {...props}
       >
         {children}
       </select>
       <Icon
         name="chevron-down"
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-brand-steel"
         width={16}
         height={16}
       />
@@ -111,7 +111,7 @@ export function FormField({
           id={`${id}-desc`}
           className={cn(
             "text-xs mt-1",
-            error ? "text-red-500" : "text-gray-400"
+            error ? "text-red-600" : "text-brand-steel"
           )}
         >
           {error ?? hint}

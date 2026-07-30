@@ -37,6 +37,7 @@ export default function TrucksPage() {
               <TH>Driver</TH>
               <TH>Current Job</TH>
               <TH>License</TH>
+              <TH>AirTag / GPS</TH>
               <TH>Notes</TH>
             </THead>
             <TBody>
@@ -47,7 +48,7 @@ export default function TrucksPage() {
                 const job = t.currentJobId ? getJob(t.currentJobId) : null;
                 return (
                   <TR key={t.id}>
-                    <TD className="font-semibold text-gray-900">{t.number}</TD>
+                    <TD className="font-semibold text-brand-charcoal">{t.number}</TD>
                     <TD>
                       <TruckStatusBadge status={t.status} />
                     </TD>
@@ -56,7 +57,7 @@ export default function TrucksPage() {
                       {job ? (
                         <Link
                           href={`/dispatcher/jobs/${job.id}`}
-                          className="text-brand-500 hover:underline"
+                          className="text-brand-blue hover:underline"
                         >
                           {job.reference}
                         </Link>
@@ -64,14 +65,18 @@ export default function TrucksPage() {
                         "—"
                       )}
                     </TD>
-                    <TD className="text-gray-500">{t.licensePlate}</TD>
-                    <TD className="text-gray-500">{t.notes || "—"}</TD>
+                    <TD className="text-brand-steel">{t.licensePlate}</TD>
+                    <TD>
+                      <div className="text-sm text-brand-charcoal">{t.airTagId ?? "—"}</div>
+                      <div className="text-xs text-brand-steel">{t.gpsSource ?? "manual"}</div>
+                    </TD>
+                    <TD className="text-brand-steel">{t.notes || "—"}</TD>
                   </TR>
                 );
               })}
             </TBody>
           </Table>
-          <div className="px-5 py-3 text-sm text-gray-500 border-t border-gray-100">
+          <div className="px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">
             Total {trucks.length} trucks
           </div>
         </Card>

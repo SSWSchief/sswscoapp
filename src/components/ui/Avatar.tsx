@@ -20,8 +20,8 @@ export function Avatar({
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-full font-semibold shrink-0",
-        colorful ? avatarColor(initials) : "bg-brand-50 text-brand-500",
+        "inline-flex items-center justify-center rounded-full font-heading font-semibold shrink-0",
+        colorful ? avatarColor(initials) : "bg-brand-blue/15 text-brand-ice",
         sizes[size],
         className
       )}

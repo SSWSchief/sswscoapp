@@ -23,9 +23,10 @@ import type { JobStatus } from "@/lib/types";
 
 const filters: { label: string; value: JobStatus | "all" }[] = [
   { label: "All", value: "all" },
-  { label: "In Progress", value: "in_progress" },
   { label: "Pending", value: "pending" },
-  { label: "Completed", value: "completed" },
+  { label: "En Route", value: "en_route" },
+  { label: "Arrived", value: "arrived" },
+  { label: "Complete", value: "complete" },
 ];
 
 type SortKey = "time" | "customer" | "status";
@@ -71,11 +72,11 @@ export default function JobsPage() {
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <Card>
-          <div className="flex flex-col gap-3 p-4 sm:p-5 border-b border-gray-100">
+          <div className="flex flex-col gap-3 p-4 sm:p-5 border-b border-brand-ice/60">
             <div className="relative">
               <Icon
                 name="search"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-steel"
                 width={18}
                 height={18}
               />
@@ -92,22 +93,22 @@ export default function JobsPage() {
                   key={f.value}
                   onClick={() => setFilter(f.value)}
                   className={cn(
-                    "h-9 px-3 rounded-lg text-sm font-medium transition-colors",
+                    "h-9 px-3 rounded font-heading text-sm font-medium uppercase tracking-wide transition-colors",
                     filter === f.value
-                      ? "bg-brand text-white"
-                      : "text-gray-600 border border-gray-200 hover:bg-gray-50"
+                      ? "bg-brand-blue text-white"
+                      : "text-brand-steel border border-brand-ice hover:bg-brand-mist"
                   )}
                 >
                   {f.label}
                 </button>
               ))}
-              <div className="ml-auto flex items-center gap-2 text-sm text-gray-500">
+              <div className="ml-auto flex items-center gap-2 text-sm text-brand-steel">
                 <label htmlFor="sort">Sort</label>
                 <select
                   id="sort"
                   value={sort}
                   onChange={(e) => setSort(e.target.value as SortKey)}
-                  className="h-9 rounded-lg border border-gray-200 px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand/40"
+                  className="h-9 rounded border border-brand-ice px-2 text-sm text-brand-charcoal focus:outline-none focus:ring-2 focus:ring-brand-skyline/40"
                 >
                   <option value="time">Time</option>
                   <option value="customer">Customer</option>
@@ -163,7 +164,7 @@ export default function JobsPage() {
                         : null;
                       return (
                         <TR key={job.id}>
-                          <TD className="font-semibold text-gray-900">
+                          <TD className="font-semibold text-brand-charcoal">
                             {job.reference}
                           </TD>
                           <TD className="whitespace-nowrap">
@@ -181,7 +182,7 @@ export default function JobsPage() {
                           <TD>
                             <Link
                               href={`/dispatcher/jobs/${job.id}`}
-                              className="text-brand-500 hover:underline text-sm font-medium"
+                              className="text-brand-blue hover:underline text-sm font-medium"
                             >
                               View
                             </Link>
@@ -194,7 +195,7 @@ export default function JobsPage() {
               </div>
 
               {/* Mobile cards */}
-              <ul className="md:hidden divide-y divide-gray-100">
+              <ul className="md:hidden divide-y divide-brand-ice/50">
                 {jobs.map((job) => {
                   const customer = getCustomer(job.customerId);
                   const driver = job.assignedDriverId
@@ -204,24 +205,24 @@ export default function JobsPage() {
                     <li key={job.id}>
                       <Link
                         href={`/dispatcher/jobs/${job.id}`}
-                        className="flex items-start justify-between gap-3 p-4 hover:bg-gray-50"
+                        className="flex items-start justify-between gap-3 p-4 hover:bg-brand-mist/70"
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-900">
+                            <span className="font-semibold text-brand-charcoal">
                               {job.reference}
                             </span>
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-brand-silver">
                               {formatTime(job.scheduledFor)}
                             </span>
                           </div>
-                          <div className="text-sm text-gray-900 mt-0.5">
+                          <div className="text-sm text-brand-charcoal mt-0.5">
                             {customer?.name}
                           </div>
-                          <div className="text-xs text-gray-400 truncate">
+                          <div className="text-xs text-brand-silver truncate">
                             {job.address}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-brand-steel mt-1">
                             {driver?.fullName ?? "Unassigned"}
                           </div>
                         </div>
@@ -234,7 +235,7 @@ export default function JobsPage() {
             </>
           )}
 
-          <div className="flex items-center justify-between px-5 py-3 text-sm text-gray-500 border-t border-gray-100">
+          <div className="flex items-center justify-between px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">
             <span>
               Showing {jobs.length} of {allJobs.length} jobs
               {filter !== "all" && ` · ${jobStatusLabel[filter as JobStatus]}`}

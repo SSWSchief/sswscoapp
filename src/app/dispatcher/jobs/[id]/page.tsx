@@ -10,6 +10,7 @@ import {
   getCustomer,
   getDumpster,
   getJob,
+  getJobActivities,
   getJobNotes,
   getTruck,
   getUser,
@@ -33,6 +34,7 @@ export default function JobDetailsPage({
     ? getDumpster(job.assignedDumpsterId)
     : null;
   const notes = getJobNotes(job.id);
+  const activities = getJobActivities(job.id);
 
   return (
     <>
@@ -52,14 +54,14 @@ export default function JobDetailsPage({
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
         <Link
           href="/dispatcher/jobs"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800"
+          className="inline-flex items-center gap-1.5 text-sm text-brand-steel hover:text-brand-charcoal"
         >
           <Icon name="chevron-right" width={16} height={16} className="rotate-180" />
           Back to Jobs
         </Link>
 
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="font-heading text-2xl font-bold uppercase tracking-wide text-brand-charcoal">
             Job {job.reference}
           </h2>
           <JobStatusBadge status={job.status} />
@@ -129,19 +131,40 @@ export default function JobDetailsPage({
               {job.photos.map((p) => (
                 <div
                   key={p.id}
-                  className="h-20 w-20 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-300"
+                  className="h-20 w-20 rounded bg-brand-mist border border-brand-ice flex items-center justify-center text-brand-silver"
                 >
                   <Icon name="photo" width={26} height={26} />
                 </div>
               ))}
-              <button className="h-20 w-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-brand hover:text-brand-500 transition-colors">
+              <button className="h-20 w-20 rounded border-2 border-dashed border-brand-ice flex flex-col items-center justify-center text-brand-steel hover:border-brand-blue hover:text-brand-blue transition-colors">
                 <Icon name="plus" width={20} height={20} />
                 <span className="text-[11px] mt-1">Add Photo</span>
               </button>
             </div>
           </Card>
 
-          {/* Job Notes */}
+          <Card>
+            <CardHeader title="Activity" />
+            <ul className="px-5 py-4 space-y-4">
+              {activities.map((a) => (
+                <li key={a.id} className="flex gap-3">
+                  <span className="mt-1.5 h-2.5 w-2.5 rounded-full bg-brand-blue shrink-0" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-brand-charcoal">
+                        {a.actorName}
+                      </span>
+                      <span className="text-xs text-brand-silver">
+                        {formatTime(a.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-brand-steel">{a.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
           <Card>
             <CardHeader title="Job Notes" />
             <ul className="px-5 py-4 space-y-4">
@@ -150,14 +173,14 @@ export default function JobDetailsPage({
                   <Avatar initials={n.authorName.slice(0, 2)} size="sm" />
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-brand-charcoal">
                         {n.authorName}
                       </span>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-brand-silver">
                         {formatTime(n.createdAt)}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600">{n.body}</p>
+                    <p className="text-sm text-brand-steel">{n.body}</p>
                   </div>
                 </li>
               ))}
@@ -172,8 +195,8 @@ export default function JobDetailsPage({
 function Row({ label, value }: { label: string; value?: string }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-gray-400">{label}</dt>
-      <dd className="text-gray-800 mt-0.5">{value}</dd>
+      <dt className="font-heading text-xs uppercase tracking-wide text-brand-steel">{label}</dt>
+      <dd className="text-brand-charcoal mt-0.5">{value}</dd>
     </div>
   );
 }
@@ -191,12 +214,12 @@ function Assignment({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="h-9 w-9 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center">
+      <div className="h-9 w-9 rounded bg-brand-blue/10 text-brand-blue flex items-center justify-center">
         <Icon name={icon} width={18} height={18} />
       </div>
       <div>
-        <div className="text-xs text-gray-400">{label}</div>
-        <div className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
+        <div className="text-xs text-brand-steel">{label}</div>
+        <div className="text-sm font-medium text-brand-charcoal flex items-center gap-1.5">
           {initials && <Avatar initials={initials} size="sm" />}
           {value}
         </div>
@@ -208,7 +231,9 @@ function Assignment({
 const eventLabel: Record<JobEvent["type"], string> = {
   created: "Created",
   assigned: "Assigned",
-  started: "Started",
+  en_route: "En Route",
+  arrived: "Arrived",
+  dry_run: "Dry Run",
   completed: "Completed",
 };
 
@@ -221,16 +246,16 @@ function TimelineStep({ event, last }: { event: JobEvent; last: boolean }) {
           className={
             done
               ? "h-3 w-3 rounded-full bg-status-complete"
-              : "h-3 w-3 rounded-full border-2 border-gray-300 bg-white"
+              : "h-3 w-3 rounded-full border-2 border-brand-ice bg-white"
           }
         />
-        {!last && <span className="w-px flex-1 bg-gray-200 my-1" />}
+        {!last && <span className="w-px flex-1 bg-brand-ice my-1" />}
       </div>
       <div className="pb-1">
-        <div className="text-sm font-medium text-gray-800">
+        <div className="text-sm font-medium text-brand-charcoal">
           {eventLabel[event.type]}
         </div>
-        <div className="text-xs text-gray-400">
+        <div className="text-xs text-brand-silver">
           {event.at ? formatDateTime(event.at) : "—"}
         </div>
       </div>

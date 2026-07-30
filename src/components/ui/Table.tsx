@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 export function Table({ children }: { children: React.ReactNode }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">{children}</table>
+      <table className="w-full text-sm text-brand-charcoal">{children}</table>
     </div>
   );
 }
@@ -12,7 +12,9 @@ export function Table({ children }: { children: React.ReactNode }) {
 export function THead({ children }: { children: React.ReactNode }) {
   return (
     <thead>
-      <tr className="border-b border-gray-100 text-left">{children}</tr>
+      <tr className="border-b border-brand-ice/60 bg-brand-mist/60 text-left">
+        {children}
+      </tr>
     </thead>
   );
 }
@@ -27,7 +29,7 @@ export function TH({
   return (
     <th
       className={cn(
-        "px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500",
+        "px-5 py-3 font-heading text-xs font-semibold uppercase tracking-wide text-brand-steel",
         className
       )}
     >
@@ -37,7 +39,7 @@ export function TH({
 }
 
 export function TBody({ children }: { children: React.ReactNode }) {
-  return <tbody className="divide-y divide-gray-100">{children}</tbody>;
+  return <tbody className="divide-y divide-brand-ice/45">{children}</tbody>;
 }
 
 export function TR({
@@ -48,7 +50,7 @@ export function TR({
   className?: string;
 }) {
   return (
-    <tr className={cn("hover:bg-gray-50/70 transition-colors", className)}>
+    <tr className={cn("hover:bg-brand-mist/70 transition-colors", className)}>
       {children}
     </tr>
   );
@@ -62,7 +64,7 @@ export function TD({
   className?: string;
 }) {
   return (
-    <td className={cn("px-5 py-3.5 text-gray-700 align-middle", className)}>
+    <td className={cn("px-5 py-3.5 text-brand-charcoal align-middle", className)}>
       {children}
     </td>
   );

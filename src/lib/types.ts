@@ -1,5 +1,5 @@
 /**
- * Domain types for the SSWS Internal Operations Platform (Phase 1).
+ * Domain types for the SSWSCO Overwatch operations prototype.
  *
  * These mirror the database tables named in the PRD (§5):
  *   Users, Customers, Jobs, Trucks, Dumpsters, Time Entries, Job Photos, Job Notes.
@@ -9,12 +9,13 @@
  * the UI components that consume them.
  */
 
-export type UserRole = "dispatcher" | "driver" | "office";
+export type UserRole = "dispatcher" | "driver" | "office" | "management";
 
 export type JobStatus =
   | "pending"
-  | "in_progress"
-  | "completed"
+  | "en_route"
+  | "arrived"
+  | "complete"
   | "cancelled";
 
 export type TruckStatus = "in_use" | "in_shop" | "available";
@@ -24,10 +25,13 @@ export type DumpsterStatus = "out" | "in_yard" | "in_shop";
 export type EmployeeStatus = "active" | "inactive";
 
 export type ServiceType =
-  | "Dumpster Drop Off"
-  | "Dumpster Pickup"
-  | "Dumpster Swap"
-  | "Roll-off Delivery";
+  | "Delivery"
+  | "Pick-Up"
+  | "Dump & Return"
+  | "Swap / Exchange"
+  | "Relocation"
+  | "Dry Run"
+  | "Service Call";
 
 export type DumpsterSize =
   | "10 Yard"
@@ -44,6 +48,8 @@ export interface User {
   status: EmployeeStatus;
   /** initials shown in avatars when no photo is set */
   initials: string;
+  ptoBalanceHours?: number;
+  weeklyHours?: number;
 }
 
 export interface Customer {
@@ -53,6 +59,7 @@ export interface Customer {
   email: string;
   address: string;
   activeJobs: number;
+  group?: "Big GC" | "Commercial" | "Residential";
 }
 
 export interface Truck {
@@ -64,6 +71,10 @@ export interface Truck {
   assignedDriverId: string | null;
   currentJobId: string | null;
   notes: string;
+  airTagId?: string | null;
+  gpsSource?: "manual" | "airtag" | "gps_placeholder";
+  lastKnownLocation?: string;
+  lastSeenAt?: string;
 }
 
 export interface Dumpster {
@@ -99,12 +110,34 @@ export interface JobPhoto {
 export type JobEventType =
   | "created"
   | "assigned"
-  | "started"
+  | "en_route"
+  | "arrived"
+  | "dry_run"
   | "completed";
 
 export interface JobEvent {
   type: JobEventType;
   at: string | null; // ISO, null = not yet reached
+}
+
+export type JobActivityType =
+  | "created"
+  | "assigned"
+  | "en_route"
+  | "arrived"
+  | "dry_run"
+  | "completed"
+  | "note";
+
+export interface JobActivity {
+  id: string;
+  jobId: string;
+  actorId: string;
+  actorName: string;
+  type: JobActivityType;
+  body: string;
+  createdAt: string;
+  dispatchNotified?: boolean;
 }
 
 export interface Job {
@@ -139,6 +172,25 @@ export interface TimeEntry {
   at: string; // ISO
 }
 
+export interface TimeRequest {
+  id: string;
+  userId: string;
+  kind: "edit_time" | "pto";
+  status: "pending" | "approved" | "denied";
+  requestedFor: string;
+  hours: number;
+  reason: string;
+}
+
+export interface AbsenceEvent {
+  id: string;
+  userId: string;
+  date: string;
+  type: "pto" | "sick" | "unavailable";
+  status: "pending" | "approved";
+  note: string;
+}
+
 export type MessageKind = "message" | "announcement";
 
 export interface CompanyMessage {
@@ -147,4 +199,39 @@ export interface CompanyMessage {
   title: string;
   body: string;
   createdAt: string;
+}
+
+export interface MessageThread {
+  id: string;
+  channel: "Dispatch" | "Drivers" | "Customer Support" | "Management";
+  title: string;
+  participants: string[];
+  updatedAt: string;
+  messages: CompanyMessage[];
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  customerId: string;
+  jobId: string | null;
+  amount: number;
+  status: "draft" | "sent" | "viewed" | "paid" | "overdue" | "closed";
+  customerGroup: "Big GC" | "Commercial" | "Residential";
+  paymentUrl: string;
+  reminderCadence: "none" | "weekly" | "biweekly" | "monthly";
+  sentAt: string | null;
+  dueAt: string;
+  closedAt: string | null;
+  methodSource: "manual_link" | "processor_placeholder";
+}
+
+export interface SopItem {
+  id: string;
+  category: "Procedure" | "Safety Review";
+  title: string;
+  summary: string;
+  requiredForDrivers: boolean;
+  acknowledgedBy: string[];
+  updatedAt: string;
 }

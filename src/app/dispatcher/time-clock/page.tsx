@@ -3,11 +3,12 @@ import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/StatusBadge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
-import { getDrivers } from "@/lib/data";
+import { getDrivers, getTimeRequests } from "@/lib/data";
 
 // Time Clock — dispatcher review of employee time entries (PRD §4 Time Clock).
 export default function TimeClockPage() {
   const drivers = getDrivers();
+  const requests = getTimeRequests();
 
   // Illustrative daily entries for the skeleton.
   const rows = drivers.map((d, i) => ({
@@ -24,11 +25,11 @@ export default function TimeClockPage() {
       <Topbar title="Time Clock" />
       <div className="flex-1 overflow-y-auto p-6">
         <Card>
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-900">
+          <div className="px-5 py-4 border-b border-brand-ice/60">
+            <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
               Today&apos;s Time Entries
             </h2>
-            <p className="text-xs text-gray-400 mt-0.5">May 15, 2024</p>
+            <p className="text-xs text-brand-steel mt-0.5">May 15, 2024 · PTO and edit requests tracked below</p>
           </div>
           <Table>
             <THead>
@@ -45,15 +46,15 @@ export default function TimeClockPage() {
                   <TD>
                     <div className="flex items-center gap-3">
                       <Avatar initials={r.driver.initials} size="sm" />
-                      <span className="font-medium text-gray-900">
+                      <span className="font-medium text-brand-charcoal">
                         {r.driver.fullName}
                       </span>
                     </div>
                   </TD>
                   <TD>{r.clockIn}</TD>
-                  <TD className="text-gray-500">{r.breaks}</TD>
+                  <TD className="text-brand-steel">{r.breaks}</TD>
                   <TD>{r.clockOut}</TD>
-                  <TD className="font-medium text-gray-900">{r.hours}</TD>
+                  <TD className="font-medium text-brand-charcoal">{r.hours}</TD>
                   <TD>
                     <Badge
                       tone={r.active ? "green" : "gray"}
@@ -64,6 +65,29 @@ export default function TimeClockPage() {
               ))}
             </TBody>
           </Table>
+        </Card>
+        <Card className="mt-5">
+          <div className="px-5 py-4 border-b border-brand-ice/60">
+            <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
+              Time Change / PTO Requests
+            </h2>
+          </div>
+          <div className="divide-y divide-brand-ice/50">
+            {requests.map((request) => {
+              const driver = drivers.find((d) => d.id === request.userId);
+              return (
+                <div key={request.id} className="flex items-center justify-between gap-4 p-5">
+                  <div>
+                    <div className="font-semibold text-brand-charcoal">{driver?.fullName}</div>
+                    <div className="text-sm text-brand-steel">
+                      {request.kind === "pto" ? "PTO option" : "Change time"} · {request.hours}h · {request.reason}
+                    </div>
+                  </div>
+                  <Badge tone={request.status === "approved" ? "green" : "amber"} label={request.status} />
+                </div>
+              );
+            })}
+          </div>
         </Card>
       </div>
     </>

@@ -14,6 +14,8 @@ import { truckStatusLabel } from "@/lib/utils";
 // validation and availability-aware asset pickers.
 type Form = {
   customer: string;
+  newCustomerName: string;
+  newCustomerPhone: string;
   address: string;
   serviceType: string;
   driver: string;
@@ -22,6 +24,8 @@ type Form = {
 
 const empty: Form = {
   customer: "",
+  newCustomerName: "",
+  newCustomerPhone: "",
   address: "",
   serviceType: "",
   driver: "",
@@ -52,7 +56,10 @@ export function CreateJobModal({
 
   const validate = (): boolean => {
     const next: Partial<Record<keyof Form, string>> = {};
-    if (!form.customer) next.customer = "Select a customer.";
+    if (!form.customer) next.customer = "Select or create a customer.";
+    if (form.customer === "new" && !form.newCustomerName.trim()) {
+      next.newCustomerName = "Enter the customer name.";
+    }
     if (!form.address.trim()) next.address = "Enter a job address.";
     if (!form.serviceType) next.serviceType = "Choose a service type.";
     if (!form.driver) next.driver = "Assign a driver.";
@@ -94,8 +101,32 @@ export function CreateJobModal({
                     {c.name}
                   </option>
                 ))}
+                <option value="new">+ Create new customer</option>
               </Select>
             </FormField>
+
+            {form.customer === "new" && (
+              <>
+                <FormField
+                  label="New Customer Name"
+                  required
+                  error={errors.newCustomerName}
+                >
+                  <Input
+                    value={form.newCustomerName}
+                    onChange={set("newCustomerName")}
+                    placeholder="Company or customer name"
+                  />
+                </FormField>
+                <FormField label="New Customer Phone">
+                  <Input
+                    value={form.newCustomerPhone}
+                    onChange={set("newCustomerPhone")}
+                    placeholder="(702) 460-0726"
+                  />
+                </FormField>
+              </>
+            )}
 
             <FormField
               label="Job Address"
@@ -113,7 +144,7 @@ export function CreateJobModal({
                 />
                 <Icon
                   name="pin"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-500"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-blue"
                   width={18}
                   height={18}
                 />
@@ -140,10 +171,13 @@ export function CreateJobModal({
                 <option value="" disabled>
                   Select service type
                 </option>
-                <option>Dumpster Drop Off</option>
-                <option>Dumpster Pickup</option>
-                <option>Dumpster Swap</option>
-                <option>Roll-off Delivery</option>
+                <option>Delivery</option>
+                <option>Pick-Up</option>
+                <option>Dump &amp; Return</option>
+                <option>Swap / Exchange</option>
+                <option>Relocation</option>
+                <option>Dry Run</option>
+                <option>Service Call</option>
               </Select>
             </FormField>
             <FormField label="Dumpster Size">
@@ -229,7 +263,7 @@ function Section({
 }) {
   return (
     <section>
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
+      <h3 className="font-heading text-xs font-semibold uppercase tracking-wide text-brand-steel mb-3">
         {title}
       </h3>
       {children}

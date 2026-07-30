@@ -1,11 +1,24 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/system/AppProviders";
 
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const oswald = Oswald({
+  subsets: ["latin"],
+  variable: "--font-oswald",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "SSWS Operations Platform",
+  title: "Overwatch | SSWSCO",
   description:
-    "Silver State Waste Solutions — Internal Operations Platform (Phase 1 MVP).",
+    "Silver State Waste Solutions — Overwatch operations prototype.",
 };
 
 export const viewport: Viewport = {
@@ -20,7 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="font-sans">
+      <body className={`${inter.variable} ${oswald.variable} font-body`}>
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

@@ -40,18 +40,18 @@ export default function DumpstersPage() {
             <TBody>
               {dumpsters.map((d) => (
                 <TR key={d.id}>
-                  <TD className="font-semibold text-gray-900">{d.code}</TD>
+                  <TD className="font-semibold text-brand-charcoal">{d.code}</TD>
                   <TD>{d.size}</TD>
                   <TD>
                     <DumpsterStatusBadge status={d.status} />
                   </TD>
-                  <TD className="text-gray-500">{d.currentLocation}</TD>
-                  <TD className="text-gray-500">{d.airTagId ?? "—"}</TD>
+                  <TD className="text-brand-steel">{d.currentLocation}</TD>
+                  <TD className="text-brand-steel">{d.airTagId ?? "—"}</TD>
                 </TR>
               ))}
             </TBody>
           </Table>
-          <div className="px-5 py-3 text-sm text-gray-500 border-t border-gray-100">
+          <div className="px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">
             Total 22 dumpsters
           </div>
         </Card>

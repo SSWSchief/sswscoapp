@@ -10,14 +10,14 @@ export default function SettingsPage() {
       <Topbar title="Settings" />
       <div className="flex-1 overflow-y-auto p-6">
         <Card className="max-w-3xl">
-          <div className="flex gap-6 px-6 border-b border-gray-100">
+          <div className="flex gap-6 px-6 border-b border-brand-ice/60">
             {["Company", "General", "Users & Roles"].map((tab, i) => (
               <button
                 key={tab}
                 className={
                   i === 0
-                    ? "py-4 text-sm font-medium text-brand-500 border-b-2 border-brand-500"
-                    : "py-4 text-sm font-medium text-gray-500 hover:text-gray-800"
+                    ? "py-4 font-heading text-sm font-medium uppercase tracking-wide text-brand-blue border-b-2 border-brand-blue"
+                    : "py-4 font-heading text-sm font-medium uppercase tracking-wide text-brand-steel hover:text-brand-charcoal"
                 }
               >
                 {tab}
@@ -56,7 +56,7 @@ export default function SettingsPage() {
             </FormField>
           </div>
 
-          <div className="flex justify-end px-6 py-4 border-t border-gray-100">
+          <div className="flex justify-end px-6 py-4 border-t border-brand-ice/60 bg-brand-mist/40">
             <Button>Save Changes</Button>
           </div>
         </Card>

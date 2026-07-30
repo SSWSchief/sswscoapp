@@ -9,7 +9,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-card bg-white border border-gray-200/80 shadow-card",
+        "rounded-card bg-white border border-brand-ice/60 shadow-card",
         className
       )}
       {...props}
@@ -31,11 +31,13 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between px-5 py-4 border-b border-gray-100",
+        "flex items-center justify-between px-5 py-4 border-b border-brand-ice/50",
         className
       )}
     >
-      <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+      <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
+        {title}
+      </h2>
       {action}
     </div>
   );

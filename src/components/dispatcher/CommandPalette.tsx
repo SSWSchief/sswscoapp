@@ -129,7 +129,7 @@ export function CommandPalette({
   return (
     <div className="fixed inset-0 z-[95] flex items-start justify-center p-4 pt-[12vh]">
       <div
-        className="fixed inset-0 bg-gray-900/40 backdrop-blur-[1px]"
+        className="fixed inset-0 bg-brand-navy/50 backdrop-blur-[1px]"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -137,26 +137,26 @@ export function CommandPalette({
         role="dialog"
         aria-modal="true"
         aria-label="Search"
-        className="relative w-full max-w-lg rounded-card bg-white shadow-2xl overflow-hidden"
+        className="relative w-full max-w-lg rounded-card bg-white shadow-2xl overflow-hidden border border-brand-ice"
       >
-        <div className="flex items-center gap-3 px-4 border-b border-gray-100">
-          <Icon name="search" className="text-gray-400" width={18} height={18} />
+        <div className="flex items-center gap-3 px-4 border-b border-brand-ice/60">
+          <Icon name="search" className="text-brand-steel" width={18} height={18} />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKey}
             placeholder="Search jobs, customers, trucks, dumpsters…"
-            className="flex-1 h-14 bg-transparent text-sm outline-none placeholder:text-gray-400"
+            className="flex-1 h-14 bg-transparent text-sm text-brand-charcoal outline-none placeholder:text-brand-silver"
           />
-          <kbd className="hidden sm:block text-[11px] text-gray-400 border border-gray-200 rounded px-1.5 py-0.5">
+          <kbd className="hidden sm:block text-[11px] text-brand-steel border border-brand-ice rounded-sm px-1.5 py-0.5">
             Esc
           </kbd>
         </div>
 
         <ul className="max-h-80 overflow-y-auto py-2">
           {results.length === 0 && (
-            <li className="px-4 py-6 text-center text-sm text-gray-400">
+            <li className="px-4 py-6 text-center text-sm text-brand-steel">
               No results for “{query}”
             </li>
           )}
@@ -167,17 +167,17 @@ export function CommandPalette({
                 onClick={() => go(item)}
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-2.5 text-left",
-                  i === active ? "bg-brand-50" : "hover:bg-gray-50"
+                  i === active ? "bg-brand-mist" : "hover:bg-brand-mist/70"
                 )}
               >
-                <span className="h-8 w-8 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center shrink-0">
+                <span className="h-8 w-8 rounded bg-brand-blue/10 text-brand-blue flex items-center justify-center shrink-0">
                   <Icon name={item.icon} width={16} height={16} />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-medium text-gray-900 truncate">
+                  <span className="block text-sm font-medium text-brand-charcoal truncate">
                     {item.label}
                   </span>
-                  <span className="block text-xs text-gray-400 truncate">
+                  <span className="block text-xs text-brand-steel truncate">
                     {item.sub}
                   </span>
                 </span>
