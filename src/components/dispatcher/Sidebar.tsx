@@ -14,8 +14,8 @@ export function Sidebar() {
 
   return (
     <aside className="hidden md:flex md:flex-col w-60 shrink-0 bg-brand-navy text-white">
-      <div className="h-20 flex items-center px-4 border-b border-white/10 bg-white">
-        <LogoFull />
+      <div className="h-24 flex items-center px-3 border-b border-white/10 bg-white">
+        <LogoFull markClassName="h-20 w-48" />
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">

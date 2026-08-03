@@ -56,7 +56,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     <ConfirmContext.Provider value={confirm}>
       {children}
       {state && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+        <div className="safe-area-all fixed inset-0 z-[90] flex items-center justify-center">
           <div
             className="fixed inset-0 bg-brand-navy/50 backdrop-blur-[1px]"
             onClick={() => close(false)}
@@ -66,7 +66,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             role="alertdialog"
             aria-modal="true"
             aria-label={state.title}
-            className="relative w-full max-w-sm rounded-card bg-white shadow-xl p-6 border border-brand-ice"
+            className="relative w-full max-w-sm rounded-card bg-white shadow-xl p-5 sm:p-6 border border-brand-ice"
           >
             <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
               {state.title}
@@ -74,7 +74,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             {state.message && (
               <p className="text-sm text-brand-steel mt-1.5">{state.message}</p>
             )}
-            <div className="flex justify-end gap-3 mt-5">
+            <div className="grid grid-cols-2 gap-3 mt-5 sm:flex sm:justify-end [&>button]:w-full sm:[&>button]:w-auto">
               <Button variant="secondary" onClick={() => close(false)}>
                 {state.cancelLabel ?? "Cancel"}
               </Button>

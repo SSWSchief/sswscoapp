@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Topbar } from "@/components/dispatcher/Topbar";
@@ -9,12 +11,11 @@ import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import {
   getCustomer,
   getDumpster,
-  getJob,
-  getJobActivities,
   getJobNotes,
   getTruck,
   getUser,
 } from "@/lib/data";
+import { useDemoState } from "@/components/system/DemoStateProvider";
 import { formatDateTime, formatTime } from "@/lib/utils";
 import type { JobEvent } from "@/lib/types";
 
@@ -24,7 +25,9 @@ export default function JobDetailsPage({
 }: {
   params: { id: string };
 }) {
-  const job = getJob(params.id);
+  const { jobs, activities: allActivities, hydrated } = useDemoState();
+  const job = jobs.find((item) => item.id === params.id || item.reference === params.id || item.reference === `#${params.id}`);
+  if (!hydrated) return <div className="flex-1 bg-surface" />;
   if (!job) notFound();
 
   const customer = getCustomer(job.customerId);
@@ -34,7 +37,7 @@ export default function JobDetailsPage({
     ? getDumpster(job.assignedDumpsterId)
     : null;
   const notes = getJobNotes(job.id);
-  const activities = getJobActivities(job.id);
+  const activities = allActivities.filter((activity) => activity.jobId === job.id);
 
   return (
     <>
@@ -42,19 +45,19 @@ export default function JobDetailsPage({
         title={`Job ${job.reference}`}
         action={
           <div className="flex gap-2">
-            <Button variant="secondary">
+            <Button variant="secondary" aria-label="Edit job">
               <Icon name="edit" width={16} height={16} />
-              Edit Job
+              <span className="hidden lg:inline">Edit Job</span>
             </Button>
-            <Button>Mark Complete</Button>
+            <Button aria-label="Mark job complete"><Icon name="check" width={16} height={16} /><span className="hidden lg:inline">Mark Complete</span></Button>
           </div>
         }
       />
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
         <Link
           href="/dispatcher/jobs"
-          className="inline-flex items-center gap-1.5 text-sm text-brand-steel hover:text-brand-charcoal"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-brand-steel hover:text-brand-charcoal"
         >
           <Icon name="chevron-right" width={16} height={16} className="rotate-180" />
           Back to Jobs

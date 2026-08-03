@@ -17,7 +17,8 @@ export function formatTime(iso: string): string {
 }
 
 export function formatDate(iso: string): string {
-  const d = new Date(iso);
+  // Date-only values represent a local business date, not midnight UTC.
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T12:00:00` : iso);
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -40,8 +41,8 @@ export const jobStatusLabel: Record<JobStatus, string> = {
 
 export const truckStatusLabel: Record<TruckStatus, string> = {
   in_use: "In Use",
+  down: "Down",
   in_shop: "In Shop",
-  available: "Available",
 };
 
 export const dumpsterStatusLabel: Record<DumpsterStatus, string> = {
@@ -53,6 +54,10 @@ export const dumpsterStatusLabel: Record<DumpsterStatus, string> = {
 /** Build an Apple Maps deep link for a job address (driver "navigate" button). */
 export function appleMapsUrl(address: string): string {
   return `https://maps.apple.com/?q=${encodeURIComponent(address)}`;
+}
+
+export function googleMapsUrl(address: string): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
 }
 
 /** "just now" / "15m ago" / "3h ago" / "May 15" relative time. */

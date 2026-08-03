@@ -14,12 +14,12 @@ import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import {
   getCustomer,
   getDumpster,
-  getJobs,
   getTruck,
   getUser,
 } from "@/lib/data";
 import { cn, formatTime, jobStatusLabel } from "@/lib/utils";
 import type { JobStatus } from "@/lib/types";
+import { useDemoState } from "@/components/system/DemoStateProvider";
 
 const filters: { label: string; value: JobStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -36,7 +36,7 @@ export default function JobsPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<JobStatus | "all">("all");
   const [sort, setSort] = useState<SortKey>("time");
-  const allJobs = getJobs();
+  const { jobs: allJobs } = useDemoState();
 
   const jobs = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -93,7 +93,7 @@ export default function JobsPage() {
                   key={f.value}
                   onClick={() => setFilter(f.value)}
                   className={cn(
-                    "h-9 px-3 rounded font-heading text-sm font-medium uppercase tracking-wide transition-colors",
+                    "min-h-11 px-3 rounded font-heading text-sm font-medium uppercase tracking-wide transition-colors",
                     filter === f.value
                       ? "bg-brand-blue text-white"
                       : "text-brand-steel border border-brand-ice hover:bg-brand-mist"
@@ -108,7 +108,7 @@ export default function JobsPage() {
                   id="sort"
                   value={sort}
                   onChange={(e) => setSort(e.target.value as SortKey)}
-                  className="h-9 rounded border border-brand-ice px-2 text-sm text-brand-charcoal focus:outline-none focus:ring-2 focus:ring-brand-skyline/40"
+                  className="min-h-11 rounded border border-brand-ice px-2 text-base text-brand-charcoal focus:outline-none focus:ring-2 focus:ring-brand-skyline/40 sm:text-sm"
                 >
                   <option value="time">Time</option>
                   <option value="customer">Customer</option>

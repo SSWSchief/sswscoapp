@@ -10,12 +10,14 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { Icon } from "@/components/ui/Icon";
 import { RelativeTime } from "@/components/ui/RelativeTime";
-import { getDashboardStats, getJobActivities } from "@/lib/data";
+import { getDashboardStats } from "@/lib/data";
+import { useDemoState } from "@/components/system/DemoStateProvider";
 
 export default function DashboardPage() {
   const [createOpen, setCreateOpen] = useState(false);
-  const stats = getDashboardStats();
-  const activity = getJobActivities().slice(0, 4);
+  const { jobs, activities } = useDemoState();
+  const stats = getDashboardStats(jobs);
+  const activity = activities.slice(0, 4);
 
   return (
     <>
@@ -31,10 +33,10 @@ export default function DashboardPage() {
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-          <StatCard value={stats.totalToday} label="Total Jobs" sublabel="Today" />
-          <StatCard value={stats.inProgress} label="In Progress" tone="blue" />
+          <StatCard value={stats.enRoute} label="En Route" tone="blue" />
+          <StatCard value={stats.arrived} label="Arrived" tone="blue" />
           <StatCard value={stats.completed} label="Complete" tone="green" />
-          <StatCard value={stats.pending} label="Pending" tone="amber" />
+          <StatCard value={stats.pending} label="Pending" sublabel="Not Started" tone="amber" />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">

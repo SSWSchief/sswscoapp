@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 import { MobileHeader } from "@/components/driver/MobileHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { useDriverTheme } from "@/components/driver/DriverShell";
+import { useDriverTheme } from "@/components/driver/driver-context";
 import { useConfirm } from "@/components/system/ConfirmProvider";
 import { CURRENT_DRIVER_ID, getUser } from "@/lib/data";
+import { InstallAppCard } from "@/components/system/InstallAppCard";
 
 // Screen 18 — Profile (driver).
 const items: { icon: IconName; label: string }[] = [
@@ -47,6 +48,8 @@ export default function DriverProfilePage() {
           </div>
         </div>
 
+        <InstallAppCard />
+
         {/* Night mode */}
         <div className="bg-white dark:bg-gray-900 mt-3 border-y border-brand-ice/60 dark:border-white/10">
           <div className="flex items-center gap-3 px-5 py-4">
@@ -69,7 +72,7 @@ export default function DriverProfilePage() {
               aria-label="Toggle night mode"
             >
               <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                className={`absolute left-0 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
                   dark ? "translate-x-[22px]" : "translate-x-0.5"
                 }`}
               />

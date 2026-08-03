@@ -25,8 +25,8 @@ export function OfflineBanner() {
   if (!offline) return null;
 
   return (
-    <div className="fixed top-0 inset-x-0 z-[110] bg-amber-500 text-white text-center text-sm font-medium py-1.5 px-4">
-      You&apos;re offline — changes will sync when the connection returns.
+    <div className="safe-area-banner-top fixed top-0 inset-x-0 z-[110] bg-amber-500 text-white text-center text-sm font-medium pb-1.5 px-4" role="status" aria-live="polite">
+      You&apos;re offline — reconnect before submitting changes.
     </div>
   );
 }

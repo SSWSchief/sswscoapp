@@ -75,7 +75,7 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-hidden sm:p-8">
       <div
         className="fixed inset-0 bg-brand-navy/50 backdrop-blur-[1px]"
         onClick={onClose}
@@ -87,23 +87,23 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`relative w-full ${widthClass} rounded-card bg-white shadow-xl outline-none border border-brand-ice/70`}
+        className={`relative flex h-[100dvh] w-full flex-col bg-white shadow-xl outline-none sm:h-auto sm:max-h-[calc(100dvh-4rem)] sm:rounded-card sm:border sm:border-brand-ice/70 ${widthClass}`}
       >
-        <div className="flex items-center justify-between bg-brand-navy px-6 py-4">
+        <div className="safe-header flex shrink-0 items-center justify-between bg-brand-navy px-4 pb-3 sm:min-h-0 sm:px-6 sm:py-4">
           <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-white">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="rounded p-1 text-white/70 hover:bg-white/10 hover:text-white"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded text-white/70 hover:bg-white/10 hover:text-white active:bg-white/15"
             aria-label="Close dialog"
           >
             <Icon name="close" width={20} height={20} />
           </button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">{children}</div>
         {footer && (
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-brand-ice/60 bg-brand-mist/40">
+          <div className="safe-area-bottom-padded grid shrink-0 grid-cols-2 items-center gap-3 border-t border-brand-ice/60 bg-brand-mist/40 px-4 pt-3 sm:flex sm:justify-end sm:px-6 sm:py-4 [&>button]:w-full sm:[&>button]:w-auto">
             {footer}
           </div>
         )}

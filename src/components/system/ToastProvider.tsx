@@ -67,8 +67,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
       <div
-        className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 w-full max-w-sm px-4"
-        role="status"
+        className="safe-area-toast fixed left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 w-full max-w-sm px-4"
         aria-live="polite"
       >
         {toasts.map((t) => {
@@ -76,6 +75,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           return (
             <div
               key={t.id}
+              role={t.tone === "error" ? "alert" : "status"}
               className="w-full flex items-center gap-3 rounded bg-brand-navy text-white shadow-lg px-4 py-3 animate-[toastIn_.18s_ease-out]"
             >
               <Icon name={meta.icon} width={18} height={18} className={cn("shrink-0", meta.className)} />
@@ -86,14 +86,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     t.action!.onClick();
                     dismiss(t.id);
                   }}
-                  className="text-sm font-semibold text-brand-skyline hover:text-brand-ice"
+                  className="min-h-11 px-2 text-sm font-semibold text-brand-skyline hover:text-brand-ice"
                 >
                   {t.action.label}
                 </button>
               )}
               <button
                 onClick={() => dismiss(t.id)}
-                className="text-white/50 hover:text-white"
+                className="flex min-h-11 min-w-11 items-center justify-center text-white/50 hover:text-white"
                 aria-label="Dismiss"
               >
                 <Icon name="close" width={16} height={16} />

@@ -10,7 +10,7 @@ export default function DispatcherMessagesPage() {
   return (
     <>
       <Topbar title="Messages" />
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
           <Card>
             <CardHeader title="Boards" />
@@ -33,8 +33,8 @@ export default function DispatcherMessagesPage() {
               {threads.flatMap((thread) =>
                 thread.messages.map((message) => (
                   <div key={message.id} className="p-5">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                      <div className="break-words font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
                         {thread.channel} · {message.title}
                       </div>
                       <span className="text-xs text-brand-steel">{formatTime(message.createdAt)}</span>

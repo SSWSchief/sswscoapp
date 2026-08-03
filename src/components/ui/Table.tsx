@@ -1,9 +1,9 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export function Table({ children }: { children: React.ReactNode }) {
+export function Table({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className="overflow-x-auto">
+    <div className={cn("overflow-x-auto", className)}>
       <table className="w-full text-sm text-brand-charcoal">{children}</table>
     </div>
   );

@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { MobileHeader } from "@/components/driver/MobileHeader";
 import { Icon } from "@/components/ui/Icon";
@@ -7,14 +9,16 @@ import {
   CURRENT_DRIVER_ID,
   getCustomer,
   getDumpster,
-  getJobsForDriver,
   getTruck,
 } from "@/lib/data";
-import { appleMapsUrl, formatTime } from "@/lib/utils";
+import { useDemoState } from "@/components/system/DemoStateProvider";
+import { formatTime } from "@/lib/utils";
+import { PlatformMapLink } from "@/components/ui/PlatformMapLink";
 
 // Screen 5 — Driver Dashboard (My Jobs).
 export default function DriverJobsPage() {
-  const jobs = getJobsForDriver(CURRENT_DRIVER_ID);
+  const { jobs: allJobs } = useDemoState();
+  const jobs = allJobs.filter((job) => job.assignedDriverId === CURRENT_DRIVER_ID);
 
   return (
     <>
@@ -81,15 +85,13 @@ export default function DriverJobsPage() {
                   </div>
 
                   {/* Primary field action: navigate. Full-width, high emphasis. */}
-                  <a
-                    href={appleMapsUrl(job.address)}
-                    target="_blank"
-                    rel="noreferrer"
+                  <PlatformMapLink
+                    address={job.address}
                     className="mt-4 flex items-center justify-center gap-2 h-12 rounded bg-brand-blue text-white font-heading font-semibold uppercase tracking-wide text-sm active:bg-brand-navy"
                   >
                     <Icon name="pin" width={18} height={18} />
-                    Open in Apple Maps
-                  </a>
+                    Navigate
+                  </PlatformMapLink>
                 </div>
 
                 <Link

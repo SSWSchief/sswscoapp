@@ -30,16 +30,18 @@ export function LogoMark({
 
 export function LogoFull({
   className,
+  markClassName,
   dark,
 }: {
   className?: string;
+  markClassName?: string;
   dark?: boolean;
 }) {
   return (
     <div className={cn("flex items-center", className)}>
       <LogoMark
         dark={dark}
-        className={cn("h-16 w-36", dark ? "opacity-95" : undefined)}
+        className={cn("h-16 w-36", markClassName, dark ? "opacity-95" : undefined)}
       />
     </div>
   );

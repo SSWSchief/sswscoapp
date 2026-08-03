@@ -13,8 +13,8 @@ export default function InvoicesPage() {
   return (
     <>
       <Topbar title="Invoices" />
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
-        <div className="grid gap-4 md:grid-cols-3">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
           <Metric label="Receivables" value={`$${totalOpen.toLocaleString()}`} />
           <Metric label="Open Invoices" value={open.length} />
           <Metric label="Payment Integration" value="Discovery" />
@@ -22,7 +22,7 @@ export default function InvoicesPage() {
 
         <Card>
           <CardHeader title="Receivables & Payment Links" />
-          <Table>
+          <Table className="hidden lg:block">
             <THead>
               <TH>Invoice</TH>
               <TH>Customer</TH>
@@ -51,7 +51,7 @@ export default function InvoicesPage() {
                     <TD>{invoice.reminderCadence}</TD>
                     <TD>{formatDate(invoice.dueAt)}</TD>
                     <TD>
-                      <a className="text-brand-blue hover:underline" href={invoice.paymentUrl}>
+                      <a className="inline-flex min-h-11 items-center text-brand-blue hover:underline" href={invoice.paymentUrl} target="_blank" rel="noreferrer">
                         Payment URL
                       </a>
                     </TD>
@@ -60,6 +60,18 @@ export default function InvoicesPage() {
               })}
             </TBody>
           </Table>
+          <ul className="divide-y divide-brand-ice/60 lg:hidden">
+            {invoices.map((invoice) => {
+              const customer = getCustomer(invoice.customerId);
+              return (
+                <li key={invoice.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-brand-charcoal">{invoice.invoiceNumber}</h3><p className="mt-0.5 text-sm text-brand-steel">{customer?.name}</p></div><Badge tone={invoice.status === "overdue" ? "amber" : invoice.status === "paid" || invoice.status === "closed" ? "green" : "blue"} label={invoice.status} /></div>
+                  <dl className="mt-3 grid grid-cols-2 gap-3 text-sm"><div><dt className="text-xs uppercase text-brand-silver">Amount</dt><dd className="mt-0.5 font-semibold text-brand-charcoal">${invoice.amount.toLocaleString()}</dd></div><div><dt className="text-xs uppercase text-brand-silver">Due</dt><dd className="mt-0.5 text-brand-charcoal">{formatDate(invoice.dueAt)}</dd></div></dl>
+                  <a className="mt-3 flex min-h-11 items-center font-medium text-brand-blue" href={invoice.paymentUrl} target="_blank" rel="noreferrer">Open Payment Link <span aria-hidden="true">↗</span></a>
+                </li>
+              );
+            })}
+          </ul>
           <p className="px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">
             Payment processor and bank deposit behavior are placeholders pending discovery.
           </p>

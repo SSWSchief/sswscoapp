@@ -1,5 +1,4 @@
 import { Topbar } from "@/components/dispatcher/Topbar";
-import { Card } from "@/components/ui/Card";
 import { Icon, type IconName } from "@/components/ui/Icon";
 
 // Screen 11 — Reports (basic report launcher; full analytics is a Phase 2 item).
@@ -44,13 +43,10 @@ export default function ReportsPage() {
   return (
     <>
       <Topbar title="Reports" />
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="grid gap-5 sm:grid-cols-2 max-w-3xl">
           {reports.map((r) => (
-            <Card
-              key={r.title}
-              className="p-6 hover:border-brand-blue hover:shadow-md transition cursor-pointer"
-            >
+            <button key={r.title} className="min-h-11 rounded-card border border-brand-ice bg-white p-5 text-left shadow-card transition hover:border-brand-blue hover:shadow-md active:bg-brand-mist sm:p-6">
               <div className="h-11 w-11 rounded bg-brand-blue text-white flex items-center justify-center mb-4">
                 <Icon name={r.icon} />
               </div>
@@ -58,7 +54,7 @@ export default function ReportsPage() {
                 {r.title}
               </div>
               <p className="text-sm text-brand-steel mt-1">{r.description}</p>
-            </Card>
+            </button>
           ))}
         </div>
       </div>

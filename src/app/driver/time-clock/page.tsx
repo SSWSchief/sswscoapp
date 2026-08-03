@@ -176,10 +176,10 @@ export default function DriverTimeClockPage() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <button className="h-10 rounded border border-brand-blue/40 text-brand-blue text-sm font-medium">
+            <button className="min-h-11 rounded border border-brand-blue/40 text-brand-blue text-sm font-medium">
               Change Time
             </button>
-            <button className="h-10 rounded border border-brand-blue/40 text-brand-blue text-sm font-medium">
+            <button className="min-h-11 rounded border border-brand-blue/40 text-brand-blue text-sm font-medium">
               PTO Option
             </button>
           </div>

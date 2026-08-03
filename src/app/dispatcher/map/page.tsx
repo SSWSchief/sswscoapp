@@ -10,7 +10,7 @@ export default function MapPage() {
   return (
     <>
       <Topbar title="Map" />
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <Card className="overflow-hidden">
           <div className="flex flex-wrap items-center gap-4 px-5 py-4 border-b border-brand-ice/60">
             <div className="flex gap-4 font-heading text-sm font-medium uppercase tracking-wide">
@@ -19,10 +19,10 @@ export default function MapPage() {
               </button>
               <button className="text-brand-steel pb-1">Dumpsters</button>
             </div>
-            <div className="flex gap-4 text-sm text-brand-steel ml-auto">
+            <div className="grid w-full grid-cols-2 gap-2 text-sm text-brand-steel sm:ml-auto sm:flex sm:w-auto sm:gap-4">
               {["Show Trucks", "Show Dumpsters", "Show Jobs"].map((l) => (
-                <label key={l} className="flex items-center gap-1.5">
-                  <input type="checkbox" defaultChecked className="accent-brand-blue" />
+                <label key={l} className="flex min-h-11 items-center gap-2">
+                  <input type="checkbox" defaultChecked className="h-5 w-5 accent-brand-blue" />
                   {l}
                 </label>
               ))}
@@ -30,7 +30,7 @@ export default function MapPage() {
           </div>
 
           {/* Map placeholder */}
-          <div className="relative h-[460px] bg-brand-mist flex items-center justify-center">
+          <div className="relative h-[55dvh] min-h-[360px] max-h-[560px] bg-brand-mist flex items-center justify-center">
             <div
               className="absolute inset-0 opacity-40"
               style={{
@@ -45,7 +45,7 @@ export default function MapPage() {
             <Pin className="top-[62%] left-[40%]" icon="truck" tone="brand" label="T-02" />
             <Pin className="top-[55%] left-[70%]" icon="pin" tone="slate" label="Job" />
 
-            <div className="relative text-center bg-white/90 backdrop-blur rounded-card border border-brand-ice px-6 py-5 shadow-card">
+            <div className="relative mx-4 text-center bg-white/90 backdrop-blur rounded-card border border-brand-ice px-4 py-5 shadow-card sm:px-6">
               <Icon
                 name="map"
                 width={28}

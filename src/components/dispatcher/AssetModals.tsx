@@ -50,7 +50,7 @@ export function AddTruckModal({
           <Select defaultValue="In Use">
             <option>In Use</option>
             <option>In Shop</option>
-            <option>Available</option>
+            <option>Down</option>
           </Select>
         </FormField>
         <FormField label="License Plate">

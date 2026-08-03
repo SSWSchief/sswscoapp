@@ -21,8 +21,8 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-sm gap-1.5",
-  md: "h-10 px-4 text-sm gap-2",
+  sm: "min-h-11 px-3 text-sm gap-1.5",
+  md: "min-h-11 px-4 text-sm gap-2",
 };
 
 export function Button({
@@ -37,6 +37,7 @@ export function Button({
       className={cn(
         "inline-flex items-center justify-center rounded font-heading font-semibold uppercase tracking-wide transition-colors",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+        "active:translate-y-px",
         "disabled:opacity-50 disabled:pointer-events-none",
         variants[variant],
         sizes[size],

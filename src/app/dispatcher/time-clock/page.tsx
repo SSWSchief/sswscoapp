@@ -23,7 +23,7 @@ export default function TimeClockPage() {
   return (
     <>
       <Topbar title="Time Clock" />
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <Card>
           <div className="px-5 py-4 border-b border-brand-ice/60">
             <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
@@ -31,7 +31,7 @@ export default function TimeClockPage() {
             </h2>
             <p className="text-xs text-brand-steel mt-0.5">May 15, 2024 · PTO and edit requests tracked below</p>
           </div>
-          <Table>
+          <Table className="hidden lg:block">
             <THead>
               <TH>Employee</TH>
               <TH>Clock In</TH>
@@ -65,6 +65,16 @@ export default function TimeClockPage() {
               ))}
             </TBody>
           </Table>
+          <ul className="divide-y divide-brand-ice/60 lg:hidden">
+            {rows.map((row) => (
+              <li key={row.driver.id} className="p-4">
+                <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-3"><Avatar initials={row.driver.initials} size="sm" /><h3 className="font-semibold text-brand-charcoal">{row.driver.fullName}</h3></div><Badge tone={row.active ? "green" : "gray"} label={row.active ? "Clocked In" : "Clocked Out"} /></div>
+                <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                  <TimeValue label="Clock In" value={row.clockIn} /><TimeValue label="Break" value={row.breaks} /><TimeValue label="Clock Out" value={row.clockOut} /><TimeValue label="Hours" value={row.hours} />
+                </dl>
+              </li>
+            ))}
+          </ul>
         </Card>
         <Card className="mt-5">
           <div className="px-5 py-4 border-b border-brand-ice/60">
@@ -76,8 +86,8 @@ export default function TimeClockPage() {
             {requests.map((request) => {
               const driver = drivers.find((d) => d.id === request.userId);
               return (
-                <div key={request.id} className="flex items-center justify-between gap-4 p-5">
-                  <div>
+                <div key={request.id} className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                  <div className="min-w-0">
                     <div className="font-semibold text-brand-charcoal">{driver?.fullName}</div>
                     <div className="text-sm text-brand-steel">
                       {request.kind === "pto" ? "PTO option" : "Change time"} · {request.hours}h · {request.reason}
@@ -92,4 +102,8 @@ export default function TimeClockPage() {
       </div>
     </>
   );
+}
+
+function TimeValue({ label, value }: { label: string; value: string }) {
+  return <div><dt className="text-xs uppercase text-brand-silver">{label}</dt><dd className="mt-0.5 break-words font-medium text-brand-charcoal">{value}</dd></div>;
 }

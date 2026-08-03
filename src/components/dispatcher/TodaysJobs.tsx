@@ -8,9 +8,10 @@ import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { useToast } from "@/components/system/ToastProvider";
-import { getCustomer, getDrivers, getJobs, getTruck } from "@/lib/data";
+import { useDemoState } from "@/components/system/DemoStateProvider";
+import { getCustomer, getDrivers, getTruck } from "@/lib/data";
 import { formatTime } from "@/lib/utils";
-import type { Job, JobStatus } from "@/lib/types";
+import type { Job } from "@/lib/types";
 
 /**
  * Interactive Today's Jobs. Demonstrates three review items with local state:
@@ -20,8 +21,8 @@ import type { Job, JobStatus } from "@/lib/types";
  */
 export function TodaysJobs() {
   const { toast } = useToast();
+  const { jobs, assignDriver: persistAssignment } = useDemoState();
   const drivers = getDrivers();
-  const [jobs, setJobs] = React.useState<Job[]>(() => getJobs());
 
   // A driver is "busy" if they already own an active job.
   const busyDriverIds = React.useMemo(() => {
@@ -36,39 +37,16 @@ export function TodaysJobs() {
 
   const assignDriver = (jobId: string, driverId: string) => {
     const prev = jobs.find((j) => j.id === jobId)?.assignedDriverId ?? null;
-    setJobs((js) =>
-      js.map((j) => (j.id === jobId ? { ...j, assignedDriverId: driverId } : j))
-    );
+    persistAssignment(jobId, driverId);
     const driver = drivers.find((d) => d.id === driverId);
     toast(`Assigned ${driver?.fullName ?? "driver"} to ${jobRef(jobs, jobId)}`, {
       tone: "success",
       action: {
         label: "Undo",
-        onClick: () =>
-          setJobs((js) =>
-            js.map((j) =>
-              j.id === jobId ? { ...j, assignedDriverId: prev } : j
-            )
-          ),
+        onClick: () => prev && persistAssignment(jobId, prev),
       },
     });
   };
-
-  // Simulate one realtime update shortly after load to show the live affordance.
-  React.useEffect(() => {
-    const pending = jobs.find((j) => j.status === "pending");
-    if (!pending) return;
-    const id = window.setTimeout(() => {
-      setJobs((js) =>
-        js.map((j) =>
-          j.id === pending.id ? { ...j, status: "en_route" as JobStatus } : j
-        )
-      );
-      toast(`${pending.reference} marked en route by a driver`, { tone: "info" });
-    }, 9000);
-    return () => window.clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <Card className="lg:col-span-2">
@@ -217,7 +195,7 @@ function DriverSelect({
       <select
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none rounded border border-brand-ice bg-white pl-2 pr-7 py-1 text-sm text-brand-charcoal hover:border-brand-skyline focus:outline-none focus:ring-2 focus:ring-brand-skyline/40"
+        className="min-h-11 appearance-none rounded border border-brand-ice bg-white pl-2 pr-7 text-base text-brand-charcoal hover:border-brand-skyline focus:outline-none focus:ring-2 focus:ring-brand-skyline/40 sm:text-sm"
         aria-label="Assign driver"
       >
         <option value="" disabled>

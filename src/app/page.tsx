@@ -9,8 +9,8 @@ import { Icon } from "@/components/ui/Icon";
  */
 export default function Home() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-brand-mist px-6">
-      <LogoFull className="mb-2" />
+    <main className="app-viewport-height safe-area-all flex flex-col items-center justify-center bg-brand-mist">
+      <LogoFull className="mb-2" markClassName="h-28 w-60 sm:h-36 sm:w-72" />
       <p className="font-heading text-sm font-semibold uppercase tracking-wide text-brand-steel mb-8">
         Overwatch · Operations Command Center
       </p>

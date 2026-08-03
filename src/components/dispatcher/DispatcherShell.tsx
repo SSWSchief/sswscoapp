@@ -10,7 +10,8 @@ import { DispatcherUIContext } from "./shell-context";
 import { dispatcherNav } from "./nav";
 import { Icon } from "@/components/ui/Icon";
 import { LogoFull } from "@/components/ui/Logo";
-import { getMessages } from "@/lib/data";
+import { CURRENT_DISPATCHER_ID } from "@/lib/data";
+import { useDemoState } from "@/components/system/DemoStateProvider";
 import { cn } from "@/lib/utils";
 
 export function DispatcherShell({ children }: { children: React.ReactNode }) {
@@ -18,7 +19,10 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
   const [command, setCommand] = React.useState(false);
   const [notifications, setNotifications] = React.useState(false);
   const pathname = usePathname();
-  const unreadCount = getMessages().length;
+  const { notificationsFor } = useDemoState();
+  const unreadCount = notificationsFor(CURRENT_DISPATCHER_ID).filter(
+    (notification) => !notification.acknowledgedAt
+  ).length;
 
   // Global ⌘K / Ctrl+K to open the command palette.
   React.useEffect(() => {
@@ -44,7 +48,7 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
         unreadCount,
       }}
     >
-      <div className="flex h-screen overflow-hidden bg-surface text-brand-charcoal">
+      <div className="app-fixed-height flex overflow-hidden bg-surface text-brand-charcoal">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
       </div>
@@ -57,9 +61,9 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
             onClick={() => setDrawer(false)}
             aria-hidden="true"
           />
-          <div className="absolute left-0 top-0 h-full w-64 bg-brand-navy text-white shadow-xl flex flex-col">
-            <div className="h-20 flex items-center justify-between px-4 border-b border-white/10 bg-white">
-              <LogoFull />
+          <div className="absolute left-0 top-0 h-full w-72 max-w-[88vw] bg-brand-navy text-white shadow-xl flex flex-col safe-area-bottom">
+            <div className="safe-drawer-header flex items-center justify-between px-4 border-b border-white/10 bg-white">
+              <LogoFull markClassName="h-20 w-44" />
               <button
                 onClick={() => setDrawer(false)}
                 aria-label="Close menu"

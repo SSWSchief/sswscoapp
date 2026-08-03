@@ -75,12 +75,14 @@ export const getSopItems = () => sopItems;
 
 // ---- Derived / dashboard helpers ----
 
-export function getDashboardStats() {
+export function getDashboardStats(jobList: Job[] = jobs) {
   return {
-    totalToday: jobs.length,
-    inProgress: jobs.filter((j) => j.status === "en_route" || j.status === "arrived").length,
-    completed: jobs.filter((j) => j.status === "complete").length,
-    pending: jobs.filter((j) => j.status === "pending").length,
+    totalToday: jobList.length,
+    enRoute: jobList.filter((j) => j.status === "en_route").length,
+    arrived: jobList.filter((j) => j.status === "arrived").length,
+    inProgress: jobList.filter((j) => j.status === "en_route" || j.status === "arrived").length,
+    completed: jobList.filter((j) => j.status === "complete").length,
+    pending: jobList.filter((j) => j.status === "pending").length,
     driversOnDuty: getDrivers().length,
     trucksInUse: trucks.filter((t) => t.status === "in_use").length,
     dumpstersOut: dumpsters.filter((d) => d.status === "out").length,

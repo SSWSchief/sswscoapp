@@ -1,3 +1,7 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
 import { Topbar } from "@/components/dispatcher/Topbar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -6,84 +10,65 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/StatusBadge";
 import { Input } from "@/components/ui/Field";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
-import { getUsers } from "@/lib/data";
+import { useDemoState } from "@/components/system/DemoStateProvider";
+import { accessRoleLabel } from "@/lib/permissions";
 
-const roleLabel = {
-  driver: "Driver",
-  dispatcher: "Dispatcher",
-  office: "Office",
-  management: "Management",
-};
-
-// Screen 10 — Employees.
 export default function EmployeesPage() {
-  const employees = getUsers();
+  const { users } = useDemoState();
+  const [query, setQuery] = React.useState("");
+  const employees = users.filter((employee) =>
+    `${employee.employeeId} ${employee.fullName} ${employee.email}`.toLowerCase().includes(query.trim().toLowerCase())
+  );
 
   return (
     <>
-      <Topbar
-        title="Employees"
-        action={
-          <Button>
-            <Icon name="plus" width={18} height={18} />
-            Add Employee
-          </Button>
-        }
-      />
-
-      <div className="flex-1 overflow-y-auto p-6">
+      <Topbar title="Employees" action={<Button aria-label="Add employee"><Icon name="plus" width={18} height={18} /><span className="hidden sm:inline">Add Employee</span></Button>} />
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="mb-4 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <strong>Demo access only:</strong> these settings are stored in this browser and are not securely enforced until Supabase Auth, database policies, and server-side authorization are connected.
+        </div>
         <Card>
           <div className="p-5 border-b border-brand-ice/60">
             <div className="relative max-w-md">
-              <Icon
-                name="search"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-steel"
-                width={18}
-                height={18}
-              />
-              <Input placeholder="Search employees..." className="pl-10" />
+              <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-steel" width={18} height={18} />
+              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, email, or employee ID..." className="pl-10" />
             </div>
           </div>
-
-          <Table>
-            <THead>
-              <TH>Employee</TH>
-              <TH>Role</TH>
-              <TH>Phone</TH>
-              <TH>Status</TH>
-              <TH className="text-right">Actions</TH>
-            </THead>
+          <Table className="hidden lg:block">
+            <THead><TH>Employee ID</TH><TH>Employee</TH><TH>Access Role</TH><TH>Phone</TH><TH>Status</TH><TH className="text-right">Access</TH></THead>
             <TBody>
-              {employees.map((e) => (
-                <TR key={e.id}>
-                  <TD>
-                    <div className="flex items-center gap-3">
-                      <Avatar initials={e.initials} size="sm" />
-                      <span className="font-medium text-brand-charcoal">
-                        {e.fullName}
-                      </span>
-                    </div>
-                  </TD>
-                  <TD>{roleLabel[e.role]}</TD>
-                  <TD>{e.phone}</TD>
-                  <TD>
-                    <Badge
-                      tone={e.status === "active" ? "green" : "gray"}
-                      label={e.status === "active" ? "Active" : "Inactive"}
-                    />
-                  </TD>
-                  <TD className="text-right">
-                    <button className="text-brand-steel hover:text-brand-blue inline-flex">
-                      <Icon name="edit" width={18} height={18} />
-                    </button>
-                  </TD>
+              {employees.map((employee) => (
+                <TR key={employee.id}>
+                  <TD className="font-mono text-sm font-semibold text-brand-charcoal">{employee.employeeId}</TD>
+                  <TD><div className="flex items-center gap-3"><Avatar initials={employee.initials} size="sm" /><div><div className="font-medium text-brand-charcoal">{employee.fullName}</div><div className="text-xs text-brand-steel">{employee.email}</div></div></div></TD>
+                  <TD>{accessRoleLabel[employee.accessRole]}</TD>
+                  <TD>{employee.phone}</TD>
+                  <TD><Badge tone={employee.status === "active" ? "green" : "gray"} label={employee.status === "active" ? "Active" : "Inactive"} /></TD>
+                  <TD className="text-right"><Link href={`/dispatcher/employees/${employee.id}`} className="inline-flex items-center gap-1.5 font-medium text-brand-blue hover:underline"><Icon name="settings" width={17} height={17} />Manage</Link></TD>
                 </TR>
               ))}
             </TBody>
           </Table>
-          <div className="px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">
-            Showing 1 to {employees.length} of 18 employees
-          </div>
+          <ul className="divide-y divide-brand-ice/60 lg:hidden">
+            {employees.map((employee) => (
+              <li key={employee.id} className="p-4">
+                <div className="flex items-start gap-3">
+                  <Avatar initials={employee.initials} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-semibold text-brand-charcoal">{employee.fullName}</h2>
+                    <p className="font-mono text-xs text-brand-steel">{employee.employeeId}</p>
+                    <a href={`tel:${employee.phone.replace(/[^\d+]/g, "")}`} className="mt-1 flex min-h-11 items-center text-sm text-brand-blue">{employee.phone}</a>
+                  </div>
+                  <Badge tone={employee.status === "active" ? "green" : "gray"} label={employee.status === "active" ? "Active" : "Inactive"} />
+                </div>
+                <div className="mt-2 flex items-center justify-between border-t border-brand-ice/50 pt-2">
+                  <span className="text-sm text-brand-steel">{accessRoleLabel[employee.accessRole]}</span>
+                  <Link href={`/dispatcher/employees/${employee.id}`} className="flex min-h-11 items-center gap-2 px-2 font-medium text-brand-blue"><Icon name="settings" width={17} height={17} />Manage Access</Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">Showing {employees.length} of {users.length} employees</div>
         </Card>
       </div>
     </>

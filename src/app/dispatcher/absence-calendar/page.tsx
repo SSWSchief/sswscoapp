@@ -12,8 +12,8 @@ export default function AbsenceCalendarPage() {
   return (
     <>
       <Topbar title="Absence Calendar" />
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
-        <div className="grid gap-4 md:grid-cols-4">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {drivers.map((driver) => (
             <Card key={driver.id} className="p-4">
               <div className="font-heading text-xl font-semibold text-brand-charcoal">
@@ -33,8 +33,8 @@ export default function AbsenceCalendarPage() {
             {absences.map((absence) => {
               const user = getUser(absence.userId);
               return (
-                <div key={absence.id} className="flex items-center justify-between gap-4 p-5">
-                  <div>
+                <div key={absence.id} className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                  <div className="min-w-0">
                     <div className="font-semibold text-brand-charcoal">{user?.fullName}</div>
                     <div className="text-sm text-brand-steel">
                       {formatDate(absence.date)} · {absence.note}
@@ -53,8 +53,8 @@ export default function AbsenceCalendarPage() {
             {requests.map((request) => {
               const user = getUser(request.userId);
               return (
-                <div key={request.id} className="flex items-center justify-between gap-4 p-5">
-                  <div>
+                <div key={request.id} className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                  <div className="min-w-0">
                     <div className="font-semibold text-brand-charcoal">{user?.fullName}</div>
                     <div className="text-sm text-brand-steel">
                       {request.kind === "pto" ? "PTO" : "Time edit"} · {request.hours}h · {request.reason}

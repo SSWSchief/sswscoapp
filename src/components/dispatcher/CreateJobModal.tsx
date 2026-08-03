@@ -6,30 +6,37 @@ import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/system/ToastProvider";
-import { customers, dumpsters, trucks } from "@/lib/mock-data";
-import { getDrivers } from "@/lib/data";
+import { useDemoState } from "@/components/system/DemoStateProvider";
+import { getCustomers, getDumpsters, getDrivers, getTrucks } from "@/lib/data";
 import { truckStatusLabel } from "@/lib/utils";
+import type { DumpsterSize, ServiceType } from "@/lib/types";
 
 // Screen 3 — Create / Edit Job. Grouped into sections with client-side
 // validation and availability-aware asset pickers.
 type Form = {
   customer: string;
-  newCustomerName: string;
-  newCustomerPhone: string;
   address: string;
   serviceType: string;
+  dumpsterSize: string;
   driver: string;
+  truck: string;
+  dumpster: string;
   scheduledFor: string;
+  trafficInstructions: string;
+  notes: string;
 };
 
 const empty: Form = {
   customer: "",
-  newCustomerName: "",
-  newCustomerPhone: "",
   address: "",
   serviceType: "",
+  dumpsterSize: "",
   driver: "",
+  truck: "",
+  dumpster: "",
   scheduledFor: "",
+  trafficInstructions: "",
+  notes: "",
 };
 
 export function CreateJobModal({
@@ -40,6 +47,10 @@ export function CreateJobModal({
   onClose: () => void;
 }) {
   const { toast } = useToast();
+  const { createJob } = useDemoState();
+  const customers = getCustomers();
+  const dumpsters = getDumpsters();
+  const trucks = getTrucks();
   const drivers = getDrivers();
   const [form, setForm] = React.useState<Form>(empty);
   const [errors, setErrors] = React.useState<Partial<Record<keyof Form, string>>>({});
@@ -57,11 +68,9 @@ export function CreateJobModal({
   const validate = (): boolean => {
     const next: Partial<Record<keyof Form, string>> = {};
     if (!form.customer) next.customer = "Select or create a customer.";
-    if (form.customer === "new" && !form.newCustomerName.trim()) {
-      next.newCustomerName = "Enter the customer name.";
-    }
     if (!form.address.trim()) next.address = "Enter a job address.";
     if (!form.serviceType) next.serviceType = "Choose a service type.";
+    if (!form.dumpsterSize) next.dumpsterSize = "Choose a dumpster size.";
     if (!form.driver) next.driver = "Assign a driver.";
     if (!form.scheduledFor) next.scheduledFor = "Pick a date and time.";
     setErrors(next);
@@ -70,7 +79,21 @@ export function CreateJobModal({
 
   const save = () => {
     if (!validate()) return;
-    toast("Job created", { tone: "success" });
+    const customer = customers.find((item) => item.id === form.customer);
+    const job = createJob({
+      customerId: form.customer,
+      address: form.address.trim(),
+      phone: customer?.phone ?? "",
+      serviceType: form.serviceType as ServiceType,
+      dumpsterSize: form.dumpsterSize as DumpsterSize,
+      assignedDriverId: form.driver,
+      assignedTruckId: form.truck || null,
+      assignedDumpsterId: form.dumpster || null,
+      scheduledFor: form.scheduledFor,
+      trafficInstructions: form.trafficInstructions.trim(),
+      notes: form.notes.trim(),
+    });
+    toast(`${job.reference} created and driver notified`, { tone: "success" });
     onClose();
   };
 
@@ -101,32 +124,8 @@ export function CreateJobModal({
                     {c.name}
                   </option>
                 ))}
-                <option value="new">+ Create new customer</option>
               </Select>
             </FormField>
-
-            {form.customer === "new" && (
-              <>
-                <FormField
-                  label="New Customer Name"
-                  required
-                  error={errors.newCustomerName}
-                >
-                  <Input
-                    value={form.newCustomerName}
-                    onChange={set("newCustomerName")}
-                    placeholder="Company or customer name"
-                  />
-                </FormField>
-                <FormField label="New Customer Phone">
-                  <Input
-                    value={form.newCustomerPhone}
-                    onChange={set("newCustomerPhone")}
-                    placeholder="(702) 460-0726"
-                  />
-                </FormField>
-              </>
-            )}
 
             <FormField
               label="Job Address"
@@ -139,6 +138,7 @@ export function CreateJobModal({
                   list="known-addresses"
                   value={form.address}
                   onChange={set("address")}
+                  autoComplete="street-address"
                   placeholder="Enter address"
                   className="pr-9"
                 />
@@ -158,7 +158,11 @@ export function CreateJobModal({
 
             <div className="sm:col-span-2">
               <FormField label="Traffic Instructions">
-                <Input placeholder="Add gate codes, notes, etc..." />
+                <Input
+                  value={form.trafficInstructions}
+                  onChange={set("trafficInstructions")}
+                  placeholder="Add gate codes, notes, etc..."
+                />
               </FormField>
             </div>
           </div>
@@ -180,8 +184,8 @@ export function CreateJobModal({
                 <option>Service Call</option>
               </Select>
             </FormField>
-            <FormField label="Dumpster Size">
-              <Select defaultValue="">
+            <FormField label="Dumpster Size" required error={errors.dumpsterSize}>
+              <Select value={form.dumpsterSize} onChange={set("dumpsterSize")}>
                 <option value="" disabled>
                   Select size
                 </option>
@@ -199,6 +203,7 @@ export function CreateJobModal({
             <FormField label="Scheduled Date" required error={errors.scheduledFor}>
               <Input
                 type="datetime-local"
+                autoComplete="off"
                 value={form.scheduledFor}
                 onChange={set("scheduledFor")}
               />
@@ -216,20 +221,20 @@ export function CreateJobModal({
               </Select>
             </FormField>
             <FormField label="Assign Truck" hint="Trucks in the shop can't be assigned.">
-              <Select defaultValue="">
+              <Select value={form.truck} onChange={set("truck")}>
                 <option value="" disabled>
                   Select truck
                 </option>
                 {trucks.map((t) => (
-                  <option key={t.id} value={t.id} disabled={t.status === "in_shop"}>
+                  <option key={t.id} value={t.id} disabled={t.status !== "in_use"}>
                     {t.number}
-                    {t.status === "in_shop" ? ` (${truckStatusLabel.in_shop})` : ""}
+                    {t.status !== "in_use" ? ` (${truckStatusLabel[t.status]})` : ""}
                   </option>
                 ))}
               </Select>
             </FormField>
             <FormField label="Assign Dumpster">
-              <Select defaultValue="">
+              <Select value={form.dumpster} onChange={set("dumpster")}>
                 <option value="" disabled>
                   Select dumpster
                 </option>
@@ -246,7 +251,11 @@ export function CreateJobModal({
 
         <Section title="Notes">
           <FormField label="Notes">
-            <Textarea placeholder="Add notes or special instructions..." />
+            <Textarea
+              value={form.notes}
+              onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+              placeholder="Add notes or special instructions..."
+            />
           </FormField>
         </Section>
       </div>

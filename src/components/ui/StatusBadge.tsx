@@ -70,10 +70,11 @@ export function JobStatusBadge({ status }: { status: JobStatus }) {
 
 const truckTone: Record<TruckStatus, Tone> = {
   in_use: "green",
+  down: "gray",
   in_shop: "amber",
-  available: "blue",
 };
 const truckIcon: Partial<Record<TruckStatus, IconName>> = {
+  down: "close",
   in_shop: "settings",
 };
 

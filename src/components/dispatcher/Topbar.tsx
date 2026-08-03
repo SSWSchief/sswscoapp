@@ -16,7 +16,7 @@ export function Topbar({
     useDispatcherUI();
 
   return (
-    <header className="h-16 shrink-0 bg-white border-b border-brand-ice/70 flex items-center justify-between px-4 sm:px-6 gap-3">
+    <header className="safe-topbar safe-area-x shrink-0 bg-white border-b border-brand-ice/70 flex items-center justify-between gap-2 sm:gap-3">
       <div className="flex items-center gap-2 min-w-0">
         <button
           onClick={openDrawer}

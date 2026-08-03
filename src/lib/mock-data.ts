@@ -1,5 +1,6 @@
 import type {
   CompanyMessage,
+  AppNotification,
   Customer,
   Dumpster,
   Invoice,
@@ -26,14 +27,14 @@ const TODAY = "2024-05-15";
 const iso = (time: string) => `${TODAY}T${time}:00`;
 
 export const users: User[] = [
-  { id: "u1", fullName: "Mike Rogers", email: "mike@ssws.com", phone: "(702) 555-0101", role: "driver", status: "active", initials: "MR", ptoBalanceHours: 32, weeklyHours: 34.5 },
-  { id: "u2", fullName: "Jake Smith", email: "jake@ssws.com", phone: "(702) 555-0102", role: "driver", status: "active", initials: "JS", ptoBalanceHours: 18, weeklyHours: 36.25 },
-  { id: "u3", fullName: "Tony Davis", email: "tony@ssws.com", phone: "(702) 555-0103", role: "driver", status: "active", initials: "TD", ptoBalanceHours: 24, weeklyHours: 31.75 },
-  { id: "u4", fullName: "Chris Martinez", email: "chris@ssws.com", phone: "(702) 555-0104", role: "driver", status: "active", initials: "CM", ptoBalanceHours: 40, weeklyHours: 28 },
-  { id: "u5", fullName: "Sarah Johnson", email: "sarah@ssws.com", phone: "(702) 555-0201", role: "dispatcher", status: "active", initials: "SJ" },
-  { id: "u6", fullName: "Daniel Perez", email: "daniel@ssws.com", phone: "(702) 555-0202", role: "dispatcher", status: "active", initials: "DP" },
-  { id: "u7", fullName: "Lisa Wong", email: "lisa@ssws.com", phone: "(702) 555-0203", role: "office", status: "active", initials: "LW" },
-  { id: "u8", fullName: "Austin Marshall", email: "austin@sswsco.com", phone: "(702) 460-0726", role: "management", status: "active", initials: "AM" },
+  { id: "u1", employeeId: "SSW-1001", fullName: "Mike Rogers", email: "mike@ssws.com", phone: "(702) 555-0101", role: "driver", accessRole: "driver", permissionOverrides: {}, status: "active", initials: "MR", ptoBalanceHours: 32, weeklyHours: 34.5 },
+  { id: "u2", employeeId: "SSW-1002", fullName: "Jake Smith", email: "jake@ssws.com", phone: "(702) 555-0102", role: "driver", accessRole: "driver", permissionOverrides: {}, status: "active", initials: "JS", ptoBalanceHours: 18, weeklyHours: 36.25 },
+  { id: "u3", employeeId: "SSW-1003", fullName: "Tony Davis", email: "tony@ssws.com", phone: "(702) 555-0103", role: "driver", accessRole: "driver", permissionOverrides: {}, status: "active", initials: "TD", ptoBalanceHours: 24, weeklyHours: 31.75 },
+  { id: "u4", employeeId: "SSW-1004", fullName: "Chris Martinez", email: "chris@ssws.com", phone: "(702) 555-0104", role: "driver", accessRole: "driver", permissionOverrides: {}, status: "active", initials: "CM", ptoBalanceHours: 40, weeklyHours: 28 },
+  { id: "u5", employeeId: "SSW-2001", fullName: "Sarah Johnson", email: "sarah@ssws.com", phone: "(702) 555-0201", role: "dispatcher", accessRole: "dispatcher", permissionOverrides: {}, status: "active", initials: "SJ" },
+  { id: "u6", employeeId: "SSW-2002", fullName: "Daniel Perez", email: "daniel@ssws.com", phone: "(702) 555-0202", role: "dispatcher", accessRole: "dispatcher", permissionOverrides: {}, status: "active", initials: "DP" },
+  { id: "u7", employeeId: "SSW-3001", fullName: "Lisa Wong", email: "lisa@ssws.com", phone: "(702) 555-0203", role: "office", accessRole: "admin", permissionOverrides: {}, status: "active", initials: "LW" },
+  { id: "u8", employeeId: "SSW-3002", fullName: "Austin Marshall", email: "austin@sswsco.com", phone: "(702) 460-0726", role: "management", accessRole: "admin", permissionOverrides: {}, status: "active", initials: "AM" },
 ];
 
 export const customers: Customer[] = [
@@ -46,11 +47,11 @@ export const customers: Customer[] = [
 ];
 
 export const trucks: Truck[] = [
-  { id: "t1", number: "T-01", type: "Roll-off Truck", status: "in_use", licensePlate: "NV-88101", assignedDriverId: "u3", currentJobId: "j5", notes: "Roll-off truck", airTagId: "AT-TRK-01", gpsSource: "airtag", lastKnownLocation: "654 Commerce St, Las Vegas", lastSeenAt: iso("15:12") },
-  { id: "t2", number: "T-02", type: "Roll-off Truck", status: "in_use", licensePlate: "NV-88102", assignedDriverId: "u2", currentJobId: "j4", notes: "", airTagId: "AT-TRK-02", gpsSource: "manual", lastKnownLocation: "321 Boulder Hwy, Henderson", lastSeenAt: iso("13:05") },
-  { id: "t3", number: "T-03", type: "Roll-off Truck", status: "in_use", licensePlate: "NV-88103", assignedDriverId: "u1", currentJobId: "j2", notes: "", airTagId: "AT-TRK-03", gpsSource: "gps_placeholder", lastKnownLocation: "456 Desert Rd, Las Vegas", lastSeenAt: iso("09:42") },
-  { id: "t4", number: "T-04", type: "Roll-off Truck", status: "in_shop", licensePlate: "NV-88104", assignedDriverId: null, currentJobId: null, notes: "Oil change", airTagId: "AT-TRK-04", gpsSource: "manual", lastKnownLocation: "Yard", lastSeenAt: iso("07:20") },
-  { id: "t5", number: "T-05", type: "Roll-off Truck", status: "in_use", licensePlate: "NV-88105", assignedDriverId: "u2", currentJobId: "j1", notes: "", airTagId: "AT-TRK-05", gpsSource: "airtag", lastKnownLocation: "123 Main St, Las Vegas", lastSeenAt: iso("08:24") },
+  { id: "t1", number: "T-01", type: "Roll-off Truck", status: "in_use", licensePlate: "NV-88101", registrationDueDate: "2026-11-30", mileage: 68420, lastPmDate: "2026-06-18", lastPmMileage: 65000, nextPmDate: "2026-09-18", nextPmMileage: 70000, make: "Mack", model: "Granite", vin: "1M2GR2GC6LM012101", assignedDriverId: "u3", currentJobId: "j5", notes: "Roll-off truck", airTagId: "AT-TRK-01", gpsSource: "airtag", lastKnownLocation: "654 Commerce St, Las Vegas", lastSeenAt: iso("15:12") },
+  { id: "t2", number: "T-02", type: "Roll-off Truck", status: "down", licensePlate: "NV-88102", registrationDueDate: "2027-01-15", mileage: 92115, lastPmDate: "2026-07-02", lastPmMileage: 90000, nextPmDate: "2026-10-02", nextPmMileage: 95000, make: "Peterbilt", model: "567", vin: "1XPCDP9X7LD712202", assignedDriverId: null, currentJobId: null, notes: "Down pending hydraulic inspection", airTagId: "AT-TRK-02", gpsSource: "manual", lastKnownLocation: "Yard", lastSeenAt: iso("13:05") },
+  { id: "t3", number: "T-03", type: "Roll-off Truck", status: "in_use", licensePlate: "NV-88103", registrationDueDate: "2026-12-20", mileage: 54880, lastPmDate: "2026-05-28", lastPmMileage: 52000, nextPmDate: "2026-08-28", nextPmMileage: 57000, make: "Kenworth", model: "T880", vin: "1XKZD40X9LJ301303", assignedDriverId: "u1", currentJobId: "j2", notes: "", airTagId: "AT-TRK-03", gpsSource: "gps_placeholder", lastKnownLocation: "456 Desert Rd, Las Vegas", lastSeenAt: iso("09:42") },
+  { id: "t4", number: "T-04", type: "Roll-off Truck", status: "in_shop", licensePlate: "NV-88104", registrationDueDate: "2026-10-08", mileage: 105330, lastPmDate: "2026-07-29", lastPmMileage: 105000, nextPmDate: "2026-10-29", nextPmMileage: 110000, make: "Mack", model: "Granite", vin: "1M2GR2GC8KM014404", assignedDriverId: null, currentJobId: null, notes: "Oil change", airTagId: "AT-TRK-04", gpsSource: "manual", lastKnownLocation: "Yard", lastSeenAt: iso("07:20") },
+  { id: "t5", number: "T-05", type: "Roll-off Truck", status: "in_use", licensePlate: "NV-88105", registrationDueDate: "2027-02-14", mileage: 39740, lastPmDate: "2026-06-30", lastPmMileage: 37000, nextPmDate: "2026-09-30", nextPmMileage: 42000, make: "Peterbilt", model: "567", vin: "1XPCDP9X5MD715505", assignedDriverId: "u2", currentJobId: "j1", notes: "", airTagId: "AT-TRK-05", gpsSource: "airtag", lastKnownLocation: "123 Main St, Las Vegas", lastSeenAt: iso("08:24") },
 ];
 
 export const dumpsters: Dumpster[] = [
@@ -221,6 +222,33 @@ export const messages: CompanyMessage[] = [
   { id: "m2", kind: "announcement", title: "Holiday Schedule", body: "Office will be closed on Monday, May 27.", createdAt: iso("09:15") },
   { id: "m3", kind: "announcement", title: "Equipment Maintenance", body: "T-02 will be out of service on May 20 for maintenance.", createdAt: iso("15:45") },
   { id: "m4", kind: "announcement", title: "Training Reminder", body: "Safety meeting this Friday at 8:00 AM.", createdAt: iso("11:00") },
+];
+
+export const appNotifications: AppNotification[] = [
+  {
+    id: "alert-driver-1",
+    recipientUserId: "u1",
+    sourceRole: "dispatcher",
+    category: "dispatch_update",
+    title: "Dispatch update for #1054",
+    body: "Use the rear entrance. The customer confirmed the gate code is 1234.",
+    relatedJobId: "j3",
+    createdAt: new Date(Date.now() - 12 * 60_000).toISOString(),
+    requiresAcknowledgement: true,
+    acknowledgedAt: null,
+  },
+  {
+    id: "alert-dispatch-1",
+    recipientUserId: "u5",
+    sourceRole: "driver",
+    category: "driver_status",
+    title: "Mike R. arrived",
+    body: "Job #1052 was marked Arrived. Dispatch acknowledgement requested.",
+    relatedJobId: "j1",
+    createdAt: new Date(Date.now() - 7 * 60_000).toISOString(),
+    requiresAcknowledgement: true,
+    acknowledgedAt: null,
+  },
 ];
 
 export const messageThreads: MessageThread[] = [

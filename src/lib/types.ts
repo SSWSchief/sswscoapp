@@ -11,6 +11,28 @@
 
 export type UserRole = "dispatcher" | "driver" | "office" | "management";
 
+export type AccessRole = "admin" | "dispatcher" | "driver";
+
+export type PermissionKey =
+  | "management"
+  | "dashboard"
+  | "jobs"
+  | "customers"
+  | "trucks"
+  | "dumpsters"
+  | "employees"
+  | "time_clock"
+  | "absence"
+  | "invoices"
+  | "messages"
+  | "map"
+  | "reports"
+  | "settings"
+  | "driver_jobs"
+  | "pre_trip"
+  | "sops"
+  | "profile";
+
 export type JobStatus =
   | "pending"
   | "en_route"
@@ -18,7 +40,7 @@ export type JobStatus =
   | "complete"
   | "cancelled";
 
-export type TruckStatus = "in_use" | "in_shop" | "available";
+export type TruckStatus = "in_use" | "down" | "in_shop";
 
 export type DumpsterStatus = "out" | "in_yard" | "in_shop";
 
@@ -41,10 +63,13 @@ export type DumpsterSize =
 
 export interface User {
   id: string;
+  employeeId: string;
   fullName: string;
   email: string;
   phone: string;
   role: UserRole;
+  accessRole: AccessRole;
+  permissionOverrides: Partial<Record<PermissionKey, boolean>>;
   status: EmployeeStatus;
   /** initials shown in avatars when no photo is set */
   initials: string;
@@ -68,6 +93,15 @@ export interface Truck {
   type: string; // e.g. "Roll-off Truck"
   status: TruckStatus;
   licensePlate: string;
+  registrationDueDate: string;
+  mileage: number;
+  lastPmDate: string;
+  lastPmMileage: number;
+  nextPmDate: string;
+  nextPmMileage: number;
+  make: string;
+  model: string;
+  vin: string;
   assignedDriverId: string | null;
   currentJobId: string | null;
   notes: string;
@@ -138,6 +172,25 @@ export interface JobActivity {
   body: string;
   createdAt: string;
   dispatchNotified?: boolean;
+}
+
+export type NotificationCategory =
+  | "job_assignment"
+  | "dispatch_update"
+  | "driver_status"
+  | "dry_run";
+
+export interface AppNotification {
+  id: string;
+  recipientUserId: string;
+  sourceRole: AccessRole;
+  category: NotificationCategory;
+  title: string;
+  body: string;
+  relatedJobId: string | null;
+  createdAt: string;
+  requiresAcknowledgement: boolean;
+  acknowledgedAt: string | null;
 }
 
 export interface Job {

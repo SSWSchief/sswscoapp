@@ -20,16 +20,16 @@ export default function DumpstersPage() {
       <Topbar
         title="Dumpsters"
         action={
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={() => setOpen(true)} aria-label="Add dumpster">
             <Icon name="plus" width={18} height={18} />
-            Add Dumpster
+            <span className="hidden sm:inline">Add Dumpster</span>
           </Button>
         }
       />
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <Card>
-          <Table>
+          <Table className="hidden md:block">
             <THead>
               <TH>Dumpster ID</TH>
               <TH>Size</TH>
@@ -51,6 +51,20 @@ export default function DumpstersPage() {
               ))}
             </TBody>
           </Table>
+          <ul className="divide-y divide-brand-ice/60 md:hidden">
+            {dumpsters.map((dumpster) => (
+              <li key={dumpster.id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div><h2 className="font-semibold text-brand-charcoal">{dumpster.code}</h2><p className="mt-1 text-sm text-brand-steel">{dumpster.size} · {dumpster.type}</p></div>
+                  <DumpsterStatusBadge status={dumpster.status} />
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div><dt className="text-xs uppercase text-brand-silver">Location</dt><dd className="mt-0.5 break-words text-brand-charcoal">{dumpster.currentLocation}</dd></div>
+                  <div><dt className="text-xs uppercase text-brand-silver">AirTag</dt><dd className="mt-0.5 text-brand-charcoal">{dumpster.airTagId ?? "—"}</dd></div>
+                </dl>
+              </li>
+            ))}
+          </ul>
           <div className="px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">
             Total 22 dumpsters
           </div>

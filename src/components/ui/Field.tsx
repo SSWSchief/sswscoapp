@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Icon } from "./Icon";
 
 const baseControl =
-  "w-full h-11 rounded border border-brand-ice bg-white px-3 text-sm text-brand-charcoal placeholder:text-brand-silver focus:outline-none focus:ring-2 focus:ring-brand-skyline/40 focus:border-brand-blue";
+  "w-full min-h-11 rounded border border-brand-ice bg-white px-3 text-base sm:text-sm text-brand-charcoal placeholder:text-brand-silver focus:outline-none focus:ring-2 focus:ring-brand-skyline/40 focus:border-brand-blue disabled:bg-brand-mist disabled:text-brand-silver";
 
 export function Label({
   children,
@@ -95,6 +95,7 @@ export function FormField({
     children as React.ReactElement<Record<string, unknown>>,
     {
       id,
+      "aria-required": required || undefined,
       "aria-invalid": error ? true : undefined,
       "aria-describedby": hint || error ? `${id}-desc` : undefined,
     }
@@ -109,6 +110,7 @@ export function FormField({
       {(hint || error) && (
         <p
           id={`${id}-desc`}
+          role={error ? "alert" : undefined}
           className={cn(
             "text-xs mt-1",
             error ? "text-red-600" : "text-brand-steel"

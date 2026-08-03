@@ -28,19 +28,19 @@ export default function ManagementPage() {
     .reduce((sum, i) => sum + i.amount, 0);
 
   return (
-    <main className="min-h-screen bg-brand-mist p-6">
+    <main className="app-viewport-height safe-area-all bg-brand-mist">
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <LogoFull />
-          <div className="text-right">
-            <h1 className="font-heading text-3xl font-bold uppercase tracking-wide text-brand-charcoal">
+          <div className="text-left sm:text-right">
+            <h1 className="font-heading text-2xl font-bold uppercase tracking-wide text-brand-charcoal sm:text-3xl">
               Overwatch Management Portal
             </h1>
             <p className="text-sm text-brand-steel">Prototype access for partners and leadership.</p>
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Metric label="Jobs Today" value={stats.totalToday} />
           <Metric label="Active Jobs" value={stats.inProgress} />
           <Metric label="Receivables" value={`$${openReceivables.toLocaleString()}`} />
