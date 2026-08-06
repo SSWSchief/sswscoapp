@@ -2,8 +2,7 @@
 
 import { Icon } from "@/components/ui/Icon";
 import { RelativeTime } from "@/components/ui/RelativeTime";
-import { CURRENT_DISPATCHER_ID } from "@/lib/data";
-import { useDemoState } from "@/components/system/DemoStateProvider";
+import { useOperations } from "@/components/system/OperationsProvider";
 
 export function NotificationsPanel({
   open,
@@ -12,8 +11,9 @@ export function NotificationsPanel({
   open: boolean;
   onClose: () => void;
 }) {
-  const { notificationsFor, acknowledgeNotification, acknowledgeAll } = useDemoState();
-  const messages = notificationsFor(CURRENT_DISPATCHER_ID);
+  const { notificationsFor, acknowledgeNotification, acknowledgeAll, currentUser } = useOperations();
+  const recipientId = currentUser?.id ?? "";
+  const messages = notificationsFor(recipientId);
   const unread = messages.filter((message) => !message.acknowledgedAt);
   if (!open) return null;
 
@@ -67,7 +67,7 @@ export function NotificationsPanel({
         </ul>
         <div className="safe-area-bottom-padded shrink-0 px-4 pt-2.5 border-t border-brand-ice/60 text-center">
           <button
-            onClick={() => acknowledgeAll(CURRENT_DISPATCHER_ID)}
+            onClick={() => acknowledgeAll(recipientId)}
             disabled={unread.length === 0}
             className="min-h-11 text-sm font-medium text-brand-blue hover:underline disabled:text-brand-silver disabled:no-underline"
           >

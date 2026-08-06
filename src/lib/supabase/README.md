@@ -1,30 +1,25 @@
-# Supabase integration (Phase 1 — not yet connected)
+# Supabase integration
 
-This folder is a placeholder for the Supabase client and typed queries. During
-the **design-skeleton** phase nothing here is wired up — the app reads from
-`src/lib/data.ts` (mock layer) instead.
+The browser and server clients live in this directory. Environment variables
+are documented in the repository `.env.example`; the server secret must never
+be exposed through a `NEXT_PUBLIC_` variable.
 
-## When the client is ready to proceed
+The ordered files in `supabase/migrations/` are the database source of truth. They include:
 
-1. Provision a Supabase project and create the core tables from the PRD (§5):
-   `users`, `customers`, `jobs`, `trucks`, `dumpsters`, `time_entries`,
-   `job_photos`, `job_notes`, plus `notifications` and employee permission
-   overrides for the approved demo additions. Use the interfaces in
-   `src/lib/types.ts` as the application contract.
-2. Add credentials to `.env.local` (see `.env.example`).
-3. Install the client: `npm install @supabase/supabase-js @supabase/ssr`.
-4. Implement `client.ts` (browser) and `server.ts` (RSC/route handlers).
-5. Replace static functions in `src/lib/data.ts` and the storage operations in
-   `DemoStateProvider` with Supabase queries/mutations while retaining their
-   public signatures.
-6. Enable Row Level Security so drivers can only read their own jobs
-   (PRD: "Drivers cannot edit other jobs").
-7. Subscribe to Supabase Realtime on the `jobs` table for the live-update
-   requirement ("No page refresh required").
-8. Persist notification acknowledgements and enforce employee permissions on
-   the server/RLS layer; hiding navigation alone is not authorization.
-9. After the client supplies its pre-trip form, add the inspection schema,
-   submission records, and an audited mileage update on the assigned truck.
+- Phase 1 operations tables and indexes
+- employee/Auth account linking by email
+- role-aware Row Level Security
+- audited driver status and dry-run functions
+- Realtime tables for jobs, alerts, field evidence, time, and assets
+- a private `job-photos` bucket with signed-URL access
 
-Keeping the data seam in one file is what lets Phase 1 be built now and the
-backend dropped in later without a rewrite.
+To connect a remote project:
+
+```bash
+supabase link --project-ref <project-ref>
+supabase db push
+```
+
+Create each approved `public.users` employee record before inviting the same
+email through Supabase Auth. The Auth trigger links the two records. Drivers can
+only read assigned jobs; dispatcher/admin users manage operational records.

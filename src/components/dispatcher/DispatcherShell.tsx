@@ -10,8 +10,7 @@ import { DispatcherUIContext } from "./shell-context";
 import { dispatcherNav } from "./nav";
 import { Icon } from "@/components/ui/Icon";
 import { LogoFull } from "@/components/ui/Logo";
-import { CURRENT_DISPATCHER_ID } from "@/lib/data";
-import { useDemoState } from "@/components/system/DemoStateProvider";
+import { useOperations } from "@/components/system/OperationsProvider";
 import { cn } from "@/lib/utils";
 
 export function DispatcherShell({ children }: { children: React.ReactNode }) {
@@ -19,8 +18,8 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
   const [command, setCommand] = React.useState(false);
   const [notifications, setNotifications] = React.useState(false);
   const pathname = usePathname();
-  const { notificationsFor } = useDemoState();
-  const unreadCount = notificationsFor(CURRENT_DISPATCHER_ID).filter(
+  const { notificationsFor, currentUser } = useOperations();
+  const unreadCount = notificationsFor(currentUser?.id ?? "").filter(
     (notification) => !notification.acknowledgedAt
   ).length;
 

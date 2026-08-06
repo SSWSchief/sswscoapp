@@ -11,15 +11,9 @@ import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Field";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
-import {
-  getCustomer,
-  getDumpster,
-  getTruck,
-  getUser,
-} from "@/lib/data";
 import { cn, formatTime, jobStatusLabel } from "@/lib/utils";
 import type { JobStatus } from "@/lib/types";
-import { useDemoState } from "@/components/system/DemoStateProvider";
+import { useOperations } from "@/components/system/OperationsProvider";
 
 const filters: { label: string; value: JobStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -36,14 +30,14 @@ export default function JobsPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<JobStatus | "all">("all");
   const [sort, setSort] = useState<SortKey>("time");
-  const { jobs: allJobs } = useDemoState();
+  const { jobs: allJobs, customers, dumpsters, trucks, users } = useOperations();
 
   const jobs = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = allJobs.filter((j) => {
       if (filter !== "all" && j.status !== filter) return false;
       if (!q) return true;
-      const customer = getCustomer(j.customerId);
+      const customer = customers.find((item) => item.id === j.customerId);
       return `${j.reference} ${customer?.name ?? ""} ${j.address}`
         .toLowerCase()
         .includes(q);
@@ -51,12 +45,12 @@ export default function JobsPage() {
     list = [...list].sort((a, b) => {
       if (sort === "time") return a.scheduledFor.localeCompare(b.scheduledFor);
       if (sort === "status") return a.status.localeCompare(b.status);
-      const ca = getCustomer(a.customerId)?.name ?? "";
-      const cb = getCustomer(b.customerId)?.name ?? "";
+      const ca = customers.find((item) => item.id === a.customerId)?.name ?? "";
+      const cb = customers.find((item) => item.id === b.customerId)?.name ?? "";
       return ca.localeCompare(cb);
     });
     return list;
-  }, [allJobs, query, filter, sort]);
+  }, [allJobs, customers, query, filter, sort]);
 
   return (
     <>
@@ -152,15 +146,15 @@ export default function JobsPage() {
                   </THead>
                   <TBody>
                     {jobs.map((job) => {
-                      const customer = getCustomer(job.customerId);
+                      const customer = customers.find((item) => item.id === job.customerId);
                       const driver = job.assignedDriverId
-                        ? getUser(job.assignedDriverId)
+                        ? users.find((item) => item.id === job.assignedDriverId)
                         : null;
                       const truck = job.assignedTruckId
-                        ? getTruck(job.assignedTruckId)
+                        ? trucks.find((item) => item.id === job.assignedTruckId)
                         : null;
                       const dumpster = job.assignedDumpsterId
-                        ? getDumpster(job.assignedDumpsterId)
+                        ? dumpsters.find((item) => item.id === job.assignedDumpsterId)
                         : null;
                       return (
                         <TR key={job.id}>
@@ -197,9 +191,9 @@ export default function JobsPage() {
               {/* Mobile cards */}
               <ul className="md:hidden divide-y divide-brand-ice/50">
                 {jobs.map((job) => {
-                  const customer = getCustomer(job.customerId);
+                  const customer = customers.find((item) => item.id === job.customerId);
                   const driver = job.assignedDriverId
-                    ? getUser(job.assignedDriverId)
+                    ? users.find((item) => item.id === job.assignedDriverId)
                     : null;
                   return (
                     <li key={job.id}>

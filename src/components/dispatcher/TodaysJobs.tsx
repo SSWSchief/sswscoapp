@@ -8,21 +8,15 @@ import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { useToast } from "@/components/system/ToastProvider";
-import { useDemoState } from "@/components/system/DemoStateProvider";
-import { getCustomer, getDrivers, getTruck } from "@/lib/data";
+import { useOperations } from "@/components/system/OperationsProvider";
 import { formatTime } from "@/lib/utils";
 import type { Job } from "@/lib/types";
 
-/**
- * Interactive Today's Jobs. Demonstrates three review items with local state:
- *  - inline quick-assign of a driver (with busy-driver conflict awareness),
- *  - an always-visible Status column (no horizontal scroll for the essentials),
- *  - a "Live" indicator plus a simulated realtime status update + toast.
- */
+/** Live operational jobs with transactional driver assignment. */
 export function TodaysJobs() {
   const { toast } = useToast();
-  const { jobs, assignDriver: persistAssignment } = useDemoState();
-  const drivers = getDrivers();
+  const { jobs, users, customers, trucks, assignDriver: persistAssignment } = useOperations();
+  const drivers = users.filter((user) => user.role === "driver");
 
   // A driver is "busy" if they already own an active job.
   const busyDriverIds = React.useMemo(() => {
@@ -35,17 +29,10 @@ export function TodaysJobs() {
     return s;
   }, [jobs]);
 
-  const assignDriver = (jobId: string, driverId: string) => {
-    const prev = jobs.find((j) => j.id === jobId)?.assignedDriverId ?? null;
-    persistAssignment(jobId, driverId);
+  const assignDriver = async (jobId: string, driverId: string) => {
     const driver = drivers.find((d) => d.id === driverId);
-    toast(`Assigned ${driver?.fullName ?? "driver"} to ${jobRef(jobs, jobId)}`, {
-      tone: "success",
-      action: {
-        label: "Undo",
-        onClick: () => prev && persistAssignment(jobId, prev),
-      },
-    });
+    const result = await persistAssignment(jobId, driverId);
+    toast(result.ok ? `Assigned ${driver?.fullName ?? "driver"} to ${jobRef(jobs, jobId)}` : result.error.message, { tone: result.ok ? "success" : "error" });
   };
 
   return (
@@ -93,8 +80,8 @@ export function TodaysJobs() {
               </THead>
               <TBody>
                 {jobs.map((job) => {
-                  const customer = getCustomer(job.customerId);
-                  const truck = job.assignedTruckId ? getTruck(job.assignedTruckId) : null;
+                  const customer = customers.find((item) => item.id === job.customerId);
+                  const truck = job.assignedTruckId ? trucks.find((item) => item.id === job.assignedTruckId) : null;
                   return (
                     <TR key={job.id}>
                       <TD className="whitespace-nowrap font-medium text-brand-charcoal">
@@ -117,7 +104,7 @@ export function TodaysJobs() {
                           drivers={drivers}
                           busy={busyDriverIds}
                           currentJobDriver={job.assignedDriverId}
-                          onChange={(id) => assignDriver(job.id, id)}
+                          onChange={(id) => void assignDriver(job.id, id)}
                         />
                       </TD>
                       <TD>{truck?.number ?? "—"}</TD>
@@ -134,7 +121,7 @@ export function TodaysJobs() {
           {/* Mobile: cards instead of a horizontally scrolling table */}
           <ul className="md:hidden divide-y divide-gray-100">
             {jobs.map((job) => {
-              const customer = getCustomer(job.customerId);
+              const customer = customers.find((item) => item.id === job.customerId);
               return (
                 <li key={job.id} className="p-4">
                   <div className="flex items-start justify-between gap-2">
@@ -160,7 +147,7 @@ export function TodaysJobs() {
                       drivers={drivers}
                       busy={busyDriverIds}
                       currentJobDriver={job.assignedDriverId}
-                      onChange={(id) => assignDriver(job.id, id)}
+                      onChange={(id) => void assignDriver(job.id, id)}
                     />
                   </div>
                 </li>

@@ -6,8 +6,9 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useDriverTheme } from "@/components/driver/driver-context";
 import { useConfirm } from "@/components/system/ConfirmProvider";
-import { CURRENT_DRIVER_ID, getUser } from "@/lib/data";
 import { InstallAppCard } from "@/components/system/InstallAppCard";
+import { useOperations } from "@/components/system/OperationsProvider";
+import { createClient } from "@/lib/supabase/client";
 
 // Screen 18 — Profile (driver).
 const items: { icon: IconName; label: string }[] = [
@@ -18,7 +19,7 @@ const items: { icon: IconName; label: string }[] = [
 ];
 
 export default function DriverProfilePage() {
-  const driver = getUser(CURRENT_DRIVER_ID)!;
+  const { currentUser: driver } = useOperations();
   const { dark, toggle } = useDriverTheme();
   const confirm = useConfirm();
   const router = useRouter();
@@ -30,7 +31,11 @@ export default function DriverProfilePage() {
       confirmLabel: "Log Out",
       tone: "danger",
     });
-    if (ok) router.push("/login");
+    if (ok) {
+      await createClient().auth.signOut();
+      router.replace("/login");
+      router.refresh();
+    }
   };
 
   return (
@@ -39,10 +44,10 @@ export default function DriverProfilePage() {
 
       <div className="flex-1 overflow-y-auto bg-surface dark:bg-gray-950">
         <div className="bg-white dark:bg-gray-900 p-6 flex items-center gap-4 border-b border-brand-ice/60 dark:border-white/10">
-          <Avatar initials={driver.initials} size="lg" />
+          <Avatar initials={driver?.initials ?? "--"} size="lg" />
           <div>
             <div className="font-heading font-semibold uppercase tracking-wide text-brand-charcoal dark:text-white text-lg">
-              {driver.fullName}
+              {driver?.fullName ?? "Employee"}
             </div>
             <div className="text-sm text-brand-steel dark:text-gray-400">Driver</div>
           </div>
@@ -115,7 +120,7 @@ export default function DriverProfilePage() {
         </div>
 
         <p className="text-center text-xs text-brand-steel py-6">
-          SSWSCO Overwatch · Prototype
+          SSWSCO Overwatch · Phase 1 Pilot
         </p>
       </div>
     </>

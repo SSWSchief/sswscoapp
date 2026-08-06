@@ -26,3 +26,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/coverage/
+/playwright-report/
+/test-results/
+
+# Local/iCloud conflict copies; canonical source files do not contain numeric suffixes.
+**/* 2.ts
+**/* 2.tsx
+**/* 3.tsx

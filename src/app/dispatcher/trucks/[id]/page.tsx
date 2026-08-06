@@ -1,17 +1,23 @@
+"use client";
+
+import * as React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Topbar } from "@/components/dispatcher/Topbar";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { TruckStatusBadge } from "@/components/ui/StatusBadge";
-import { getJob, getTruck, getUser } from "@/lib/data";
+import { useOperations } from "@/components/system/OperationsProvider";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
-export default function TruckDetailsPage({ params }: { params: { id: string } }) {
-  const truck = getTruck(params.id);
+export default function TruckDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
+  const { trucks, jobs, users, hydrated } = useOperations();
+  const truck = trucks.find((item) => item.id === id);
+  if (!hydrated) return <div className="flex-1 bg-surface" />;
   if (!truck) notFound();
-  const driver = truck.assignedDriverId ? getUser(truck.assignedDriverId) : null;
-  const job = truck.currentJobId ? getJob(truck.currentJobId) : null;
+  const driver = truck.assignedDriverId ? users.find((item) => item.id === truck.assignedDriverId) : null;
+  const job = truck.currentJobId ? jobs.find((item) => item.id === truck.currentJobId) : null;
 
   return (
     <>
@@ -47,7 +53,7 @@ export default function TruckDetailsPage({ params }: { params: { id: string } })
               <Detail label="Next PM Mileage" value={`${truck.nextPmMileage.toLocaleString()} mi`} />
             </dl>
             <div className="mx-5 mb-5 rounded border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-              Demo mileage is entered manually. Electronic pre-trip submissions will update this value after the client form and Supabase are connected.
+              Mileage is maintained manually during Phase 1. Electronic pre-trip inspections are outside the pilot scope.
             </div>
           </Card>
 

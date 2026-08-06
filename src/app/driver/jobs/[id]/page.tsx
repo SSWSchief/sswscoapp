@@ -7,8 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { useToast } from "@/components/system/ToastProvider";
 import { useConfirm } from "@/components/system/ConfirmProvider";
-import { getCustomer } from "@/lib/data";
-import { useDemoState } from "@/components/system/DemoStateProvider";
+import { useOperations } from "@/components/system/OperationsProvider";
 import type { JobStatus } from "@/lib/types";
 import { PlatformMapLink } from "@/components/ui/PlatformMapLink";
 
@@ -17,11 +16,12 @@ import { PlatformMapLink } from "@/components/ui/PlatformMapLink";
 export default function DriverJobDetailsPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { jobs, activities, hydrated, updateJobStatus, logDryRun } = useDemoState();
+  const { id } = React.use(params);
+  const { jobs, activities, customers, jobNotes, hydrated, currentUser, updateJobStatus, logDryRun, uploadJobPhotos, addJobNote } = useOperations();
   const job = jobs.find(
-    (item) => item.id === params.id || item.reference === params.id || item.reference === `#${params.id}`
+    (item) => item.id === id || item.reference === id || item.reference === `#${id}`
   );
   const router = useRouter();
   const { toast } = useToast();
@@ -31,7 +31,8 @@ export default function DriverJobDetailsPage({
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const libraryInputRef = React.useRef<HTMLInputElement>(null);
   const objectUrlsRef = React.useRef<string[]>([]);
-  const [notes, setNotes] = React.useState<string[]>([]);
+  const persistedNotes = jobNotes.filter(note => note.jobId === job?.id && note.authorId === currentUser?.id).map(note => note.body);
+  const [optimisticNotes, setOptimisticNotes] = React.useState<string[]>([]);
   const [composing, setComposing] = React.useState(false);
   const [draft, setDraft] = React.useState("");
 
@@ -46,45 +47,64 @@ export default function DriverJobDetailsPage({
   if (!job) return notFound();
   const status = job.status;
   const activity = activities.filter((item) => item.jobId === job.id);
-  const customer = getCustomer(job.customerId);
+  const customer = customers.find((item) => item.id === job.customerId);
 
   const completed = status === "complete";
   const photoCount = photos.length;
 
-  const logAction = (
+  const logAction = async (
     nextStatus: Extract<JobStatus, "en_route" | "arrived" | "complete">,
     body: string
   ) => {
-    updateJobStatus(job.id, nextStatus, "u1", "Mike R.");
-    toast(`${job.reference} ${body.toLowerCase()}`, { tone: "success" });
+    if (!currentUser) return false;
+    const result = await updateJobStatus(job.id, nextStatus);
+    toast(result.ok ? `${job.reference} ${body.toLowerCase()}` : result.error.message, { tone: result.ok ? "success" : "error" });
+    return result.ok;
   };
 
   const markDryRun = () => {
-    logDryRun(job.id, "u1", "Mike R.");
-    toast("Dry run logged and dispatch notified", { tone: "info" });
+    if (!currentUser) return;
+    void logDryRun(job.id).then((result) => toast(result.ok ? "Dry run logged and dispatch notified" : result.error.message, { tone: result.ok ? "info" : "error" }));
   };
 
-  const addPhotos = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const addPhotos = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(event.target.files ?? []);
-    const valid = selected.filter((file) => file.type.startsWith("image/") && file.size <= 15 * 1024 * 1024);
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+    const valid = selected.filter((file) => allowed.includes(file.type) && file.size <= 10 * 1024 * 1024);
     if (valid.length !== selected.length) {
-      toast("Use image files no larger than 15 MB.", { tone: "error" });
+      toast("Use JPEG, PNG, WebP, or HEIC images no larger than 10 MB.", { tone: "error" });
     }
     if (valid.length) {
       const urls = valid.map((file) => URL.createObjectURL(file));
       objectUrlsRef.current.push(...urls);
       setPhotos((current) => [...current, ...urls]);
-      toast(`${valid.length} photo${valid.length === 1 ? "" : "s"} ready`, { tone: "success" });
+      const result = await uploadJobPhotos(job.id, valid);
+      if (result.ok) {
+        toast(`${valid.length} photo${valid.length === 1 ? "" : "s"} uploaded`, { tone: "success" });
+      } else {
+        setPhotos((current) => current.filter((url) => !urls.includes(url ?? "")));
+        toast(result.error.message, { tone: "error" });
+      }
     }
     event.target.value = "";
   };
 
-  const saveNote = () => {
+  const saveNote = async () => {
     if (!draft.trim()) return;
-    setNotes((n) => [...n, draft.trim()]);
+    const body = draft.trim();
+    setOptimisticNotes((n) => [...n, body]);
     setDraft("");
     setComposing(false);
-    toast("Note added", { tone: "success" });
+    const result = await addJobNote(job.id, body);
+    if (result.ok) {
+      setOptimisticNotes(current => current.filter(note => note !== body));
+      toast("Note added", { tone: "success" });
+    } else {
+      setOptimisticNotes((current) => current.filter((note) => note !== body));
+      setDraft(body);
+      setComposing(true);
+      toast(result.error.message, { tone: "error" });
+    }
   };
 
   const complete = async () => {
@@ -98,11 +118,7 @@ export default function DriverJobDetailsPage({
       confirmLabel: "Complete Job",
     });
     if (!ok) return;
-    logAction("complete", "completed by driver");
-    toast("Job completed", {
-      tone: "success",
-      action: { label: "View jobs", onClick: () => router.push("/driver/jobs") },
-    });
+    if (await logAction("complete", "completed by driver")) router.push("/driver/jobs");
   };
 
   return (
@@ -182,15 +198,13 @@ export default function DriverJobDetailsPage({
               At least one photo is required to complete this job.
             </p>
           )}
-          <p className="mt-2 text-xs leading-5 text-brand-steel dark:text-gray-400">
-            Demo preview only. Photos stay on this screen and will not upload until secure storage is connected.
-          </p>
+          <p className="mt-2 text-xs leading-5 text-brand-steel dark:text-gray-400">Accepted: JPEG, PNG, WebP, and HEIC up to 10 MB each. Upload status is confirmed before completion.</p>
         </Panel>
 
-        <Panel title={`My Notes${notes.length ? ` (${notes.length})` : ""}`}>
-          {notes.length > 0 && (
+        <Panel title={`My Notes${persistedNotes.length + optimisticNotes.length ? ` (${persistedNotes.length + optimisticNotes.length})` : ""}`}>
+          {persistedNotes.length + optimisticNotes.length > 0 && (
             <ul className="space-y-2 mb-3">
-              {notes.map((n, i) => (
+              {[...persistedNotes, ...optimisticNotes].map((n, i) => (
                 <li
                   key={i}
                   className="text-sm text-brand-charcoal dark:text-gray-300 bg-brand-mist dark:bg-white/5 rounded px-3 py-2"

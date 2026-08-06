@@ -7,8 +7,7 @@ import { usePathname } from "next/navigation";
 import { LogoFull } from "@/components/ui/Logo";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { DriverNotificationsPanel } from "./DriverNotificationsPanel";
-import { useDemoState } from "@/components/system/DemoStateProvider";
-import { CURRENT_DRIVER_ID } from "@/lib/data";
+import { useOperations } from "@/components/system/OperationsProvider";
 import { DriverShellContext } from "./driver-context";
 export { useDriverTheme } from "./driver-context";
 
@@ -16,7 +15,7 @@ const STORAGE_KEY = "ssws-driver-theme";
 
 /**
  * Mobile-first driver shell. On larger screens it presents inside a phone frame
- * so it can be demoed on a laptop. Supports an optional night mode (persisted)
+ * so it remains usable on a laptop. Supports an optional night mode (persisted)
  * to cut glare on evening pickups.
  */
 export function DriverShell({ children }: { children: React.ReactNode }) {
@@ -24,8 +23,8 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const pathname = usePathname();
-  const { notificationsFor } = useDemoState();
-  const unreadCount = notificationsFor(CURRENT_DRIVER_ID).filter((item) => !item.acknowledgedAt).length;
+  const { notificationsFor, currentUser } = useOperations();
+  const unreadCount = currentUser ? notificationsFor(currentUser.id).filter((item) => !item.acknowledgedAt).length : 0;
 
   React.useEffect(() => {
     setDark(localStorage.getItem(STORAGE_KEY) === "dark");
@@ -64,7 +63,7 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
                     </Link>
                   ))}
                 </nav>
-                <div className="border-t border-brand-ice p-4 text-xs text-brand-steel dark:border-white/10">SSWSCO Overwatch · Demo</div>
+                <div className="border-t border-brand-ice p-4 text-xs text-brand-steel dark:border-white/10">SSWSCO Overwatch · Live operations</div>
               </aside>
             </div>
           )}

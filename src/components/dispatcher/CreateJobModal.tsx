@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/system/ToastProvider";
-import { useDemoState } from "@/components/system/DemoStateProvider";
-import { getCustomers, getDumpsters, getDrivers, getTrucks } from "@/lib/data";
+import { useOperations } from "@/components/system/OperationsProvider";
 import { truckStatusLabel } from "@/lib/utils";
-import type { DumpsterSize, ServiceType } from "@/lib/types";
+import type { DumpsterSize, Job, ServiceType } from "@/lib/types";
 
 // Screen 3 — Create / Edit Job. Grouped into sections with client-side
 // validation and availability-aware asset pickers.
@@ -42,25 +41,24 @@ const empty: Form = {
 export function CreateJobModal({
   open,
   onClose,
+  job,
 }: {
   open: boolean;
   onClose: () => void;
+  job?: Job;
 }) {
   const { toast } = useToast();
-  const { createJob } = useDemoState();
-  const customers = getCustomers();
-  const dumpsters = getDumpsters();
-  const trucks = getTrucks();
-  const drivers = getDrivers();
+  const { createJob, updateJob, customers, dumpsters, trucks, users } = useOperations();
+  const drivers = users.filter((user) => user.role === "driver");
   const [form, setForm] = React.useState<Form>(empty);
   const [errors, setErrors] = React.useState<Partial<Record<keyof Form, string>>>({});
 
   React.useEffect(() => {
     if (open) {
-      setForm(empty);
+      setForm(job?{customer:job.customerId,address:job.address,serviceType:job.serviceType,dumpsterSize:job.dumpsterSize,driver:job.assignedDriverId??"",truck:job.assignedTruckId??"",dumpster:job.assignedDumpsterId??"",scheduledFor:new Date(new Date(job.scheduledFor).getTime()-new Date(job.scheduledFor).getTimezoneOffset()*60000).toISOString().slice(0,16),trafficInstructions:job.trafficInstructions??"",notes:job.notes}:empty);
       setErrors({});
     }
-  }, [open]);
+  }, [job, open]);
 
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -77,10 +75,10 @@ export function CreateJobModal({
     return Object.keys(next).length === 0;
   };
 
-  const save = () => {
+  const save = async () => {
     if (!validate()) return;
     const customer = customers.find((item) => item.id === form.customer);
-    const job = createJob({
+    const input = {
       customerId: form.customer,
       address: form.address.trim(),
       phone: customer?.phone ?? "",
@@ -92,8 +90,16 @@ export function CreateJobModal({
       scheduledFor: form.scheduledFor,
       trafficInstructions: form.trafficInstructions.trim(),
       notes: form.notes.trim(),
-    });
-    toast(`${job.reference} created and driver notified`, { tone: "success" });
+    };
+    if (job) {
+      const result = await updateJob(job.id, input);
+      if (!result.ok) { toast(result.error.message, { tone: "error" }); return; }
+      toast(`${job.reference} updated`, { tone: "success" });
+    } else {
+      const result = await createJob(input);
+      if (!result.ok) { toast(result.error.message, { tone: "error" }); return; }
+      toast(`${result.data.reference} created and driver notified`, { tone: "success" });
+    }
     onClose();
   };
 
@@ -101,7 +107,7 @@ export function CreateJobModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Create New Job"
+      title={job?`Edit ${job.reference}`:"Create New Job"}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>

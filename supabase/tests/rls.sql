@@ -1,0 +1,11 @@
+begin;
+select plan(7);
+select has_table('public', 'audit_log', 'immutable audit log exists');
+select has_function('public', 'record_time_event', array['time_entry_type'], 'strict time RPC exists');
+select has_function('public', 'create_job', 'transactional job RPC exists');
+select has_function('public', 'review_time_request', array['text','text'], 'review RPC exists');
+select policies_are('public', 'jobs', array['jobs_read','jobs_staff_delete','jobs_staff_insert','jobs_staff_update'], 'job RLS policies are explicit');
+select policies_are('public', 'users', array['users_admin_delete','users_admin_insert','users_admin_update','users_read'], 'user RLS policies are explicit');
+select policies_are('public', 'audit_log', array['audit_staff_read'], 'audit history cannot be changed by clients');
+select * from finish();
+rollback;

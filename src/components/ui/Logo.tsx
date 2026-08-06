@@ -21,7 +21,7 @@ export function LogoMark({
         alt=""
         fill
         sizes="160px"
-        className="object-contain"
+        className="pointer-events-none object-contain"
         priority
       />
     </span>

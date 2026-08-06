@@ -2,25 +2,47 @@
   "name": "sswsco-ops-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "Silver State Waste Solutions — Internal Operations Platform (Phase 1 MVP). Design skeleton / foundation.",
+  "description": "Silver State Waste Solutions — Supabase-backed Phase 1 operations pilot.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "db:lint": "supabase db lint --linked --level warning"
   },
   "dependencies": {
-    "next": "^14.2.35",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.2",
+    "next": "^15.5.21",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
+    "@playwright/test": "^1.62.1",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.3",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^6.0.5",
     "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.39",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.21",
+    "jsdom": "^26.1.0",
+    "postcss": "^8.5.26",
     "tailwindcss": "^3.4.6",
-    "typescript": "^5.5.3"
+    "typescript": "^5.5.3",
+    "vitest": "^3.2.7"
+  },
+  "overrides": {
+    "postcss": "$postcss",
+    "sharp": "0.35.3"
   }
 }

@@ -8,19 +8,21 @@ import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { DumpsterStatusBadge } from "@/components/ui/StatusBadge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
-import { getDumpsters } from "@/lib/data";
+import { useOperations } from "@/components/system/OperationsProvider";
+import type { Dumpster } from "@/lib/types";
 
 // Screen 8 (Dumpsters tab) — Asset Management.
 export default function DumpstersPage() {
   const [open, setOpen] = useState(false);
-  const dumpsters = getDumpsters();
+  const [editing, setEditing] = useState<Dumpster | undefined>();
+  const { dumpsters } = useOperations();
 
   return (
     <>
       <Topbar
         title="Dumpsters"
         action={
-          <Button onClick={() => setOpen(true)} aria-label="Add dumpster">
+          <Button onClick={() => { setEditing(undefined); setOpen(true); }} aria-label="Add dumpster">
             <Icon name="plus" width={18} height={18} />
             <span className="hidden sm:inline">Add Dumpster</span>
           </Button>
@@ -36,6 +38,7 @@ export default function DumpstersPage() {
               <TH>Status</TH>
               <TH>Current Location</TH>
               <TH>AirTag ID</TH>
+              <TH>Edit</TH>
             </THead>
             <TBody>
               {dumpsters.map((d) => (
@@ -47,6 +50,7 @@ export default function DumpstersPage() {
                   </TD>
                   <TD className="text-brand-steel">{d.currentLocation}</TD>
                   <TD className="text-brand-steel">{d.airTagId ?? "—"}</TD>
+                  <TD><button className="min-h-11 min-w-11 text-brand-blue" onClick={() => { setEditing(d); setOpen(true); }} aria-label={`Edit ${d.code}`}><Icon name="edit" width={18} height={18} /></button></TD>
                 </TR>
               ))}
             </TBody>
@@ -66,12 +70,12 @@ export default function DumpstersPage() {
             ))}
           </ul>
           <div className="px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">
-            Total 22 dumpsters
+            Total {dumpsters.length} dumpsters
           </div>
         </Card>
       </div>
 
-      <AddDumpsterModal open={open} onClose={() => setOpen(false)} />
+      <AddDumpsterModal open={open} onClose={() => setOpen(false)} dumpster={editing} />
     </>
   );
 }

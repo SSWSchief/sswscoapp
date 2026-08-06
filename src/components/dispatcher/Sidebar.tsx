@@ -4,12 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
+import { useOperations } from "@/components/system/OperationsProvider";
 import { LogoFull } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
 import { dispatcherNav } from "./nav";
 
 /** Desktop sidebar. The mobile drawer reuses `dispatcherNav` from ./nav. */
 export function Sidebar() {
+  const { currentUser } = useOperations();
   const pathname = usePathname();
 
   return (
@@ -43,14 +45,14 @@ export function Sidebar() {
       <div className="border-t border-white/10 p-3">
         <div className="flex items-center gap-2.5 rounded px-2 py-2 hover:bg-white/10">
           <Avatar
-            initials="DP"
+            initials={currentUser?.initials ?? "--"}
             size="sm"
             colorful={false}
             className="bg-brand-blue/25 text-brand-ice"
           />
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">Daniel Perez</div>
-            <div className="text-xs text-brand-ice/70">Dispatcher</div>
+            <div className="text-sm font-medium truncate">{currentUser?.fullName ?? "Loading account"}</div>
+            <div className="text-xs capitalize text-brand-ice/70">{currentUser?.accessRole ?? ""}</div>
           </div>
           <Icon name="chevron-down" width={16} height={16} className="text-brand-ice/70" />
         </div>

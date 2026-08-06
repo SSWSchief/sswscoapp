@@ -9,19 +9,21 @@ import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { TruckStatusBadge } from "@/components/ui/StatusBadge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
-import { getJob, getTrucks, getUser } from "@/lib/data";
+import { useOperations } from "@/components/system/OperationsProvider";
+import type { Truck } from "@/lib/types";
 
 // Screen 8 (Trucks tab) — Asset Management.
 export default function TrucksPage() {
   const [open, setOpen] = useState(false);
-  const trucks = getTrucks();
+  const [editing, setEditing] = useState<Truck | undefined>();
+  const { trucks, jobs, users } = useOperations();
 
   return (
     <>
       <Topbar
         title="Trucks"
         action={
-          <Button onClick={() => setOpen(true)} aria-label="Add truck">
+          <Button onClick={() => { setEditing(undefined); setOpen(true); }} aria-label="Add truck">
             <Icon name="plus" width={18} height={18} />
             <span className="hidden sm:inline">Add Truck</span>
           </Button>
@@ -39,13 +41,14 @@ export default function TrucksPage() {
               <TH>License</TH>
               <TH>AirTag / GPS</TH>
               <TH>Notes</TH>
+              <TH>Edit</TH>
             </THead>
             <TBody>
               {trucks.map((t) => {
                 const driver = t.assignedDriverId
-                  ? getUser(t.assignedDriverId)
+                  ? users.find((item) => item.id === t.assignedDriverId)
                   : null;
-                const job = t.currentJobId ? getJob(t.currentJobId) : null;
+                const job = t.currentJobId ? jobs.find((item) => item.id === t.currentJobId) : null;
                 return (
                   <TR key={t.id}>
                     <TD className="font-semibold">
@@ -75,6 +78,7 @@ export default function TrucksPage() {
                       <div className="text-xs text-brand-steel">{t.gpsSource ?? "manual"}</div>
                     </TD>
                     <TD className="text-brand-steel">{t.notes || "—"}</TD>
+                    <TD><button className="min-h-11 min-w-11 text-brand-blue" onClick={() => { setEditing(t); setOpen(true); }} aria-label={`Edit ${t.number}`}><Icon name="edit" width={18} height={18} /></button></TD>
                   </TR>
                 );
               })}
@@ -82,8 +86,8 @@ export default function TrucksPage() {
           </Table>
           <ul className="divide-y divide-brand-ice/60 lg:hidden">
             {trucks.map((truck) => {
-              const driver = truck.assignedDriverId ? getUser(truck.assignedDriverId) : null;
-              const job = truck.currentJobId ? getJob(truck.currentJobId) : null;
+              const driver = truck.assignedDriverId ? users.find((item) => item.id === truck.assignedDriverId) : null;
+              const job = truck.currentJobId ? jobs.find((item) => item.id === truck.currentJobId) : null;
               return (
                 <li key={truck.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -106,7 +110,7 @@ export default function TrucksPage() {
         </Card>
       </div>
 
-      <AddTruckModal open={open} onClose={() => setOpen(false)} />
+      <AddTruckModal open={open} onClose={() => setOpen(false)} truck={editing} />
     </>
   );
 }

@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { RelativeTime } from "@/components/ui/RelativeTime";
-import { useDemoState } from "@/components/system/DemoStateProvider";
-import { CURRENT_DRIVER_ID } from "@/lib/data";
+import { useOperations } from "@/components/system/OperationsProvider";
 
 export function DriverNotificationsPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { notificationsFor, acknowledgeNotification, acknowledgeAll } = useDemoState();
-  const notifications = notificationsFor(CURRENT_DRIVER_ID);
+  const { notificationsFor, acknowledgeNotification, acknowledgeAll, currentUser } = useOperations();
+  const recipientId = currentUser?.id ?? "";
+  const notifications = notificationsFor(recipientId);
   const unread = notifications.filter((item) => !item.acknowledgedAt);
   if (!open) return null;
 
@@ -49,7 +49,7 @@ export function DriverNotificationsPanel({ open, onClose }: { open: boolean; onC
         ))}
       </div>
       <div className="safe-area-bottom-padded shrink-0 border-t border-brand-ice bg-white px-4 pt-4 dark:border-white/10 dark:bg-gray-900">
-        <button onClick={() => acknowledgeAll(CURRENT_DRIVER_ID)} disabled={!unread.length} className="h-11 w-full rounded border border-brand-blue text-sm font-semibold text-brand-blue disabled:border-brand-ice disabled:text-brand-silver">
+        <button onClick={() => acknowledgeAll(recipientId)} disabled={!unread.length} className="h-11 w-full rounded border border-brand-blue text-sm font-semibold text-brand-blue disabled:border-brand-ice disabled:text-brand-silver">
           Acknowledge all ({unread.length})
         </button>
       </div>

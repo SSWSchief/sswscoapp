@@ -5,20 +5,14 @@ import { MobileHeader } from "@/components/driver/MobileHeader";
 import { Icon } from "@/components/ui/Icon";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import {
-  CURRENT_DRIVER_ID,
-  getCustomer,
-  getDumpster,
-  getTruck,
-} from "@/lib/data";
-import { useDemoState } from "@/components/system/DemoStateProvider";
+import { useOperations } from "@/components/system/OperationsProvider";
 import { formatTime } from "@/lib/utils";
 import { PlatformMapLink } from "@/components/ui/PlatformMapLink";
 
 // Screen 5 — Driver Dashboard (My Jobs).
 export default function DriverJobsPage() {
-  const { jobs: allJobs } = useDemoState();
-  const jobs = allJobs.filter((job) => job.assignedDriverId === CURRENT_DRIVER_ID);
+  const { jobs: allJobs, currentUser, customers, trucks, dumpsters } = useOperations();
+  const jobs = allJobs.filter((job) => job.assignedDriverId === currentUser?.id);
 
   return (
     <>
@@ -42,10 +36,10 @@ export default function DriverJobsPage() {
           />
         ) : (
           jobs.map((job) => {
-            const customer = getCustomer(job.customerId);
-            const truck = job.assignedTruckId ? getTruck(job.assignedTruckId) : null;
+            const customer = customers.find((item) => item.id === job.customerId);
+            const truck = job.assignedTruckId ? trucks.find((item) => item.id === job.assignedTruckId) : null;
             const dumpster = job.assignedDumpsterId
-              ? getDumpster(job.assignedDumpsterId)
+              ? dumpsters.find((item) => item.id === job.assignedDumpsterId)
               : null;
             return (
               <div

@@ -10,13 +10,20 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { Icon } from "@/components/ui/Icon";
 import { RelativeTime } from "@/components/ui/RelativeTime";
-import { getDashboardStats } from "@/lib/data";
-import { useDemoState } from "@/components/system/DemoStateProvider";
+import { useOperations } from "@/components/system/OperationsProvider";
 
 export default function DashboardPage() {
   const [createOpen, setCreateOpen] = useState(false);
-  const { jobs, activities } = useDemoState();
-  const stats = getDashboardStats(jobs);
+  const { jobs, activities, users, trucks, dumpsters } = useOperations();
+  const stats = {
+    enRoute: jobs.filter(job => job.status === "en_route").length,
+    arrived: jobs.filter(job => job.status === "arrived").length,
+    completed: jobs.filter(job => job.status === "complete").length,
+    pending: jobs.filter(job => job.status === "pending").length,
+    driversOnDuty: users.filter(user => user.role === "driver" && user.status === "active").length,
+    trucksInUse: trucks.filter(truck => truck.status === "in_use").length,
+    dumpstersOut: dumpsters.filter(dumpster => dumpster.status === "out").length,
+  };
   const activity = activities.slice(0, 4);
 
   return (
@@ -76,10 +83,6 @@ export default function DashboardPage() {
       <CreateJobModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </>
   );
-}
-
-function activityIso(minutesAgo: number) {
-  return new Date(Date.now() - minutesAgo * 60_000).toISOString();
 }
 
 function Glance({ label, value }: { label: string; value: number }) {

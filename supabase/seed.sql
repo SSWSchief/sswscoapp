@@ -1,0 +1,2 @@
+-- Production records are intentionally not seeded. Employees should be invited
+-- through Supabase Auth and linked to approved public.users records by email.

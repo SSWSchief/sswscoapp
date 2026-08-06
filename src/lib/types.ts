@@ -1,12 +1,11 @@
 /**
- * Domain types for the SSWSCO Overwatch operations prototype.
+ * Domain types for the SSWSCO Overwatch operations platform.
  *
  * These mirror the database tables named in the PRD (§5):
  *   Users, Customers, Jobs, Trucks, Dumpsters, Time Entries, Job Photos, Job Notes.
  *
  * They are written to line up 1:1 with the eventual Supabase/Postgres schema so
- * that the mock data layer can be swapped for real queries with no changes to
- * the UI components that consume them.
+ * used by the typed Supabase data layer and operational UI.
  */
 
 export type UserRole = "dispatcher" | "driver" | "office" | "management";
@@ -233,6 +232,9 @@ export interface TimeRequest {
   requestedFor: string;
   hours: number;
   reason: string;
+  targetEntryId?: string | null;
+  requestedEntryType?: TimeEntryType | null;
+  requestedAt?: string | null;
 }
 
 export interface AbsenceEvent {

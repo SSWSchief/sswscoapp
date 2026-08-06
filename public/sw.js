@@ -1,4 +1,4 @@
-const CACHE_NAME = "sswsco-overwatch-shell-v1";
+const CACHE_NAME = "sswsco-overwatch-shell-v2";
 const APP_SHELL = [
   "/offline",
   "/icons/icon-192.png",
@@ -31,6 +31,10 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
+    if (url.pathname.startsWith("/dispatcher") || url.pathname.startsWith("/driver") || url.pathname.startsWith("/management") || url.pathname.startsWith("/api")) {
+      event.respondWith(fetch(request).catch(() => caches.match("/offline")));
+      return;
+    }
     event.respondWith(
       fetch(request).catch(async () => (await caches.match(request)) || caches.match("/offline"))
     );

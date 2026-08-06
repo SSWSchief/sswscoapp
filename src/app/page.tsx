@@ -1,21 +1,16 @@
 import Link from "next/link";
-import { LogoFull } from "@/components/ui/Logo";
 import { Icon } from "@/components/ui/Icon";
 
-/**
- * Skeleton landing / role picker. In production the root route resolves to the
- * signed-in user's role automatically; here it lets a reviewer jump into either
- * experience during the walkthrough.
- */
+/** Public entry point; protected routes resolve authenticated users by role. */
 export default function Home() {
   return (
-    <main className="app-viewport-height safe-area-all flex flex-col items-center justify-center bg-brand-mist">
-      <LogoFull className="mb-2" markClassName="h-28 w-60 sm:h-36 sm:w-72" />
+    <main className="app-viewport-height safe-area-all flex flex-col items-center justify-start overflow-y-auto bg-brand-mist px-4 py-8 sm:justify-center">
+      <p className="mb-2 font-heading text-3xl font-bold uppercase tracking-wide text-brand-navy">Silver State Waste Solutions</p>
       <p className="font-heading text-sm font-semibold uppercase tracking-wide text-brand-steel mb-8">
         Overwatch · Operations Command Center
       </p>
 
-      <div className="grid gap-4 sm:grid-cols-3 w-full max-w-4xl">
+      <div className="grid w-full max-w-4xl gap-4 sm:grid-cols-3">
         <Link
           href="/login"
           className="group rounded-card bg-white border border-brand-ice shadow-card p-6 hover:border-brand-blue hover:shadow-md transition"
@@ -33,7 +28,7 @@ export default function Home() {
             />
           </div>
           <p className="text-sm text-brand-steel mt-1">
-            Manage jobs, assets, invoices, messages, and team coverage.
+            Manage Phase 1 dispatch, jobs, customers, assets, employees, and time review.
           </p>
         </Link>
 
@@ -54,7 +49,7 @@ export default function Home() {
             />
           </div>
           <p className="text-sm text-brand-steel mt-1">
-            Mobile work queue, job actions, SOPs, and time clock.
+            Mobile work queue, job actions, photos, notes, and time clock.
           </p>
         </Link>
 
@@ -75,14 +70,14 @@ export default function Home() {
             />
           </div>
           <p className="text-sm text-brand-steel mt-1">
-            Partner access for operations, receivables, exports, and coverage.
+            Management partner portal is visible as a future-phase preview.
           </p>
         </Link>
       </div>
 
       <p className="text-xs text-brand-steel mt-10 max-w-md text-center">
-        Overwatch prototype. Screens render from mock data while backend,
-        payment, and GPS integrations are scoped.
+        Phase 1 pilot environment. Sign in with an authorized employee account;
+        unavailable modules are clearly marked Coming Soon.
       </p>
     </main>
   );

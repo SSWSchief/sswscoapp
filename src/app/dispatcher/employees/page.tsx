@@ -10,23 +10,22 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/StatusBadge";
 import { Input } from "@/components/ui/Field";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
-import { useDemoState } from "@/components/system/DemoStateProvider";
+import { useOperations } from "@/components/system/OperationsProvider";
 import { accessRoleLabel } from "@/lib/permissions";
+import { EmployeeModal } from "@/components/dispatcher/EmployeeModal";
 
 export default function EmployeesPage() {
-  const { users } = useDemoState();
+  const { users, currentUser, canMutate } = useOperations();
   const [query, setQuery] = React.useState("");
+  const [open, setOpen] = React.useState(false);
   const employees = users.filter((employee) =>
     `${employee.employeeId} ${employee.fullName} ${employee.email}`.toLowerCase().includes(query.trim().toLowerCase())
   );
 
   return (
     <>
-      <Topbar title="Employees" action={<Button aria-label="Add employee"><Icon name="plus" width={18} height={18} /><span className="hidden sm:inline">Add Employee</span></Button>} />
+      <Topbar title="Employees" action={<Button disabled={!canMutate || currentUser?.accessRole !== "admin"} onClick={() => setOpen(true)} aria-label="Add employee"><Icon name="plus" width={18} height={18} /><span className="hidden sm:inline">Add Employee</span></Button>} />
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="mb-4 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <strong>Demo access only:</strong> these settings are stored in this browser and are not securely enforced until Supabase Auth, database policies, and server-side authorization are connected.
-        </div>
         <Card>
           <div className="p-5 border-b border-brand-ice/60">
             <div className="relative max-w-md">
@@ -71,6 +70,7 @@ export default function EmployeesPage() {
           <div className="px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">Showing {employees.length} of {users.length} employees</div>
         </Card>
       </div>
+      <EmployeeModal open={open} onClose={() => setOpen(false)} />
     </>
   );
 }

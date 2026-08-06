@@ -6,17 +6,10 @@ import { Icon } from "@/components/ui/Icon";
 import { Badge } from "@/components/ui/StatusBadge";
 import { useToast } from "@/components/system/ToastProvider";
 import { useConfirm } from "@/components/system/ConfirmProvider";
-import { CURRENT_DRIVER_ID, getTimeRequests, getUser } from "@/lib/data";
 import { cn } from "@/lib/utils";
-
-// Screen 7 — Time Clock (driver). State machine: clocked in ⇄ on break → out.
-type Phase = "in" | "break" | "out";
-
-interface Entry {
-  label: string;
-  time: string;
-  tone: "green" | "amber" | "gray";
-}
+import { useOperations } from "@/components/system/OperationsProvider";
+import { formatPacificTime, summarizeTime } from "@/lib/time-clock";
+import { TimeRequestModal } from "@/components/driver/TimeRequestModal";
 
 const dot = {
   green: "bg-status-complete",
@@ -31,21 +24,16 @@ function nowLabel() {
 export default function DriverTimeClockPage() {
   const { toast } = useToast();
   const confirm = useConfirm();
-  const driver = getUser(CURRENT_DRIVER_ID);
-  const requests = getTimeRequests().filter((r) => r.userId === CURRENT_DRIVER_ID);
+  const { currentUser: driver, timeRequests, timeEntries, recordTimeEntry, canMutate } = useOperations();
+  const requests = timeRequests.filter((request) => request.userId === driver?.id);
 
-  const [phase, setPhase] = React.useState<Phase>("in");
-  const [elapsed, setElapsed] = React.useState(9918); // seed ~2:45:18
-  const [entries, setEntries] = React.useState<Entry[]>([
-    { label: "Clock In", time: "7:30 AM", tone: "green" },
-  ]);
-
-  // Running work timer (pauses on break / after clock out).
-  React.useEffect(() => {
-    if (phase !== "in") return;
-    const id = window.setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => window.clearInterval(id);
-  }, [phase]);
+  const [now,setNow]=React.useState(()=>new Date());
+  const [requestKind, setRequestKind] = React.useState<"edit_time" | "pto" | null>(null);
+  React.useEffect(()=>{const id=window.setInterval(()=>setNow(new Date()),1000);return()=>window.clearInterval(id)},[]);
+  const summary=React.useMemo(()=>summarizeTime(driver?.id??"",timeEntries,now),[driver?.id,timeEntries,now]);
+  const phase=summary.phase;
+  const entries=summary.entries.map(entry=>({label:{clock_in:"Clock In",break_start:"Start Break",break_end:"End Break",clock_out:"Clock Out"}[entry.type],time:formatPacificTime(entry.at),tone:(entry.type==="clock_in"?"green":entry.type==="clock_out"?"gray":"amber") as "green"|"amber"|"gray"}));
+  const elapsed=summary.workedSeconds;
 
   const hhmmss = React.useMemo(() => {
     const h = Math.floor(elapsed / 3600);
@@ -56,16 +44,9 @@ export default function DriverTimeClockPage() {
 
   const totalHours = (elapsed / 3600).toFixed(2);
 
-  const startBreak = () => {
-    setPhase("break");
-    setEntries((e) => [...e, { label: "Start Break", time: nowLabel(), tone: "amber" }]);
-    toast("Break started", { tone: "info" });
-  };
-  const endBreak = () => {
-    setPhase("in");
-    setEntries((e) => [...e, { label: "End Break", time: nowLabel(), tone: "amber" }]);
-    toast("Back on the clock", { tone: "success" });
-  };
+  const record=async(type:"clock_in"|"break_start"|"break_end"|"clock_out",success:string)=>{const result=await recordTimeEntry(type);toast(result.ok?success:result.error.message,{tone:result.ok?"success":"error"});};
+  const startBreak = () => void record("break_start","Break started");
+  const endBreak = () => void record("break_end","Back on the clock");
   const clockOut = async () => {
     const ok = await confirm({
       title: "Clock out?",
@@ -74,9 +55,7 @@ export default function DriverTimeClockPage() {
       tone: "danger",
     });
     if (!ok) return;
-    setPhase("out");
-    setEntries((e) => [...e, { label: "Clock Out", time: nowLabel(), tone: "gray" }]);
-    toast("Clocked out", { tone: "success" });
+    await record("clock_out","Clocked out");
   };
 
   const statusText =
@@ -103,27 +82,27 @@ export default function DriverTimeClockPage() {
             {hhmmss}
           </div>
           <p className="text-sm text-brand-steel mt-1">
-            Started at 7:30 AM · {totalHours} hrs today
+            {summary.clockIn ? `Started at ${formatPacificTime(summary.clockIn)} · ` : ""}{totalHours} hrs today
           </p>
 
           {phase !== "out" ? (
             <div className="grid grid-cols-2 gap-3 mt-5">
               <button
-                onClick={clockOut}
+                onClick={clockOut} disabled={!canMutate}
                 className="h-12 rounded bg-red-600 text-white font-heading font-semibold uppercase tracking-wide text-sm"
               >
                 Clock Out
               </button>
               {phase === "in" ? (
                 <button
-                  onClick={startBreak}
+                  onClick={startBreak} disabled={!canMutate}
                   className="h-12 rounded border border-brand-ice dark:border-white/15 text-brand-charcoal dark:text-gray-200 font-medium text-sm"
                 >
                   Start Break
                 </button>
               ) : (
                 <button
-                  onClick={endBreak}
+                  onClick={endBreak} disabled={!canMutate}
                   className="h-12 rounded bg-status-pending text-white font-heading font-semibold uppercase tracking-wide text-sm"
                 >
                   End Break
@@ -131,10 +110,7 @@ export default function DriverTimeClockPage() {
               )}
             </div>
           ) : (
-            <div className="mt-5 flex items-center justify-center gap-2 h-12 text-brand-steel font-medium text-sm">
-              <Icon name="check" width={18} height={18} />
-              Shift complete — {totalHours} hours
-            </div>
+            <button disabled={!canMutate} onClick={()=>void record("clock_in","Clocked in")} className="mt-5 h-12 w-full rounded bg-brand-blue text-white font-heading font-semibold uppercase tracking-wide text-sm disabled:opacity-50">Clock In</button>
           )}
         </div>
 
@@ -176,11 +152,11 @@ export default function DriverTimeClockPage() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <button className="min-h-11 rounded border border-brand-blue/40 text-brand-blue text-sm font-medium">
+            <button disabled={!canMutate} onClick={() => setRequestKind("edit_time")} className="min-h-11 rounded border border-brand-ice text-brand-blue disabled:text-brand-silver text-sm font-medium">
               Change Time
             </button>
-            <button className="min-h-11 rounded border border-brand-blue/40 text-brand-blue text-sm font-medium">
-              PTO Option
+            <button disabled={!canMutate} onClick={() => setRequestKind("pto")} className="min-h-11 rounded border border-brand-ice text-brand-blue disabled:text-brand-silver text-sm font-medium">
+              Request PTO
             </button>
           </div>
           <div className="space-y-2">
@@ -200,6 +176,7 @@ export default function DriverTimeClockPage() {
           Hours are reviewed by dispatch.
         </p>
       </div>
+      {requestKind && <TimeRequestModal open kind={requestKind} onClose={() => setRequestKind(null)} />}
     </>
   );
 }

@@ -3,8 +3,9 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { customers, dumpsters, jobs, trucks, users } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { useOperations } from "@/components/system/OperationsProvider";
+import type { Customer,Dumpster,Job,Truck,User } from "@/lib/types";
 
 interface Item {
   id: string;
@@ -15,7 +16,7 @@ interface Item {
   keywords: string;
 }
 
-function buildIndex(): Item[] {
+function buildIndex(jobs:Job[],customers:Customer[],trucks:Truck[],dumpsters:Dumpster[],users:User[]): Item[] {
   const nav: Item[] = [
     { id: "nav-dash", label: "Dashboard", sub: "Go to", icon: "dashboard", href: "/dispatcher/dashboard", keywords: "home overview" },
     { id: "nav-jobs", label: "Jobs", sub: "Go to", icon: "jobs", href: "/dispatcher/jobs", keywords: "" },
@@ -79,9 +80,10 @@ export function CommandPalette({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const {jobs,customers,trucks,dumpsters,users}=useOperations();
   const [query, setQuery] = React.useState("");
   const [active, setActive] = React.useState(0);
-  const index = React.useMemo(buildIndex, []);
+  const index = React.useMemo(()=>buildIndex(jobs,customers,trucks,dumpsters,users), [jobs,customers,trucks,dumpsters,users]);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const results = React.useMemo(() => {

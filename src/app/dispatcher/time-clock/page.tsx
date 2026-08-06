@@ -1,24 +1,23 @@
+"use client";
+
 import { Topbar } from "@/components/dispatcher/Topbar";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/StatusBadge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
-import { getDrivers, getTimeRequests } from "@/lib/data";
+import { useOperations } from "@/components/system/OperationsProvider";
+import { summarizeTime, formatPacificTime, pacificDate } from "@/lib/time-clock";
+import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/system/ToastProvider";
 
 // Time Clock — dispatcher review of employee time entries (PRD §4 Time Clock).
 export default function TimeClockPage() {
-  const drivers = getDrivers();
-  const requests = getTimeRequests();
+  const { users, timeEntries, timeRequests: requests, reviewTimeRequest, canMutate } = useOperations();
+  const {toast}=useToast();
+  const drivers = users.filter((user) => user.role === "driver");
 
-  // Illustrative daily entries for the skeleton.
-  const rows = drivers.map((d, i) => ({
-    driver: d,
-    clockIn: ["7:30 AM", "7:45 AM", "8:00 AM", "8:05 AM"][i % 4],
-    breaks: ["10:00 – 10:15 AM", "12:00 – 12:30 PM", "—", "11:00 – 11:20 AM"][i % 4],
-    clockOut: ["—", "—", "4:30 PM", "—"][i % 4],
-    hours: ["4:15", "3:45", "8:30", "3:20"][i % 4],
-    active: i % 4 !== 2,
-  }));
+  const rows = drivers.map(driver=>{const summary=summarizeTime(driver.id,timeEntries);const hours=Math.floor(summary.workedSeconds/3600);const minutes=Math.floor(summary.workedSeconds%3600/60);return {driver,clockIn:summary.clockIn?formatPacificTime(summary.clockIn):"—",breaks:summary.breaks.map(item=>`${formatPacificTime(item.start)} – ${item.end?formatPacificTime(item.end):"Now"}`).join(", ")||"—",clockOut:summary.clockOut?formatPacificTime(summary.clockOut):"—",hours:`${hours}:${String(minutes).padStart(2,"0")}`,active:summary.phase!=="out"};});
+  const decide=async(id:string,decision:"approved"|"denied")=>{const result=await reviewTimeRequest(id,decision);toast(result.ok?`Request ${decision}`:result.error.message,{tone:result.ok?"success":"error"});};
 
   return (
     <>
@@ -29,7 +28,7 @@ export default function TimeClockPage() {
             <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
               Today&apos;s Time Entries
             </h2>
-            <p className="text-xs text-brand-steel mt-0.5">May 15, 2024 · PTO and edit requests tracked below</p>
+            <p className="text-xs text-brand-steel mt-0.5">{pacificDate(new Date())} · Exact time, no payroll rounding</p>
           </div>
           <Table className="hidden lg:block">
             <THead>
@@ -94,6 +93,7 @@ export default function TimeClockPage() {
                     </div>
                   </div>
                   <Badge tone={request.status === "approved" ? "green" : "amber"} label={request.status} />
+                  {request.status==="pending"&&<div className="flex gap-2"><Button disabled={!canMutate} variant="secondary" onClick={()=>void decide(request.id,"denied")}>Deny</Button><Button disabled={!canMutate} onClick={()=>void decide(request.id,"approved")}>Approve</Button></div>}
                 </div>
               );
             })}

@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Topbar } from "@/components/dispatcher/Topbar";
@@ -8,36 +9,36 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
-import {
-  getCustomer,
-  getDumpster,
-  getJobNotes,
-  getTruck,
-  getUser,
-} from "@/lib/data";
-import { useDemoState } from "@/components/system/DemoStateProvider";
+import { useOperations } from "@/components/system/OperationsProvider";
 import { formatDateTime, formatTime } from "@/lib/utils";
 import type { JobEvent } from "@/lib/types";
+import { CreateJobModal } from "@/components/dispatcher/CreateJobModal";
+import { useToast } from "@/components/system/ToastProvider";
+import { useConfirm } from "@/components/system/ConfirmProvider";
 
 // Screen 4 — Job Details (dispatcher view).
 export default function JobDetailsPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { jobs, activities: allActivities, hydrated } = useDemoState();
-  const job = jobs.find((item) => item.id === params.id || item.reference === params.id || item.reference === `#${params.id}`);
+  const { id } = React.use(params);
+  const { jobs, activities: allActivities, customers, dumpsters, jobNotes, trucks, users, hydrated, completeJobAsDispatcher, cancelJob, canMutate } = useOperations();
+  const [editOpen,setEditOpen]=React.useState(false);const {toast}=useToast();const confirm=useConfirm();
+  const job = jobs.find((item) => item.id === id || item.reference === id || item.reference === `#${id}`);
   if (!hydrated) return <div className="flex-1 bg-surface" />;
   if (!job) notFound();
 
-  const customer = getCustomer(job.customerId);
-  const driver = job.assignedDriverId ? getUser(job.assignedDriverId) : null;
-  const truck = job.assignedTruckId ? getTruck(job.assignedTruckId) : null;
+  const customer = customers.find((item) => item.id === job.customerId);
+  const driver = job.assignedDriverId ? users.find((item) => item.id === job.assignedDriverId) : null;
+  const truck = job.assignedTruckId ? trucks.find((item) => item.id === job.assignedTruckId) : null;
   const dumpster = job.assignedDumpsterId
-    ? getDumpster(job.assignedDumpsterId)
+    ? dumpsters.find((item) => item.id === job.assignedDumpsterId)
     : null;
-  const notes = getJobNotes(job.id);
+  const notes = jobNotes.filter((item) => item.jobId === job.id);
   const activities = allActivities.filter((activity) => activity.jobId === job.id);
+  const complete=async()=>{let reason:string|undefined;if(!job.photos.length){reason=window.prompt("No completion photo exists. Enter the dispatcher override reason:")?.trim();if(!reason)return;}const ok=await confirm({title:`Complete ${job.reference}?`,message:"This records completion in the permanent audit history.",confirmLabel:"Complete Job"});if(!ok)return;const result=await completeJobAsDispatcher(job.id,reason);toast(result.ok?"Job completed":result.error.message,{tone:result.ok?"success":"error"});};
+  const cancel=async()=>{const reason=window.prompt("Enter the cancellation reason:")?.trim();if(!reason)return;const result=await cancelJob(job.id,reason);toast(result.ok?"Job cancelled":result.error.message,{tone:result.ok?"success":"error"});};
 
   return (
     <>
@@ -45,11 +46,12 @@ export default function JobDetailsPage({
         title={`Job ${job.reference}`}
         action={
           <div className="flex gap-2">
-            <Button variant="secondary" aria-label="Edit job">
+            <Button disabled={!canMutate} variant="secondary" aria-label="Edit job" onClick={()=>setEditOpen(true)}>
               <Icon name="edit" width={16} height={16} />
               <span className="hidden lg:inline">Edit Job</span>
             </Button>
-            <Button aria-label="Mark job complete"><Icon name="check" width={16} height={16} /><span className="hidden lg:inline">Mark Complete</span></Button>
+            {job.status!=="complete"&&job.status!=="cancelled"&&<Button disabled={!canMutate} variant="danger" onClick={()=>void cancel()}>Cancel</Button>}
+            {job.status==="arrived"&&<Button disabled={!canMutate} onClick={()=>void complete()} aria-label="Mark job complete"><Icon name="check" width={16} height={16} /><span className="hidden lg:inline">Mark Complete</span></Button>}
           </div>
         }
       />
@@ -191,6 +193,7 @@ export default function JobDetailsPage({
           </Card>
         </div>
       </div>
+      <CreateJobModal open={editOpen} onClose={()=>setEditOpen(false)} job={job}/>
     </>
   );
 }
