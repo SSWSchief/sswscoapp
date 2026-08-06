@@ -23,8 +23,8 @@ export default function JobDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = React.use(params);
-  const { jobs, activities: allActivities, customers, dumpsters, jobNotes, trucks, users, hydrated, completeJobAsDispatcher, cancelJob, canMutate } = useOperations();
-  const [editOpen,setEditOpen]=React.useState(false);const {toast}=useToast();const confirm=useConfirm();
+  const { jobs, activities: allActivities, customers, dumpsters, jobNotes, trucks, users, hydrated, completeJobAsDispatcher, cancelJob, uploadJobPhotos, canMutate } = useOperations();
+  const [editOpen,setEditOpen]=React.useState(false);const [busy,setBusy]=React.useState(false);const fileInput=React.useRef<HTMLInputElement>(null);const {toast}=useToast();const confirm=useConfirm();
   const job = jobs.find((item) => item.id === id || item.reference === id || item.reference === `#${id}`);
   if (!hydrated) return <div className="flex-1 bg-surface" />;
   if (!job) notFound();
@@ -37,8 +37,9 @@ export default function JobDetailsPage({
     : null;
   const notes = jobNotes.filter((item) => item.jobId === job.id);
   const activities = allActivities.filter((activity) => activity.jobId === job.id);
-  const complete=async()=>{let reason:string|undefined;if(!job.photos.length){reason=window.prompt("No completion photo exists. Enter the dispatcher override reason:")?.trim();if(!reason)return;}const ok=await confirm({title:`Complete ${job.reference}?`,message:"This records completion in the permanent audit history.",confirmLabel:"Complete Job"});if(!ok)return;const result=await completeJobAsDispatcher(job.id,reason);toast(result.ok?"Job completed":result.error.message,{tone:result.ok?"success":"error"});};
-  const cancel=async()=>{const reason=window.prompt("Enter the cancellation reason:")?.trim();if(!reason)return;const result=await cancelJob(job.id,reason);toast(result.ok?"Job cancelled":result.error.message,{tone:result.ok?"success":"error"});};
+  const complete=async()=>{if(busy)return;let reason:string|undefined;if(!job.photos.length){reason=window.prompt("No completion photo exists. Enter the dispatcher override reason:")?.trim();if(!reason)return;}const ok=await confirm({title:`Complete ${job.reference}?`,message:"This records completion in the permanent audit history.",confirmLabel:"Complete Job"});if(!ok)return;setBusy(true);const result=await completeJobAsDispatcher(job.id,reason);setBusy(false);toast(result.ok?"Job completed":result.error.message,{tone:result.ok?"success":"error"});};
+  const cancel=async()=>{if(busy)return;const reason=window.prompt("Enter the cancellation reason:")?.trim();if(!reason)return;setBusy(true);const result=await cancelJob(job.id,reason);setBusy(false);toast(result.ok?"Job cancelled":result.error.message,{tone:result.ok?"success":"error"});};
+  const addPhotos=async(event:React.ChangeEvent<HTMLInputElement>)=>{const files=Array.from(event.target.files??[]);if(!files.length)return;setBusy(true);const result=await uploadJobPhotos(job.id,files);setBusy(false);toast(result.ok?`${files.length} photo${files.length===1?"":"s"} uploaded`:result.error.message,{tone:result.ok?"success":"error"});event.target.value="";};
 
   return (
     <>
@@ -46,12 +47,12 @@ export default function JobDetailsPage({
         title={`Job ${job.reference}`}
         action={
           <div className="flex gap-2">
-            <Button disabled={!canMutate} variant="secondary" aria-label="Edit job" onClick={()=>setEditOpen(true)}>
+            <Button disabled={!canMutate||busy} variant="secondary" aria-label="Edit job" onClick={()=>setEditOpen(true)}>
               <Icon name="edit" width={16} height={16} />
               <span className="hidden lg:inline">Edit Job</span>
             </Button>
-            {job.status!=="complete"&&job.status!=="cancelled"&&<Button disabled={!canMutate} variant="danger" onClick={()=>void cancel()}>Cancel</Button>}
-            {job.status==="arrived"&&<Button disabled={!canMutate} onClick={()=>void complete()} aria-label="Mark job complete"><Icon name="check" width={16} height={16} /><span className="hidden lg:inline">Mark Complete</span></Button>}
+            {job.status!=="complete"&&job.status!=="cancelled"&&<Button disabled={!canMutate||busy} variant="danger" onClick={()=>void cancel()}>Cancel</Button>}
+            {job.status==="arrived"&&<Button disabled={!canMutate||busy} onClick={()=>void complete()} aria-label="Mark job complete"><Icon name="check" width={16} height={16} /><span className="hidden lg:inline">Mark Complete</span></Button>}
           </div>
         }
       />
@@ -137,14 +138,18 @@ export default function JobDetailsPage({
                 <div
                   key={p.id}
                   className="h-20 w-20 rounded bg-brand-mist border border-brand-ice flex items-center justify-center text-brand-silver"
+                  style={p.url ? { backgroundImage: `url(${p.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                  role={p.url ? "img" : undefined}
+                  aria-label={p.url ? "Job photo" : undefined}
                 >
-                  <Icon name="photo" width={26} height={26} />
+                  {!p.url && <Icon name="photo" width={26} height={26} />}
                 </div>
               ))}
-              <button className="h-20 w-20 rounded border-2 border-dashed border-brand-ice flex flex-col items-center justify-center text-brand-steel hover:border-brand-blue hover:text-brand-blue transition-colors">
+              <button disabled={!canMutate||busy} onClick={()=>fileInput.current?.click()} className="h-20 w-20 rounded border-2 border-dashed border-brand-ice flex flex-col items-center justify-center text-brand-steel hover:border-brand-blue hover:text-brand-blue transition-colors disabled:opacity-50">
                 <Icon name="plus" width={20} height={20} />
                 <span className="text-[11px] mt-1">Add Photo</span>
               </button>
+              <input ref={fileInput} type="file" accept="image/*" multiple onChange={addPhotos} className="sr-only" aria-label="Add job photos" />
             </div>
           </Card>
 

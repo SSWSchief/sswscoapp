@@ -19,7 +19,7 @@ export default function DriverJobDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = React.use(params);
-  const { jobs, activities, customers, jobNotes, hydrated, currentUser, updateJobStatus, logDryRun, uploadJobPhotos, addJobNote } = useOperations();
+  const { jobs, activities, customers, jobNotes, hydrated, currentUser, canMutate, updateJobStatus, logDryRun, uploadJobPhotos, addJobNote } = useOperations();
   const job = jobs.find(
     (item) => item.id === id || item.reference === id || item.reference === `#${id}`
   );
@@ -27,21 +27,22 @@ export default function DriverJobDetailsPage({
   const { toast } = useToast();
   const confirm = useConfirm();
 
-  const [photos, setPhotos] = React.useState<(string | null)[]>(() => job?.photos.map(() => null) ?? []);
+  const [photos, setPhotos] = React.useState<(string | null)[]>(() => job?.photos.map((photo) => photo.url) ?? []);
+  const [busy, setBusy] = React.useState(false);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const libraryInputRef = React.useRef<HTMLInputElement>(null);
   const objectUrlsRef = React.useRef<string[]>([]);
-  const persistedNotes = jobNotes.filter(note => note.jobId === job?.id && note.authorId === currentUser?.id).map(note => note.body);
+  const persistedNotes = jobNotes.filter(note => note.jobId === job?.id);
   const [optimisticNotes, setOptimisticNotes] = React.useState<string[]>([]);
   const [composing, setComposing] = React.useState(false);
   const [draft, setDraft] = React.useState("");
 
   React.useEffect(() => () => objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)), []);
   React.useEffect(() => {
-    if (job && photos.length === 0 && job.photos.length > 0) {
-      setPhotos(job.photos.map(() => null));
+    if (job) {
+      setPhotos(job.photos.map((photo) => photo.url));
     }
-  }, [job, photos.length]);
+  }, [job]);
 
   if (!hydrated) return <div className="flex-1 bg-surface" />;
   if (!job) return notFound();
@@ -56,18 +57,22 @@ export default function DriverJobDetailsPage({
     nextStatus: Extract<JobStatus, "en_route" | "arrived" | "complete">,
     body: string
   ) => {
-    if (!currentUser) return false;
+    if (!currentUser || busy || !canMutate) return false;
+    setBusy(true);
     const result = await updateJobStatus(job.id, nextStatus);
+    setBusy(false);
     toast(result.ok ? `${job.reference} ${body.toLowerCase()}` : result.error.message, { tone: result.ok ? "success" : "error" });
     return result.ok;
   };
 
   const markDryRun = () => {
-    if (!currentUser) return;
-    void logDryRun(job.id).then((result) => toast(result.ok ? "Dry run logged and dispatch notified" : result.error.message, { tone: result.ok ? "info" : "error" }));
+    if (!currentUser || busy || !canMutate) return;
+    setBusy(true);
+    void logDryRun(job.id).then((result) => toast(result.ok ? "Dry run logged and dispatch notified" : result.error.message, { tone: result.ok ? "info" : "error" })).finally(() => setBusy(false));
   };
 
   const addPhotos = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (busy || !canMutate) return;
     const selected = Array.from(event.target.files ?? []);
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/heic"];
     const valid = selected.filter((file) => allowed.includes(file.type) && file.size <= 10 * 1024 * 1024);
@@ -75,6 +80,7 @@ export default function DriverJobDetailsPage({
       toast("Use JPEG, PNG, WebP, or HEIC images no larger than 10 MB.", { tone: "error" });
     }
     if (valid.length) {
+      setBusy(true);
       const urls = valid.map((file) => URL.createObjectURL(file));
       objectUrlsRef.current.push(...urls);
       setPhotos((current) => [...current, ...urls]);
@@ -85,17 +91,21 @@ export default function DriverJobDetailsPage({
         setPhotos((current) => current.filter((url) => !urls.includes(url ?? "")));
         toast(result.error.message, { tone: "error" });
       }
+      setBusy(false);
     }
     event.target.value = "";
   };
 
   const saveNote = async () => {
     if (!draft.trim()) return;
+    if (busy || !canMutate) return;
     const body = draft.trim();
     setOptimisticNotes((n) => [...n, body]);
     setDraft("");
     setComposing(false);
+    setBusy(true);
     const result = await addJobNote(job.id, body);
+    setBusy(false);
     if (result.ok) {
       setOptimisticNotes(current => current.filter(note => note !== body));
       toast("Note added", { tone: "success" });
@@ -201,10 +211,10 @@ export default function DriverJobDetailsPage({
           <p className="mt-2 text-xs leading-5 text-brand-steel dark:text-gray-400">Accepted: JPEG, PNG, WebP, and HEIC up to 10 MB each. Upload status is confirmed before completion.</p>
         </Panel>
 
-        <Panel title={`My Notes${persistedNotes.length + optimisticNotes.length ? ` (${persistedNotes.length + optimisticNotes.length})` : ""}`}>
+        <Panel title={`Job Notes${persistedNotes.length + optimisticNotes.length ? ` (${persistedNotes.length + optimisticNotes.length})` : ""}`}>
           {persistedNotes.length + optimisticNotes.length > 0 && (
             <ul className="space-y-2 mb-3">
-              {[...persistedNotes, ...optimisticNotes].map((n, i) => (
+              {[...persistedNotes.map(note => note.body), ...optimisticNotes].map((n, i) => (
                 <li
                   key={i}
                   className="text-sm text-brand-charcoal dark:text-gray-300 bg-brand-mist dark:bg-white/5 rounded px-3 py-2"
@@ -225,8 +235,9 @@ export default function DriverJobDetailsPage({
               />
               <div className="flex gap-2">
                 <button
-                  onClick={saveNote}
-                  className="min-h-11 flex-1 rounded bg-brand-blue text-white font-heading text-sm font-medium uppercase tracking-wide"
+                onClick={saveNote}
+                  disabled={busy || !canMutate}
+                  className="min-h-11 flex-1 rounded bg-brand-blue text-white font-heading text-sm font-medium uppercase tracking-wide disabled:opacity-50"
                 >
                   Save Note
                 </button>
@@ -244,6 +255,7 @@ export default function DriverJobDetailsPage({
           ) : (
             <button
               onClick={() => setComposing(true)}
+              disabled={busy || !canMutate}
               className="flex items-center gap-1.5 text-sm font-medium text-brand-blue"
             >
               <Icon name="plus" width={16} height={16} />
@@ -258,7 +270,8 @@ export default function DriverJobDetailsPage({
         {status === "pending" && (
           <button
             onClick={() => logAction("en_route", "marked en route")}
-            className="w-full h-12 rounded bg-status-complete text-white font-heading font-semibold uppercase tracking-wide text-sm"
+            disabled={busy || !canMutate}
+            className="w-full h-12 rounded bg-status-complete text-white font-heading font-semibold uppercase tracking-wide text-sm disabled:opacity-50"
           >
             En Route
           </button>
@@ -266,7 +279,8 @@ export default function DriverJobDetailsPage({
         {status === "en_route" && (
           <button
             onClick={() => logAction("arrived", "marked arrived")}
-            className="w-full h-12 rounded bg-brand-blue text-white font-heading font-semibold uppercase tracking-wide text-sm"
+            disabled={busy || !canMutate}
+            className="w-full h-12 rounded bg-brand-blue text-white font-heading font-semibold uppercase tracking-wide text-sm disabled:opacity-50"
           >
             Arrived
           </button>
@@ -276,14 +290,16 @@ export default function DriverJobDetailsPage({
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => cameraInputRef.current?.click()}
-                className="h-12 rounded border border-brand-blue/40 text-brand-blue font-medium text-sm flex items-center justify-center gap-1.5"
+                disabled={busy || !canMutate}
+                className="h-12 rounded border border-brand-blue/40 text-brand-blue font-medium text-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <Icon name="photo" width={16} height={16} />
                 Take Photo
               </button>
               <button
                 onClick={() => setComposing(true)}
-                className="h-12 rounded border border-brand-blue/40 text-brand-blue font-medium text-sm flex items-center justify-center gap-1.5"
+                disabled={busy || !canMutate}
+                className="h-12 rounded border border-brand-blue/40 text-brand-blue font-medium text-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <Icon name="edit" width={16} height={16} />
                 Add Note
@@ -291,14 +307,15 @@ export default function DriverJobDetailsPage({
             </div>
             <button
               onClick={markDryRun}
-              className="w-full h-12 rounded border border-amber-300 text-amber-700 font-heading font-semibold uppercase tracking-wide text-sm flex items-center justify-center gap-1.5"
+              disabled={busy || !canMutate}
+              className="w-full h-12 rounded border border-amber-300 text-amber-700 font-heading font-semibold uppercase tracking-wide text-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               <Icon name="info" width={16} height={16} />
               Dry Run
             </button>
             <button
               onClick={complete}
-              disabled={photoCount === 0}
+              disabled={photoCount === 0 || busy || !canMutate}
               className="w-full h-12 rounded bg-status-complete text-white font-heading font-semibold uppercase tracking-wide text-sm disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {photoCount === 0 ? "Add a photo to complete" : "Complete Job"}

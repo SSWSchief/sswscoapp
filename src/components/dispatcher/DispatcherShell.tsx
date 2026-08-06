@@ -12,6 +12,7 @@ import { Icon } from "@/components/ui/Icon";
 import { LogoFull } from "@/components/ui/Logo";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { cn } from "@/lib/utils";
+import { effectivePermissions } from "@/lib/permissions";
 
 export function DispatcherShell({ children }: { children: React.ReactNode }) {
   const [drawer, setDrawer] = React.useState(false);
@@ -19,6 +20,7 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = React.useState(false);
   const pathname = usePathname();
   const { notificationsFor, currentUser } = useOperations();
+  const visibleNav = currentUser ? dispatcherNav.filter(item => effectivePermissions(currentUser)[item.permission]) : dispatcherNav;
   const unreadCount = notificationsFor(currentUser?.id ?? "").filter(
     (notification) => !notification.acknowledgedAt
   ).length;
@@ -72,7 +74,7 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-              {dispatcherNav.map((item) => {
+              {visibleNav.map((item) => {
                 const active = pathname.startsWith(item.href);
                 return (
                   <Link

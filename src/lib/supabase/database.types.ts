@@ -41,7 +41,8 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
-      create_job: { Args: Record<string, unknown>; Returns: JobRow };
+      create_job: { Args: { customer_id:string; job_address:string; job_phone:string; service:string; container_size:string; driver_id:string|null; truck_id:string|null; dumpster_id:string|null; schedule_at:string; job_notes?:string; traffic?:string }; Returns: JobRow };
+      edit_job: { Args: { target_job_id:string; customer_id:string; job_address:string; job_phone:string; service:string; container_size:string; driver_id:string|null; truck_id:string|null; dumpster_id:string|null; schedule_at:string; job_notes?:string; traffic?:string }; Returns: JobRow };
       assign_job: { Args: { target_job_id:string; driver_id:string }; Returns: JobRow };
       cancel_job: { Args: { target_job_id:string; cancel_reason:string }; Returns: JobRow };
       update_assigned_job_status: { Args: { target_job_id:string; next_status:JobStatus }; Returns: undefined };
@@ -50,6 +51,7 @@ export interface Database {
       record_time_event: { Args: { next_type:TimeEntryType }; Returns: TimeEntryRow };
       review_time_request: { Args: { request_id:string; decision:string }; Returns: TimeRequestRow };
       audit_admin_action: { Args: { target_user_id:string; admin_action:string }; Returns: undefined };
+      has_permission: { Args: { permission_key:string }; Returns:boolean };
       current_app_user_id: { Args: Record<PropertyKey, never>; Returns:string|null };
       current_access_role: { Args: Record<PropertyKey, never>; Returns:AccessRole|null };
       is_staff: { Args: Record<PropertyKey, never>; Returns:boolean };

@@ -2,17 +2,27 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { LogoFull } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
+import { effectivePermissions } from "@/lib/permissions";
+import { createClient } from "@/lib/supabase/client";
 import { dispatcherNav } from "./nav";
 
 /** Desktop sidebar. The mobile drawer reuses `dispatcherNav` from ./nav. */
 export function Sidebar() {
   const { currentUser } = useOperations();
   const pathname = usePathname();
+  const router = useRouter();
+  const visibleNav = currentUser ? dispatcherNav.filter(item => effectivePermissions(currentUser)[item.permission]) : dispatcherNav;
+  const signOut = async () => {
+    await createClient().auth.signOut();
+    router.replace("/login");
+    router.refresh();
+  };
 
   return (
     <aside className="hidden md:flex md:flex-col w-60 shrink-0 bg-brand-navy text-white">
@@ -21,7 +31,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        {dispatcherNav.map((item) => {
+        {visibleNav.map((item) => {
           const active = pathname.startsWith(item.href);
           return (
             <Link
@@ -43,7 +53,7 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-white/10 p-3">
-        <div className="flex items-center gap-2.5 rounded px-2 py-2 hover:bg-white/10">
+        <button type="button" onClick={signOut} className="flex w-full items-center gap-2.5 rounded px-2 py-2 text-left hover:bg-white/10">
           <Avatar
             initials={currentUser?.initials ?? "--"}
             size="sm"
@@ -54,8 +64,8 @@ export function Sidebar() {
             <div className="text-sm font-medium truncate">{currentUser?.fullName ?? "Loading account"}</div>
             <div className="text-xs capitalize text-brand-ice/70">{currentUser?.accessRole ?? ""}</div>
           </div>
-          <Icon name="chevron-down" width={16} height={16} className="text-brand-ice/70" />
-        </div>
+          <Icon name="logout" width={16} height={16} className="text-brand-ice/70" />
+        </button>
       </div>
     </aside>
   );

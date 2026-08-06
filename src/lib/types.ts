@@ -222,6 +222,17 @@ export interface TimeEntry {
   userId: string;
   type: TimeEntryType;
   at: string; // ISO
+  correctedByRequestId?: string;
+  originalEntryId?: string | null;
+}
+
+export interface TimeEntryCorrection {
+  id: string;
+  requestId: string;
+  originalEntryId: string | null;
+  userId: string;
+  replacementType: TimeEntryType;
+  replacementAt: string;
 }
 
 export interface TimeRequest {

@@ -1,5 +1,5 @@
-import type { AppNotification, Customer, Dumpster, Job, JobActivity, JobNote, TimeEntry, TimeRequest, Truck, User } from "@/lib/types";
-import type { AbsenceRow, CustomerRow, DumpsterRow, JobActivityRow, JobEventRow, JobNoteRow, JobPhotoRow, JobRow, NotificationRow, TimeEntryRow, TimeRequestRow, TruckRow, UserRow } from "./database.types";
+import type { AppNotification, Customer, Dumpster, Job, JobActivity, JobNote, TimeEntry, TimeEntryCorrection, TimeRequest, Truck, User } from "@/lib/types";
+import type { AbsenceRow, CorrectionRow, CustomerRow, DumpsterRow, JobActivityRow, JobEventRow, JobNoteRow, JobPhotoRow, JobRow, NotificationRow, TimeEntryRow, TimeRequestRow, TruckRow, UserRow } from "./database.types";
 
 export function mapUser(row:UserRow):User { return { id:row.id,employeeId:row.employee_id,fullName:row.full_name,email:row.email,phone:row.phone,role:row.role,accessRole:row.access_role,permissionOverrides:(row.permission_overrides??{}) as User["permissionOverrides"],status:row.status,initials:row.initials,ptoBalanceHours:row.pto_balance_hours??undefined,weeklyHours:row.weekly_hours??undefined }; }
 export function mapCustomer(row:CustomerRow,activeJobs=0):Customer { return { id:row.id,name:row.name,phone:row.phone,email:row.email,address:row.address,activeJobs,group:row.customer_group??undefined }; }
@@ -10,5 +10,6 @@ export function mapNotification(row:NotificationRow):AppNotification { return {i
 export function mapActivity(row:JobActivityRow):JobActivity { return {id:row.id,jobId:row.job_id,actorId:row.actor_id,actorName:row.actor_name,type:row.activity_type as JobActivity["type"],body:row.body,createdAt:row.created_at,dispatchNotified:row.dispatch_notified}; }
 export function mapJobNote(row:JobNoteRow,authorName="Employee"):JobNote { return {id:row.id,jobId:row.job_id,authorId:row.author_id,authorName,body:row.body,createdAt:row.created_at}; }
 export function mapTimeEntry(row:TimeEntryRow):TimeEntry { return {id:row.id,userId:row.user_id,type:row.entry_type,at:row.occurred_at}; }
+export function mapTimeCorrection(row:CorrectionRow):TimeEntryCorrection { return {id:row.id,requestId:row.request_id,originalEntryId:row.original_entry_id,userId:row.user_id,replacementType:row.replacement_type,replacementAt:row.replacement_at}; }
 export function mapTimeRequest(row:TimeRequestRow):TimeRequest { return {id:row.id,userId:row.user_id,kind:row.kind,status:row.status,requestedFor:row.requested_for,hours:row.hours,reason:row.reason,targetEntryId:row.target_entry_id,requestedEntryType:row.requested_entry_type,requestedAt:row.requested_at}; }
 export function mapAbsence(row:AbsenceRow){return {id:row.id,userId:row.user_id,date:row.event_date,type:row.absence_type,status:row.status,note:row.note} as const;}

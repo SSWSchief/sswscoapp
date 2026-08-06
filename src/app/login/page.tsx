@@ -7,6 +7,11 @@ import { Input, Label } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { createClient } from "@/lib/supabase/client";
 
+function safeInternalPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
+  return value;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = React.useState("");
@@ -33,10 +38,18 @@ export default function LoginPage() {
       .from("users")
       .select("access_role")
       .eq("auth_user_id", data.user.id)
+      .eq("status", "active")
+      .is("deleted_at", null)
       .maybeSingle();
+    if (!profile) {
+      await supabase.auth.signOut();
+      setError("Your employee account is inactive or not linked. Contact an administrator.");
+      setSubmitting(false);
+      return;
+    }
     const requested = new URLSearchParams(window.location.search).get("next");
     const fallback = profile?.access_role === "driver" ? "/driver/jobs" : "/dispatcher/dashboard";
-    router.replace(requested?.startsWith("/") ? requested : fallback);
+    router.replace(safeInternalPath(requested) ?? fallback);
     router.refresh();
   };
 
