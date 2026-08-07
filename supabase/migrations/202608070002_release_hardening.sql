@@ -52,7 +52,7 @@ revoke all on function public.consume_api_rate_limit(text,integer,integer) from 
 grant execute on function public.consume_api_rate_limit(text,integer,integer) to authenticated,service_role;
 
 create or replace function public.customer_active_job_counts()
-returns table(customer_id uuid,active_jobs bigint)
+returns table(customer_id text,active_jobs bigint)
 language sql stable security invoker set search_path='' as $$
   select jobs.customer_id,count(*)
   from public.jobs
