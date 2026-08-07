@@ -78,6 +78,19 @@ const cleanupWrites = [
 ];
 for (const write of cleanupWrites) { const result = await write; if (result.error) throw result.error; }
 
+const settingsReset = await service.from("company_settings").upsert({
+  id: true,
+  company_name: "Silver State Waste Solutions",
+  address: "100 Test Way",
+  phone: "555-0100",
+  email: "dispatch@example.invalid",
+  time_zone: "America/Los_Angeles",
+  date_format: "MM/DD/YYYY",
+  message_retention_days: 365,
+  invoice_prefix: "INV",
+});
+if (settingsReset.error) throw settingsReset.error;
+
 const fixtureWrites = [
   service.from("customers").upsert({ id: "e2e-customer", name: "E2E Customer", phone: "555-0100", email: "e2e-customer@example.invalid", address: "100 Test Way", customer_group: "Commercial", is_active: true, deleted_at: null }),
   service.from("customers").upsert({ id: "e2e-other-customer", name: "E2E Other Customer", phone: "555-0101", email: "e2e-other@example.invalid", address: "200 Test Way", customer_group: "Commercial", is_active: true, deleted_at: null }),

@@ -1,5 +1,5 @@
 begin;
-select plan(10);
+select plan(17);
 
 create function pg_temp.capture_sqlstate(command text) returns text language plpgsql as $$
 begin
@@ -7,6 +7,15 @@ begin
   return null;
 exception when others then
   return sqlstate;
+end;
+$$;
+
+create function pg_temp.execute_row_count(command text) returns bigint language plpgsql as $$
+declare affected bigint;
+begin
+  execute command;
+  get diagnostics affected = row_count;
+  return affected;
 end;
 $$;
 
@@ -50,6 +59,10 @@ set local role authenticated;
 select is(public.has_permission('management'),false,'admin AAL1 is denied administrator permissions');
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal2"}',true);
 select is(public.has_permission('management'),true,'admin AAL2 receives administrator permissions');
+select is((public.save_company_settings('RLS Company','100 Test Way','555-0100','settings@example.invalid','America/Los_Angeles','MM/DD/YYYY',365,'QA')).invoice_prefix,'QA','admin AAL2 saves validated company settings through RPC');
+select is(pg_temp.execute_row_count($$update public.company_settings set company_name='Direct Hack' where id=true$$),0::bigint,'direct settings table update is denied even for an administrator session');
+select is((public.publish_sop_document('RLS Safety SOP','Safety','Use wheel chocks before inspection.',true)).version,1,'admin publishes SOP versions through RPC');
+select is((public.publish_pretrip_template('RLS Pretrip',array['Tires','Lights'])).version,1,'admin publishes pre-trip templates through RPC');
 
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000002","role":"authenticated","aal":"aal1"}',true);
 select is(public.has_permission('customers'),true,'dispatcher receives default customer permission');
@@ -74,6 +87,9 @@ select is(pg_temp.capture_sqlstate($$insert into public.time_entries(user_id,ent
 
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000006","role":"authenticated","aal":"aal1"}',true);
 select is(public.current_app_user_id(),null::text,'inactive profile cannot resolve an application identity');
+select is((select count(*) from public.company_settings),0::bigint,'inactive profile cannot read company settings');
+select is((select count(*) from public.sop_documents),0::bigint,'inactive profile cannot read published SOPs');
+select is((select count(*) from public.pretrip_templates),0::bigint,'inactive profile cannot read published pre-trip templates');
 
 reset role;
 select * from finish();

@@ -70,6 +70,9 @@ export interface Database {
       is_staff: { Args: Record<PropertyKey, never>; Returns:boolean };
       apply_operations_import: { Args: { payload:Json; source_name:string; source_hash:string }; Returns:Json };
       run_scheduled_maintenance: { Args: Record<PropertyKey, never>; Returns:Json };
+      save_company_settings: { Args: { company_name:string; company_address:string; company_phone:string; company_email:string; company_time_zone:string; company_date_format:string; retention_days:number; invoice_prefix:string }; Returns:CompanySettingsRow };
+      publish_sop_document: { Args: { sop_title:string; sop_category:string; sop_body:string; required_for_drivers?:boolean }; Returns:SopDocumentRow };
+      publish_pretrip_template: { Args: { template_title:string; item_labels:string[] }; Returns:PretripTemplateRow };
       list_message_recipients: { Args: Record<PropertyKey, never>; Returns:{id:string;full_name:string}[] };
       list_message_channels: { Args: Record<PropertyKey, never>; Returns:{id:string;name:string;kind:"channel"|"direct"|"announcement";created_at:string}[] };
       create_direct_message_channel: { Args:{other_user_id:string}; Returns:string };

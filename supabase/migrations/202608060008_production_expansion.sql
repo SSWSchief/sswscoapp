@@ -353,7 +353,14 @@ create table public.sop_documents(id text primary key default gen_random_uuid():
 create table public.sop_acknowledgements(sop_id text references public.sop_documents(id) on delete cascade,user_id text references public.users(id) on delete cascade,acknowledged_at timestamptz not null default now(),primary key(sop_id,user_id));
 create function public.retire_prior_sop_versions() returns trigger language plpgsql security definer set search_path='' as $$ begin if new.is_published then update public.sop_documents set is_published=false where title=new.title and is_published; end if; return new; end; $$;
 create trigger sop_retire_prior before insert on public.sop_documents for each row execute function public.retire_prior_sop_versions();
-create table public.company_settings(id boolean primary key default true check(id),company_name text not null default 'Silver State Waste Solutions',address text not null default '',phone text not null default '',email text not null default '',time_zone text not null default 'America/Los_Angeles',date_format text not null default 'MM/DD/YYYY',message_retention_days integer not null default 365,invoice_prefix text not null default 'INV',updated_at timestamptz not null default now());
+create table public.company_settings(id boolean primary key default true check(id),company_name text not null default 'Silver State Waste Solutions',address text not null default '',phone text not null default '',email text not null default '',time_zone text not null default 'America/Los_Angeles',date_format text not null default 'MM/DD/YYYY',message_retention_days integer not null default 365,invoice_prefix text not null default 'INV',updated_at timestamptz not null default now(),
+  constraint company_settings_company_name_check check(length(trim(company_name)) between 2 and 120),
+  constraint company_settings_email_check check(email='' or email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'),
+  constraint company_settings_time_zone_check check(time_zone in('America/Los_Angeles')),
+  constraint company_settings_date_format_check check(date_format in('MM/DD/YYYY','DD/MM/YYYY')),
+  constraint company_settings_retention_check check(message_retention_days between 30 and 3650),
+  constraint company_settings_invoice_prefix_check check(invoice_prefix ~ '^[A-Z0-9]{2,12}$')
+);
 insert into public.company_settings(id) values(true) on conflict do nothing;
 insert into public.message_channels(name,kind) values('Company Announcements','announcement'),('Dispatch','channel');
 insert into public.pretrip_templates(title,version,is_published,items) values('Daily Truck Pre-Trip',1,true,'[{"id":"tires","label":"Tires and wheels"},{"id":"lights","label":"Lights and reflectors"},{"id":"brakes","label":"Brakes"},{"id":"fluids","label":"Fluid leaks and levels"},{"id":"safety","label":"Safety equipment"},{"id":"body","label":"Body, hoist, and container equipment"}]');
@@ -376,18 +383,90 @@ create policy messages_insert on public.messages for insert to authenticated wit
 create policy message_reads_own on public.message_reads for all to authenticated using(user_id=public.current_app_user_id()) with check(user_id=public.current_app_user_id());
 create policy channels_admin on public.message_channels for all to authenticated using(public.admin_mfa_verified()) with check(public.admin_mfa_verified());
 create policy channel_members_admin on public.message_channel_members for all to authenticated using(public.admin_mfa_verified()) with check(public.admin_mfa_verified());
-create policy pretrip_templates_read on public.pretrip_templates for select to authenticated using(is_published or public.admin_mfa_verified());
-create policy pretrip_templates_admin on public.pretrip_templates for all to authenticated using(public.admin_mfa_verified()) with check(public.admin_mfa_verified());
+create policy pretrip_templates_read on public.pretrip_templates for select to authenticated using(public.current_app_user_id() is not null and (is_published or public.admin_mfa_verified()));
 create policy pretrip_submissions_read on public.pretrip_submissions for select to authenticated using(driver_id=public.current_app_user_id() or public.current_access_role()='dispatcher' or public.admin_mfa_verified());
 create policy pretrip_submissions_insert on public.pretrip_submissions for insert to authenticated with check(driver_id=public.current_app_user_id() and public.has_permission('pre_trip'));
-create policy sops_read on public.sop_documents for select to authenticated using(is_published or public.admin_mfa_verified());
-create policy sops_admin on public.sop_documents for all to authenticated using(public.admin_mfa_verified()) with check(public.admin_mfa_verified());
+create policy sops_read on public.sop_documents for select to authenticated using(public.current_app_user_id() is not null and (is_published or public.admin_mfa_verified()));
 create policy sop_ack_own on public.sop_acknowledgements for all to authenticated using(user_id=public.current_app_user_id() or public.admin_mfa_verified()) with check(user_id=public.current_app_user_id());
-create policy settings_read on public.company_settings for select to authenticated using(true);
-create policy settings_admin on public.company_settings for update to authenticated using(public.admin_mfa_verified()) with check(public.admin_mfa_verified());
+create policy settings_read on public.company_settings for select to authenticated using(public.current_app_user_id() is not null);
 create policy exports_read on public.export_audit for select to authenticated using(public.admin_mfa_verified());
 create policy exports_insert on public.export_audit for insert to authenticated with check(public.has_permission('reports') and requested_by_id=public.current_app_user_id());
 create policy imports_admin on public.import_runs for all to authenticated using(public.admin_mfa_verified()) with check(public.admin_mfa_verified());
+
+create function public.save_company_settings(
+  company_name text,
+  company_address text,
+  company_phone text,
+  company_email text,
+  company_time_zone text,
+  company_date_format text,
+  retention_days integer,
+  invoice_prefix text
+) returns public.company_settings language plpgsql security definer set search_path='' as $$
+declare changed public.company_settings;
+begin
+  if not public.admin_mfa_verified() then raise exception 'Administrator MFA required'; end if;
+  if length(trim(coalesce(company_name,''))) < 2 then raise exception 'Company name is required'; end if;
+  if nullif(trim(coalesce(company_email,'')),'') is not null and trim(company_email) !~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$' then raise exception 'Enter a valid company email'; end if;
+  if company_time_zone <> 'America/Los_Angeles' then raise exception 'Unsupported time zone'; end if;
+  if company_date_format not in('MM/DD/YYYY','DD/MM/YYYY') then raise exception 'Unsupported date format'; end if;
+  if retention_days < 30 or retention_days > 3650 then raise exception 'Message retention must be between 30 and 3650 days'; end if;
+  if upper(trim(coalesce(invoice_prefix,''))) !~ '^[A-Z0-9]{2,12}$' then raise exception 'Invoice prefix must be 2 to 12 letters or numbers'; end if;
+  update public.company_settings set
+    company_name=trim(company_name),
+    address=trim(coalesce(company_address,'')),
+    phone=trim(coalesce(company_phone,'')),
+    email=lower(trim(coalesce(company_email,''))),
+    time_zone=company_time_zone,
+    date_format=company_date_format,
+    message_retention_days=retention_days,
+    invoice_prefix=upper(trim(invoice_prefix)),
+    updated_at=now()
+  where id=true returning * into changed;
+  if changed.id is null then raise exception 'Company settings row is missing'; end if;
+  return changed;
+end;
+$$;
+revoke all on function public.save_company_settings(text,text,text,text,text,text,integer,text) from public,anon;
+grant execute on function public.save_company_settings(text,text,text,text,text,text,integer,text) to authenticated;
+
+create function public.publish_sop_document(sop_title text,sop_category text,sop_body text,required_for_drivers boolean default true)
+returns public.sop_documents language plpgsql security definer set search_path='' as $$
+declare actor text:=public.current_app_user_id(); next_version integer; created public.sop_documents;
+begin
+  if not public.admin_mfa_verified() then raise exception 'Administrator MFA required'; end if;
+  if length(trim(coalesce(sop_title,''))) < 2 then raise exception 'SOP title is required'; end if;
+  if length(trim(coalesce(sop_body,''))) < 10 then raise exception 'SOP content is too short'; end if;
+  lock table public.sop_documents in exclusive mode;
+  select coalesce(max(version),0)+1 into next_version from public.sop_documents where title=trim(sop_title);
+  insert into public.sop_documents(title,category,version,body,is_published,required_for_drivers,created_by_id)
+  values(trim(sop_title),trim(coalesce(nullif(sop_category,''),'Procedure')),next_version,trim(sop_body),true,coalesce(required_for_drivers,true),actor)
+  returning * into created;
+  return created;
+end;
+$$;
+revoke all on function public.publish_sop_document(text,text,text,boolean) from public,anon;
+grant execute on function public.publish_sop_document(text,text,text,boolean) to authenticated;
+
+create function public.publish_pretrip_template(template_title text,item_labels text[])
+returns public.pretrip_templates language plpgsql security definer set search_path='' as $$
+declare actor text:=public.current_app_user_id(); next_version integer; created public.pretrip_templates; cleaned text[];
+begin
+  if not public.admin_mfa_verified() then raise exception 'Administrator MFA required'; end if;
+  select array_agg(trim(label)) into cleaned from unnest(coalesce(item_labels,array[]::text[])) as items(label) where length(trim(label)) > 0;
+  if length(trim(coalesce(template_title,''))) < 2 then raise exception 'Checklist title is required'; end if;
+  if coalesce(array_length(cleaned,1),0) = 0 then raise exception 'At least one checklist item is required'; end if;
+  if array_length(cleaned,1) > 80 then raise exception 'Checklist cannot exceed 80 items'; end if;
+  lock table public.pretrip_templates in exclusive mode;
+  select coalesce(max(version),0)+1 into next_version from public.pretrip_templates where title=trim(template_title);
+  insert into public.pretrip_templates(title,version,is_published,items,created_by_id)
+  values(trim(template_title),next_version,true,(select jsonb_agg(jsonb_build_object('id','item-'||ordinality,'label',label) order by ordinality) from unnest(cleaned) with ordinality as items(label,ordinality)),actor)
+  returning * into created;
+  return created;
+end;
+$$;
+revoke all on function public.publish_pretrip_template(text,text[]) from public,anon;
+grant execute on function public.publish_pretrip_template(text,text[]) to authenticated;
 
 create function public.list_message_recipients()
 returns table(id text,full_name text) language plpgsql stable security definer set search_path='' as $$

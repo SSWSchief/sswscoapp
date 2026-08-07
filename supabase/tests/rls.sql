@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(25);
 select has_table('public','audit_log','immutable audit log exists');
 select has_table('public','invoices','invoice records exist');
 select has_table('public','messages','team messages exist');
@@ -10,6 +10,9 @@ select has_function('public','record_time_event',array['time_entry_type'],'audit
 select has_function('public','create_job','transactional job RPC exists');
 select has_function('public','log_assigned_job_dry_run',array['text','text'],'dry-run cancellation RPC exists');
 select has_function('public','apply_operations_import',array['jsonb','text','text'],'idempotent import RPC exists');
+select has_function('public','save_company_settings',array['text','text','text','text','text','text','integer','text'],'audited settings RPC exists');
+select has_function('public','publish_sop_document',array['text','text','text','boolean'],'audited SOP publication RPC exists');
+select has_function('public','publish_pretrip_template',array['text','text[]'],'audited pre-trip template publication RPC exists');
 select has_function('public','list_message_recipients',array[]::text[],'safe message directory RPC exists');
 select has_function('public','list_message_channels',array[]::text[],'scoped message channel RPC exists');
 select has_function('public','create_direct_message_channel',array['text'],'direct-message creation RPC exists');
@@ -20,7 +23,7 @@ select policies_are('public','trucks',array['trucks_permission_delete','trucks_p
 select policies_are('public','dumpsters',array['dumpsters_permission_delete','dumpsters_permission_insert','dumpsters_permission_update','dumpsters_read'],'dumpster writes are permission scoped');
 select policies_are('public','invoices',array['invoices_read','invoices_write'],'invoice access is permission scoped');
 select policies_are('public','audit_log',array['audit_admin_read'],'audit history has no client writes');
-select policies_are('public','company_settings',array['settings_admin','settings_read'],'settings writes are admin only');
+select policies_are('public','company_settings',array['settings_read'],'settings writes are RPC only');
 select policies_are('public','import_runs',array['imports_admin'],'import history is admin only');
 select * from finish();
 rollback;

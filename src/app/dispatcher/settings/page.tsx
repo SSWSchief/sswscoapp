@@ -1,3 +1,224 @@
-"use client";import * as React from "react";import {Topbar} from "@/components/dispatcher/Topbar";import {Card,CardHeader} from "@/components/ui/Card";import {Button} from "@/components/ui/Button";import {FormField,Input,Select,Textarea} from "@/components/ui/Field";import {useExpandedOperations} from "@/components/system/ExpandedOperationsProvider";import {useOperations} from "@/components/system/OperationsProvider";import {useToast} from "@/components/system/ToastProvider";import {createClient} from "@/lib/supabase/client";import type {CompanySettings} from "@/lib/types";
-const defaults:CompanySettings={companyName:"Silver State Waste Solutions",address:"",phone:"",email:"",timeZone:"America/Los_Angeles",dateFormat:"MM/DD/YYYY",messageRetentionDays:365,invoicePrefix:"INV"};
-export default function Page(){const {settings,saveSettings,refresh,sops,pretripTemplates}=useExpandedOperations();const {currentUser,canMutate}=useOperations();const {toast}=useToast();const [form,setForm]=React.useState(defaults);const [busy,setBusy]=React.useState(false);const [sop,setSop]=React.useState({title:"",category:"Procedure",body:"",required:true});const [checklist,setChecklist]=React.useState({title:"Daily Truck Pre-Trip",items:""});React.useEffect(()=>{if(settings)setForm(settings)},[settings]);if(currentUser?.accessRole!=="admin")return null;const save=async()=>{setBusy(true);const r=await saveSettings(form);setBusy(false);toast(r.ok?"Settings saved":r.error.message,{tone:r.ok?"success":"error"});};const publishSop=async()=>{if(!sop.title.trim()||!sop.body.trim())return toast("SOP title and content are required.",{tone:"error"});const version=Math.max(0,...sops.filter(s=>s.title===sop.title.trim()).map(s=>s.version))+1;const r=await createClient().from("sop_documents").insert({title:sop.title.trim(),category:sop.category,version,body:sop.body.trim(),is_published:true,required_for_drivers:sop.required,created_by_id:currentUser.id});toast(r.error?r.error.message:"SOP published",{tone:r.error?"error":"success"});if(!r.error){setSop({title:"",category:"Procedure",body:"",required:true});await refresh();}};const publishChecklist=async()=>{const labels=checklist.items.split("\n").map(v=>v.trim()).filter(Boolean);if(!checklist.title.trim()||!labels.length)return toast("Checklist title and at least one item are required.",{tone:"error"});const version=Math.max(0,...pretripTemplates.filter(t=>t.title===checklist.title.trim()).map(t=>t.version))+1;const db=createClient();await db.from("pretrip_templates").update({is_published:false}).eq("title",checklist.title.trim());const r=await db.from("pretrip_templates").insert({title:checklist.title.trim(),version,is_published:true,items:labels.map((label,index)=>({id:`item-${index+1}`,label})),created_by_id:currentUser.id});toast(r.error?r.error.message:"Checklist published",{tone:r.error?"error":"success"});if(!r.error){setChecklist({...checklist,items:""});await refresh();}};return <><Topbar title="Settings"/><div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5"><Card><CardHeader title="Company & Operations"/><div className="grid gap-4 p-5 sm:grid-cols-2"><div className="sm:col-span-2"><FormField label="Company Name"><Input value={form.companyName} onChange={e=>setForm({...form,companyName:e.target.value})}/></FormField></div><div className="sm:col-span-2"><FormField label="Address"><Input value={form.address} onChange={e=>setForm({...form,address:e.target.value})}/></FormField></div><FormField label="Phone"><Input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></FormField><FormField label="Email"><Input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></FormField><FormField label="Time Zone"><Select value={form.timeZone} onChange={e=>setForm({...form,timeZone:e.target.value})}><option value="America/Los_Angeles">America/Los_Angeles</option></Select></FormField><FormField label="Date Format"><Select value={form.dateFormat} onChange={e=>setForm({...form,dateFormat:e.target.value})}><option>MM/DD/YYYY</option><option>DD/MM/YYYY</option></Select></FormField><FormField label="Message Retention Days"><Input type="number" min="30" value={form.messageRetentionDays} onChange={e=>setForm({...form,messageRetentionDays:Number(e.target.value)})}/></FormField><FormField label="Invoice Prefix"><Input value={form.invoicePrefix} onChange={e=>setForm({...form,invoicePrefix:e.target.value.toUpperCase()})}/></FormField><div className="sm:col-span-2"><Button disabled={!canMutate||busy} onClick={()=>void save()}>{busy?"Saving…":"Save Settings"}</Button></div></div></Card><div className="grid gap-5 lg:grid-cols-2"><Card><CardHeader title="Publish SOP Version"/><div className="space-y-4 p-5"><FormField label="Title"><Input value={sop.title} onChange={e=>setSop({...sop,title:e.target.value})}/></FormField><FormField label="Category"><Input value={sop.category} onChange={e=>setSop({...sop,category:e.target.value})}/></FormField><FormField label="Content"><Textarea rows={8} value={sop.body} onChange={e=>setSop({...sop,body:e.target.value})}/></FormField><label className="flex gap-2 text-sm"><input type="checkbox" checked={sop.required} onChange={e=>setSop({...sop,required:e.target.checked})}/>Require driver acknowledgement</label><Button disabled={!canMutate} onClick={()=>void publishSop()}>Publish New Version</Button></div></Card><Card><CardHeader title="Publish Pre-Trip Checklist"/><div className="space-y-4 p-5"><FormField label="Checklist Title"><Input value={checklist.title} onChange={e=>setChecklist({...checklist,title:e.target.value})}/></FormField><FormField label="Inspection Items" hint="One item per line"><Textarea rows={10} value={checklist.items} onChange={e=>setChecklist({...checklist,items:e.target.value})}/></FormField><Button disabled={!canMutate} onClick={()=>void publishChecklist()}>Publish New Version</Button></div></Card></div></div></>}
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { Topbar } from "@/components/dispatcher/Topbar";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { FormField, Input, Select, Textarea } from "@/components/ui/Field";
+import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
+import { useOperations } from "@/components/system/OperationsProvider";
+import { useToast } from "@/components/system/ToastProvider";
+import { effectivePermissions, permissionLabels } from "@/lib/permissions";
+import { cn } from "@/lib/utils";
+import type { CompanySettings } from "@/lib/types";
+
+const defaults: CompanySettings = {
+  companyName: "Silver State Waste Solutions",
+  address: "",
+  phone: "",
+  email: "",
+  timeZone: "America/Los_Angeles",
+  dateFormat: "MM/DD/YYYY",
+  messageRetentionDays: 365,
+  invoicePrefix: "INV",
+};
+const tabs = ["company", "general", "users"] as const;
+type Tab = (typeof tabs)[number];
+const tabLabels: Record<Tab, string> = {
+  company: "Company",
+  general: "General",
+  users: "Users & Roles",
+};
+
+function validateSettings(settings: CompanySettings) {
+  const errors: Partial<Record<keyof CompanySettings, string>> = {};
+  if (settings.companyName.trim().length < 2) errors.companyName = "Company name is required.";
+  if (settings.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(settings.email.trim())) errors.email = "Enter a valid email address.";
+  if (!Number.isInteger(settings.messageRetentionDays) || settings.messageRetentionDays < 30 || settings.messageRetentionDays > 3650) errors.messageRetentionDays = "Use 30 to 3650 days.";
+  if (!/^[A-Z0-9]{2,12}$/.test(settings.invoicePrefix.trim().toUpperCase())) errors.invoicePrefix = "Use 2 to 12 letters or numbers.";
+  return errors;
+}
+
+export default function Page() {
+  const { loading, settings, saveSettings, publishSop, publishPretripTemplate, sops, pretripTemplates } = useExpandedOperations();
+  const { currentUser, canMutate, connectionState, connectionMessage, users } = useOperations();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = React.useState<Tab>("company");
+  const [form, setForm] = React.useState(defaults);
+  const [errors, setErrors] = React.useState<Partial<Record<keyof CompanySettings, string>>>({});
+  const [busy, setBusy] = React.useState<"settings" | "sop" | "checklist" | null>(null);
+  const [sop, setSop] = React.useState({ title: "", category: "Procedure", body: "", required: true });
+  const [checklist, setChecklist] = React.useState({ title: "Daily Truck Pre-Trip", items: "" });
+
+  React.useEffect(() => {
+    if (settings) setForm(settings);
+  }, [settings]);
+
+  if (currentUser && currentUser.accessRole !== "admin") {
+    return (
+      <>
+        <Topbar title="Settings" />
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <Card className="p-5">
+            <h2 className="font-heading text-lg font-semibold uppercase">Administrator access required</h2>
+            <p className="mt-2 text-sm text-brand-steel">Settings are restricted to administrator accounts with MFA.</p>
+          </Card>
+        </div>
+      </>
+    );
+  }
+
+  const save = async () => {
+    const nextErrors = validateSettings(form);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      toast("Resolve the highlighted settings before saving.", { tone: "error" });
+      return;
+    }
+    setBusy("settings");
+    const result = await saveSettings({ ...form, invoicePrefix: form.invoicePrefix.trim().toUpperCase(), email: form.email.trim().toLowerCase() });
+    setBusy(null);
+    toast(result.ok ? "Settings saved." : result.error.message, { tone: result.ok ? "success" : "error" });
+  };
+
+  const submitSop = async () => {
+    if (sop.title.trim().length < 2 || sop.body.trim().length < 10) {
+      toast("SOP title and meaningful content are required.", { tone: "error" });
+      return;
+    }
+    setBusy("sop");
+    const result = await publishSop({ title: sop.title, category: sop.category, body: sop.body, requiredForDrivers: sop.required });
+    setBusy(null);
+    toast(result.ok ? "SOP published." : result.error.message, { tone: result.ok ? "success" : "error" });
+    if (result.ok) setSop({ title: "", category: "Procedure", body: "", required: true });
+  };
+
+  const submitChecklist = async () => {
+    const items = checklist.items.split("\n").map(item => item.trim()).filter(Boolean);
+    if (checklist.title.trim().length < 2 || !items.length) {
+      toast("Checklist title and at least one item are required.", { tone: "error" });
+      return;
+    }
+    setBusy("checklist");
+    const result = await publishPretripTemplate({ title: checklist.title, items });
+    setBusy(null);
+    toast(result.ok ? "Checklist published." : result.error.message, { tone: result.ok ? "success" : "error" });
+    if (result.ok) setChecklist(current => ({ ...current, items: "" }));
+  };
+
+  const administrators = users.filter(user => user.accessRole === "admin" && user.status === "active");
+  const newestSopVersion = Math.max(0, ...sops.map(item => item.version));
+  const newestChecklist = pretripTemplates[0];
+  const disabled = !canMutate || Boolean(busy);
+
+  return (
+    <>
+      <Topbar title="Settings" />
+      <div className="flex-1 overflow-y-auto p-4 pb-28 sm:p-6 sm:pb-10">
+        <Card className="mx-auto max-w-5xl overflow-hidden">
+          <div className="flex overflow-x-auto border-b border-brand-ice/70 px-4 sm:px-5" role="tablist" aria-label="Settings sections">
+            {tabs.map(tab => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  "min-h-14 shrink-0 border-b-4 px-3 font-heading text-sm font-semibold uppercase tracking-wide sm:px-5 sm:text-base",
+                  activeTab === tab ? "border-brand-blue text-brand-blue" : "border-transparent text-brand-steel hover:text-brand-charcoal"
+                )}
+              >
+                {tabLabels[tab]}
+              </button>
+            ))}
+          </div>
+
+          {connectionState !== "ready" && connectionMessage && (
+            <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900">{connectionMessage}</div>
+          )}
+          {loading && <div className="border-b border-brand-ice/70 px-5 py-3 text-sm text-brand-steel">Loading settings...</div>}
+          {!loading && !settings && (
+            <div className="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">Company settings could not be loaded. Changes are disabled until the live record is available.</div>
+          )}
+
+          {activeTab === "company" && (
+            <section className="p-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2"><FormField label="Company Name" required error={errors.companyName}><Input value={form.companyName} onChange={event => setForm({ ...form, companyName: event.target.value })} /></FormField></div>
+                <div className="sm:col-span-2"><FormField label="Address"><Input value={form.address} onChange={event => setForm({ ...form, address: event.target.value })} /></FormField></div>
+                <FormField label="Phone"><Input inputMode="tel" value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} /></FormField>
+                <FormField label="Email" error={errors.email}><Input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></FormField>
+                <FormField label="Time Zone"><Select value={form.timeZone} onChange={event => setForm({ ...form, timeZone: event.target.value })}><option value="America/Los_Angeles">Pacific Time</option></Select></FormField>
+                <FormField label="Date Format"><Select value={form.dateFormat} onChange={event => setForm({ ...form, dateFormat: event.target.value })}><option>MM/DD/YYYY</option><option>DD/MM/YYYY</option></Select></FormField>
+              </div>
+              <div className="sticky bottom-0 -mx-5 mt-6 border-t border-brand-ice/70 bg-white/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur sm:static sm:-mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:pt-5">
+                <Button className="w-full sm:w-auto" disabled={disabled || !settings} onClick={() => void save()}>{busy === "settings" ? "Saving..." : "Save Settings"}</Button>
+              </div>
+            </section>
+          )}
+
+          {activeTab === "general" && (
+            <section className="grid gap-6 p-5 lg:grid-cols-2">
+              <div className="space-y-4">
+                <CardHeader title="Operational Defaults" className="-mx-5 -mt-5" />
+                <FormField label="Message Retention Days" required error={errors.messageRetentionDays}><Input type="number" min="30" max="3650" value={form.messageRetentionDays} onChange={event => setForm({ ...form, messageRetentionDays: Number(event.target.value) })} /></FormField>
+                <FormField label="Invoice Prefix" required error={errors.invoicePrefix}><Input value={form.invoicePrefix} onChange={event => setForm({ ...form, invoicePrefix: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })} /></FormField>
+                <Button disabled={disabled || !settings} onClick={() => void save()}>{busy === "settings" ? "Saving..." : "Save Defaults"}</Button>
+              </div>
+              <div className="space-y-4">
+                <CardHeader title="Content Versions" className="-mx-5 -mt-5" />
+                <div className="rounded border border-brand-ice p-3 text-sm text-brand-steel">
+                  <div>Latest SOP version: <span className="font-semibold text-brand-charcoal">{newestSopVersion || "None"}</span></div>
+                  <div>Published checklist: <span className="font-semibold text-brand-charcoal">{newestChecklist ? `${newestChecklist.title} v${newestChecklist.version}` : "None"}</span></div>
+                </div>
+                <FormField label="SOP Title"><Input value={sop.title} onChange={event => setSop({ ...sop, title: event.target.value })} /></FormField>
+                <FormField label="SOP Category"><Input value={sop.category} onChange={event => setSop({ ...sop, category: event.target.value })} /></FormField>
+                <FormField label="SOP Content"><Textarea rows={6} value={sop.body} onChange={event => setSop({ ...sop, body: event.target.value })} /></FormField>
+                <label className="flex min-h-11 items-center gap-2 text-sm text-brand-charcoal"><input type="checkbox" checked={sop.required} onChange={event => setSop({ ...sop, required: event.target.checked })} />Require driver acknowledgement</label>
+                <Button disabled={disabled} onClick={() => void submitSop()}>{busy === "sop" ? "Publishing..." : "Publish SOP Version"}</Button>
+                <div className="pt-4">
+                  <FormField label="Checklist Title"><Input value={checklist.title} onChange={event => setChecklist({ ...checklist, title: event.target.value })} /></FormField>
+                </div>
+                <FormField label="Inspection Items" hint="One item per line"><Textarea rows={8} value={checklist.items} onChange={event => setChecklist({ ...checklist, items: event.target.value })} /></FormField>
+                <Button disabled={disabled} onClick={() => void submitChecklist()}>{busy === "checklist" ? "Publishing..." : "Publish Checklist Version"}</Button>
+              </div>
+            </section>
+          )}
+
+          {activeTab === "users" && (
+            <section className="p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-heading text-lg font-semibold uppercase">Users & Roles</h2>
+                  <p className="mt-1 text-sm text-brand-steel">Role and permission changes live in employee management so administrator safeguards stay centralized.</p>
+                </div>
+                <Link href="/dispatcher/employees" className="inline-flex min-h-11 items-center justify-center rounded border border-brand-blue px-4 font-heading text-sm font-semibold uppercase text-brand-blue">Manage Employees</Link>
+              </div>
+              <div className="mt-5 overflow-hidden rounded border border-brand-ice">
+                {administrators.map(admin => (
+                  <div key={admin.id} className="border-b border-brand-ice p-4 last:border-0">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="font-semibold text-brand-charcoal">{admin.fullName}</div>
+                        <div className="text-sm text-brand-steel">{admin.email}</div>
+                      </div>
+                      <span className="rounded bg-brand-mist px-2 py-1 text-xs font-semibold uppercase text-brand-steel">Admin</span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {Object.entries(effectivePermissions(admin)).filter(([, enabled]) => enabled).slice(0, 6).map(([key]) => (
+                        <span key={key} className="rounded bg-white px-2 py-1 text-xs text-brand-steel ring-1 ring-brand-ice">{permissionLabels[key as keyof typeof permissionLabels]}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {!administrators.length && <div className="p-4 text-sm text-brand-steel">No active administrators were visible to this session.</div>}
+              </div>
+            </section>
+          )}
+        </Card>
+      </div>
+    </>
+  );
+}
