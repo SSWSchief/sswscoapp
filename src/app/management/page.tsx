@@ -35,17 +35,20 @@ export default function Page() {
   ];
 
   return (
-    <main className="app-viewport-height safe-area-all bg-brand-mist">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <LogoFull />
-          <div>
-            <h1 className="font-heading text-2xl font-bold uppercase">Management Portal</h1>
-            <p className="text-sm text-brand-steel">Administrator oversight · live operational data</p>
+    <main className="app-viewport-height bg-brand-mist">
+      <div className="safe-area-all mx-auto flex min-h-dvh max-w-6xl flex-col gap-5">
+        <div className="rounded-card border border-brand-ice/60 bg-white p-4 shadow-card sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <LogoFull markClassName="h-14 w-32 sm:h-16 sm:w-36" />
+            <div className="min-w-0 sm:text-right">
+              <p className="font-heading text-xs font-semibold uppercase tracking-wide text-brand-blue">Management</p>
+              <h1 className="truncate font-heading text-2xl font-bold uppercase text-brand-charcoal">Operations Overview</h1>
+              <p className="text-sm text-brand-steel">Administrator oversight · live operational data</p>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="portal-metric-grid">
           {metrics.map((metric) => (
             <MetricLink key={metric.label} {...metric} />
           ))}
@@ -62,7 +65,7 @@ export default function Page() {
           </Card>
           <Card>
             <CardHeader title="Management Links" />
-            <div className="grid grid-cols-2 gap-3 p-4">
+            <div className="portal-action-grid p-4">
               {[
                 ["Operations", "/dispatcher/dashboard"],
                 ["Invoices", "/dispatcher/invoices"],
@@ -92,8 +95,8 @@ function MetricLink({ label, value, href }: { label: string; value: React.ReactN
       aria-label={`Open ${label}`}
       className="block rounded-card focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
     >
-      <Card className="p-5 transition-colors hover:border-brand-blue hover:bg-white">
-        <div className="font-heading text-3xl font-bold">{value}</div>
+      <Card className="portal-card-pad transition-colors hover:border-brand-blue hover:bg-white">
+        <div className="font-heading text-2xl font-bold min-[390px]:text-3xl">{value}</div>
         <div className="text-sm uppercase text-brand-steel">{label}</div>
         <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-brand-blue">View details →</div>
       </Card>

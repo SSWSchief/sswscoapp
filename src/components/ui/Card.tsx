@@ -31,11 +31,11 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between px-5 py-4 border-b border-brand-ice/50",
+        "flex flex-wrap items-center justify-between gap-3 px-4 py-4 border-b border-brand-ice/50 sm:px-5",
         className
       )}
     >
-      <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
+      <h2 className="min-w-0 font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
         {title}
       </h2>
       {action}

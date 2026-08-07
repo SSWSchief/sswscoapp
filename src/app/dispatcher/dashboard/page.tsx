@@ -47,7 +47,7 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+      <div className="portal-content portal-stack">
         <Card>
           <CardHeader title="Needs Attention" />
           <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -59,7 +59,7 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="portal-metric-grid">
           <StatCard value={stats.enRoute} label="En Route" tone="blue" />
           <StatCard value={stats.arrived} label="Arrived" tone="blue" />
           <StatCard value={stats.completed} label="Complete" tone="green" />

@@ -16,8 +16,8 @@ export { useDriverTheme } from "./driver-context";
 const STORAGE_KEY = "ssws-driver-theme";
 
 /**
- * Mobile-first driver shell. On larger screens it presents inside a phone frame
- * so it remains usable on a laptop. Supports an optional night mode (persisted)
+ * Mobile-first driver shell. It stays full-width on phones and tablets, then
+ * presents inside a phone frame on large desktops. Supports an optional night mode (persisted)
  * to cut glare on evening pickups.
  */
 export function DriverShell({ children }: { children: React.ReactNode }) {
@@ -43,10 +43,10 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
 
   return (
     <DriverShellContext.Provider value={{ dark, toggle, openMenu: () => setMenuOpen(true), openNotifications: () => setNotificationsOpen(true), unreadCount }}>
-      <div className="app-viewport-height bg-brand-navy flex items-center justify-center sm:py-8 dark:bg-black">
-        <div className="relative w-full max-w-full min-w-0 sm:max-w-[420px] sm:rounded-[2.25rem] sm:border-[10px] sm:border-brand-charcoal sm:shadow-2xl overflow-hidden bg-white dark:bg-gray-950">
+      <div className="app-viewport-height bg-brand-navy flex items-center justify-center xl:py-8 dark:bg-black">
+        <div className="relative w-full max-w-full min-w-0 xl:max-w-[420px] xl:rounded-[2.25rem] xl:border-[10px] xl:border-brand-charcoal xl:shadow-2xl overflow-hidden bg-white dark:bg-gray-950">
           <div className={dark ? "dark" : undefined}>
-            <div className="app-fixed-height flex min-w-0 flex-col sm:h-[860px] bg-surface dark:bg-gray-950">
+            <div className="app-fixed-height flex min-w-0 flex-col xl:h-[860px] bg-surface dark:bg-gray-950">
               {children}
               <BottomNav />
             </div>

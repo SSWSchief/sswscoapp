@@ -30,7 +30,7 @@ export function BottomNav() {
               href={t.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "min-w-0 flex-1 flex flex-col items-center gap-1 py-2.5 font-heading text-[10px] font-medium uppercase tracking-wide",
+                "min-w-0 flex-1 flex flex-col items-center gap-1 py-2.5 font-heading text-[9px] font-medium uppercase tracking-wide min-[390px]:text-[10px]",
                 active
                   ? "text-brand-blue"
                   : "text-gray-400 dark:text-gray-500"

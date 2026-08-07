@@ -30,7 +30,7 @@ export function Topbar({
         </h1>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
         <button
           onClick={openCommand}
           className="hidden sm:flex items-center gap-2 h-9 rounded border border-brand-ice pl-3 pr-2 text-sm text-brand-steel hover:bg-brand-mist"

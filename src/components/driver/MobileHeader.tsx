@@ -17,29 +17,29 @@ export function MobileHeader({
 }) {
   const { openMenu, openNotifications, unreadCount } = useDriverTheme();
   return (
-    <header className="safe-header safe-area-x shrink-0 bg-white border-b border-brand-ice/70 flex items-center justify-between dark:bg-gray-900 dark:border-white/10">
-      <div className="w-8">
+    <header className="safe-header safe-area-x grid shrink-0 grid-cols-[44px_minmax(0,1fr)_44px] items-center bg-white border-b border-brand-ice/70 dark:bg-gray-900 dark:border-white/10">
+      <div className="flex justify-start">
         {back ? (
           <Link
             href={back}
-            className="text-brand-steel dark:text-gray-300 -ml-1 inline-flex"
+            className="-ml-2 inline-flex min-h-11 min-w-11 items-center justify-center text-brand-steel dark:text-gray-300"
             aria-label="Back"
           >
             <Icon name="chevron-right" className="rotate-180" />
           </Link>
         ) : menu ? (
-          <button onClick={openMenu} className="text-brand-steel dark:text-gray-300 -ml-1" aria-label="Menu">
+          <button onClick={openMenu} className="-ml-2 inline-flex min-h-11 min-w-11 items-center justify-center text-brand-steel dark:text-gray-300" aria-label="Menu">
             <Icon name="menu" />
           </button>
         ) : null}
       </div>
-      <Link href="/driver/jobs" className="flex min-w-0 items-center gap-2" aria-label="SSWSCO home">
+      <Link href="/driver/jobs" className="mx-auto flex min-w-0 items-center gap-2" aria-label="SSWSCO home">
         <LogoMark className="h-9 w-10" />
         <h1 className="truncate font-heading text-sm font-semibold uppercase tracking-wide text-brand-charcoal dark:text-white">{title}</h1>
       </Link>
       <button
         onClick={openNotifications}
-        className="relative w-8 text-brand-steel dark:text-gray-400 flex justify-end"
+        className="relative -mr-2 inline-flex min-h-11 min-w-11 items-center justify-center justify-self-end text-brand-steel dark:text-gray-400"
         aria-label="Notifications"
       >
         <Icon name="bell" width={22} height={22} />
