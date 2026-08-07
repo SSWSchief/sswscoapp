@@ -12,9 +12,8 @@ Migration 008 may be amended only while it has never been applied to a shared st
 
 Configure the GitHub `staging` environment with required reviewers and these secrets:
 
-- `SUPABASE_ACCESS_TOKEN`
 - `STAGING_PROJECT_REF`
-- `STAGING_DB_PASSWORD`
+- `STAGING_DB_URL`
 - `STAGING_SUPABASE_URL`
 - `STAGING_SUPABASE_PUBLISHABLE_KEY`
 - `STAGING_SUPABASE_SECRET_KEY`
