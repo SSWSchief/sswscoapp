@@ -31,6 +31,7 @@ Complete these steps in a staging-first sequence. Record the owner, date, eviden
 
 - Create Vercel production and preview environments with separate staging/production Supabase variables.
 - Enable protected previews, assign deployment/rollback owners, and configure the custom domain.
+- Approve the production maintenance scheduler: upgrade Vercel for the 15-minute cron cadence or configure an approved external scheduler against `/api/cron/maintenance` with `CRON_SECRET`.
 - Add uptime monitoring, application error monitoring, alert destinations, log retention, and a documented rollback drill.
 - Run `npm run check`, `npm run test:e2e`, and `npm audit --audit-level=high` in CI for the release commit.
 

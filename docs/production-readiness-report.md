@@ -17,7 +17,7 @@ This repository is code-complete for staging promotion. It is not approved for p
 - Production customer, employee, truck, and dumpster validation/lifecycle behavior with active-assignment safeguards.
 - Manual invoice records in integer cents; audited, formula-safe CSV exports; operational/time/asset/invoice reports; truthful manual/operational AirTag locations; and administrator management oversight.
 - Role-scoped Realtime messages and read receipts; versioned pre-trip templates/submissions and failure alerts; versioned SOP publishing and re-acknowledgement; and audited company settings.
-- Health/readiness and scheduled-maintenance endpoints, structured redacted logging, Vercel cron configuration, idempotent import validation/application tooling, staging acceptance CI, traceability matrix, rollback/restore guidance, and secure ignored import workspace.
+- Health/readiness and scheduled-maintenance endpoints, structured redacted logging, Vercel-compatible daily cron configuration, idempotent import validation/application tooling, staging acceptance CI, traceability matrix, rollback/restore guidance, and secure ignored import workspace.
 - Obsolete mock runtime layers and ignored conflict copies were removed after comparison; test fixtures remain isolated from runtime.
 
 ## Database source of truth
@@ -46,6 +46,7 @@ Migration 008 adds or revises:
 
 - Apply all migrations to staging, then pass database lint and the pgTAP/RLS abuse suite. Docker is not installed on this workstation, so migration execution and pgTAP were not truthfully claimed here.
 - Configure distinct staging/production Supabase and Vercel projects, exact Auth redirect allowlists, custom SMTP/templates, approved password/Auth rate limits, administrator TOTP, private Storage, protected secrets, monitoring, and alert ownership.
+- Approve and verify the production maintenance cadence. The connected Vercel preview account only accepts daily cron schedules; 15-minute dispatch maintenance alerts require a Vercel plan that supports sub-daily cron or an approved external scheduler using `CRON_SECRET`.
 - Run the authenticated admin, dispatcher, driver, inactive, and reduced-permission Playwright suites against staging on Chromium and mobile WebKit with no production-critical skips.
 - Rehearse client import dry-run/application/reconciliation, pre-migration backup, database and private-photo restore, failed deployment rollback, credential rotation, and production smoke tests.
 - Complete physical iPhone/iPad and desktop UAT, keyboard/screen-reader and large-text checks, camera denial, slow/offline/reconnect, PWA update, and realistic-load verification.
