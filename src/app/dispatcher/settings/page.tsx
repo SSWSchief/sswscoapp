@@ -66,7 +66,7 @@ export default function Page() {
         <div className="portal-content">
           <Card className="p-5">
             <h2 className="font-heading text-lg font-semibold uppercase">Administrator access required</h2>
-            <p className="mt-2 text-sm text-brand-steel">Settings are restricted to administrator accounts with MFA.</p>
+            <p className="mt-2 text-sm text-brand-steel">Settings are restricted to active administrator accounts.</p>
           </Card>
         </div>
       </>

@@ -67,10 +67,10 @@ select is((select status from public.users where lower(email)='amarshall@sswsco.
 
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',true);
 set local role authenticated;
-select is(public.has_permission('management'),false,'admin AAL1 is denied administrator permissions');
+select is(public.has_permission('management'),true,'active admin AAL1 receives administrator permissions while MFA is temporarily disabled');
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal2"}',true);
-select is(public.has_permission('management'),true,'admin AAL2 receives administrator permissions');
-select is((public.save_company_settings('RLS Company','100 Test Way','555-0100','settings@example.invalid','America/Los_Angeles','MM/DD/YYYY',365,'QA')).invoice_prefix,'QA','admin AAL2 saves validated company settings through RPC');
+select is(public.has_permission('management'),true,'active admin AAL2 continues to receive administrator permissions');
+select is((public.save_company_settings('RLS Company','100 Test Way','555-0100','settings@example.invalid','America/Los_Angeles','MM/DD/YYYY',365,'QA')).invoice_prefix,'QA','active admin saves validated company settings through RPC');
 select is(pg_temp.execute_row_count($$update public.company_settings set company_name='Direct Hack' where id=true$$),0::bigint,'direct settings table update is denied even for an administrator session');
 select is((public.publish_sop_document('RLS Safety SOP','Safety','Use wheel chocks before inspection.',true)).version,1,'admin publishes SOP versions through RPC');
 select is((public.publish_pretrip_template('RLS Pretrip',array['Tires','Lights'])).version,1,'admin publishes pre-trip templates through RPC');

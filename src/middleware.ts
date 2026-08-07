@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/supabase/database.types";
 
-const protectedPrefixes = ["/dispatcher", "/driver", "/management", "/mfa"];
+const protectedPrefixes = ["/dispatcher", "/driver", "/management"];
 type Profile = { access_role: "admin" | "dispatcher" | "driver"; permission_overrides: Record<string, boolean> | null };
 const routePermissions: Array<{ prefix: string; key: string }> = [
   { prefix: "/management", key: "management" },
@@ -81,17 +81,7 @@ export async function middleware(request: NextRequest) {
   if (user && isEntry) { const destination = request.nextUrl.clone(); destination.pathname = profile ? await permittedDestination(profile) ?? "/login" : "/login"; destination.search = ""; return NextResponse.redirect(destination); }
   if (user && isProtected) {
     const path = request.nextUrl.pathname;
-    if (profile?.access_role === "admin" && path !== "/mfa") {
-      const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (assurance.data?.currentLevel !== "aal2") {
-        const destination = request.nextUrl.clone();
-        destination.pathname = "/mfa";
-        destination.search = "";
-        destination.searchParams.set("next", path);
-        return NextResponse.redirect(destination);
-      }
-    }
-    const baseAllowed = profile && ((path === "/mfa" && profile.access_role === "admin") || (path.startsWith("/driver") && profile.access_role === "driver") || (path.startsWith("/dispatcher") && profile.access_role !== "driver") || (path.startsWith("/management") && profile.access_role === "admin"));
+    const baseAllowed = profile && ((path.startsWith("/driver") && profile.access_role === "driver") || (path.startsWith("/dispatcher") && profile.access_role !== "driver") || (path.startsWith("/management") && profile.access_role === "admin"));
     const permission = routePermissions.find(route => path.startsWith(route.prefix));
     let permissionAllowed = true;
     if (profile && permission) {
@@ -101,7 +91,7 @@ export async function middleware(request: NextRequest) {
     const allowed = baseAllowed && permissionAllowed;
     if (!allowed) { const destination = request.nextUrl.clone(); destination.pathname = profile ? await permittedDestination(profile) ?? "/login" : "/login"; destination.search = ""; if (destination.pathname === path) destination.pathname = "/login"; return NextResponse.redirect(destination); }
   }
-  if (user && request.nextUrl.pathname === "/login" && profile) { const destination = request.nextUrl.clone(); const requested=safeInternalPath(request.nextUrl.searchParams.get("next")); if(profile.access_role==="admin"){const assurance=await supabase.auth.mfa.getAuthenticatorAssuranceLevel();if(assurance.data?.currentLevel!=="aal2"){destination.pathname="/mfa";destination.search="";destination.searchParams.set("next",requested??"/management");return NextResponse.redirect(destination);}} const allowedFallback = await permittedDestination(profile); if (!allowedFallback) return response; destination.pathname = requested ?? allowedFallback; destination.search = ""; return NextResponse.redirect(destination); }
+  if (user && request.nextUrl.pathname === "/login" && profile) { const destination = request.nextUrl.clone(); const requested=safeInternalPath(request.nextUrl.searchParams.get("next")); const allowedFallback = await permittedDestination(profile); if (!allowedFallback) return response; destination.pathname = requested ?? allowedFallback; destination.search = ""; return NextResponse.redirect(destination); }
   return response;
 }
 

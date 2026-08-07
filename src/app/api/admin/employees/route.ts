@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdminMfa } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 
 export async function POST(request: Request) {
-  const access = await requireAdminMfa();
+  const access = await requireAdmin();
   if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
   const { client } = access;
   const admin = createAdminClient();
