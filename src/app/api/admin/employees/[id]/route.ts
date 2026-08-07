@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminMfa } from "@/lib/admin-auth";
 import { permissionKeys } from "@/lib/permissions";
+import { isOwnerEmail } from "@/lib/owners";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await requireAdminMfa();
@@ -19,8 +20,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     changes.permission_overrides = input.permissionOverrides;
   }
   if (!Object.keys(changes).length) return NextResponse.json({ error: "No supported changes supplied" }, { status: 400 });
-  const existing = await admin.from("users").select("id,role,status,access_role,auth_user_id").eq("id", id).maybeSingle();
+  const existing = await admin.from("users").select("id,email,role,status,access_role,auth_user_id").eq("id", id).maybeSingle();
   if (!existing.data) return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+  if (isOwnerEmail(existing.data.email)) {
+    const ownerAccessChange = (input.accessRole && input.accessRole !== "admin") || input.status === "inactive" || Boolean(input.permissionOverrides && Object.keys(input.permissionOverrides).length);
+    if (ownerAccessChange) return NextResponse.json({ error: "Owner profiles must retain active full administrator access." }, { status: 400 });
+  }
   const demotesAdmin = existing.data.access_role === "admin" && input.accessRole && input.accessRole !== "admin";
   const deactivatesAdmin = existing.data.access_role === "admin" && input.status === "inactive";
   if (demotesAdmin || deactivatesAdmin) {

@@ -11,6 +11,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { Select } from "@/components/ui/Field";
 import { accessRoleLabel, effectivePermissions, permissionKeys, permissionLabels } from "@/lib/permissions";
+import { isOwnerProfile } from "@/lib/owners";
 import type { AccessRole } from "@/lib/types";
 import { useToast } from "@/components/system/ToastProvider";
 
@@ -23,6 +24,7 @@ export default function EmployeeAccessPage({ params }: { params: Promise<{ id: s
   if (!hydrated) return <div className="flex-1 bg-surface" />;
   if (!employee) return notFound();
   const effective = effectivePermissions(employee);
+  const owner = isOwnerProfile(employee);
   const visible = permissionKeys.filter((key) => effective[key]);
   const hidden = permissionKeys.filter((key) => !effective[key]);
 
@@ -34,21 +36,21 @@ export default function EmployeeAccessPage({ params }: { params: Promise<{ id: s
         <Card className="p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <Avatar initials={employee.initials} size="lg" />
-            <div className="flex-1"><h2 className="font-heading text-2xl font-bold uppercase tracking-wide text-brand-charcoal">{employee.fullName}</h2><p className="text-sm text-brand-steel">{employee.employeeId} · {employee.email}</p></div>
-            <div className="w-full sm:w-52"><label className="mb-1 block font-heading text-xs font-semibold uppercase tracking-wide text-brand-steel">Role Preset</label><Select disabled={!canMutate || currentUser?.accessRole !== "admin"} value={employee.accessRole} onChange={async (event) => { const result = await setUserAccessRole(employee.id, event.target.value as AccessRole); toast(result.ok ? "Access role updated" : result.error.message, { tone: result.ok ? "success" : "error" }); }}>{(["admin", "dispatcher", "driver"] as AccessRole[]).map((role) => <option key={role} value={role}>{accessRoleLabel[role]}</option>)}</Select></div>
+            <div className="flex-1"><h2 className="font-heading text-2xl font-bold uppercase tracking-wide text-brand-charcoal">{employee.fullName}</h2><p className="text-sm text-brand-steel">{employee.employeeId} · {employee.email}</p>{owner && <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-brand-blue">Owner · full administrator access</p>}</div>
+            <div className="w-full sm:w-52"><label className="mb-1 block font-heading text-xs font-semibold uppercase tracking-wide text-brand-steel">Role Preset</label><Select disabled={owner || !canMutate || currentUser?.accessRole !== "admin"} value={employee.accessRole} onChange={async (event) => { const result = await setUserAccessRole(employee.id, event.target.value as AccessRole); toast(result.ok ? "Access role updated" : result.error.message, { tone: result.ok ? "success" : "error" }); }}>{(["admin", "dispatcher", "driver"] as AccessRole[]).map((role) => <option key={role} value={role}>{accessRoleLabel[role]}</option>)}</Select></div>
           </div>
         </Card>
 
         <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
           <Card>
-            <CardHeader title="Module Permissions" action={<Button disabled={!canMutate || currentUser?.accessRole !== "admin"} variant="secondary" onClick={async () => { const result = await resetPermissionOverrides(employee.id); toast(result.ok ? "Overrides reset" : result.error.message, { tone: result.ok ? "success" : "error" }); }}>Reset to {accessRoleLabel[employee.accessRole]}</Button>} />
+            <CardHeader title="Module Permissions" action={<Button disabled={owner || !canMutate || currentUser?.accessRole !== "admin"} variant="secondary" onClick={async () => { const result = await resetPermissionOverrides(employee.id); toast(result.ok ? "Overrides reset" : result.error.message, { tone: result.ok ? "success" : "error" }); }}>Reset to {owner ? "Owner" : accessRoleLabel[employee.accessRole]}</Button>} />
             <div className="divide-y divide-brand-ice/60">
               {permissionKeys.map((permission) => {
                 const overridden = permission in employee.permissionOverrides;
                 return (
                   <div key={permission} className="flex items-center gap-4 px-5 py-3.5">
                     <div className="flex-1"><div className="text-sm font-medium text-brand-charcoal">{permissionLabels[permission]}</div><div className="text-xs text-brand-steel">{overridden ? "Individual override" : `${accessRoleLabel[employee.accessRole]} preset`}</div></div>
-                    <button disabled={!canMutate || currentUser?.accessRole !== "admin"} role="switch" aria-checked={effective[permission]} onClick={async () => { const result = await setPermissionOverride(employee.id, permission, !effective[permission]); toast(result.ok ? "Permission updated" : result.error.message, { tone: result.ok ? "success" : "error" }); }} className={`relative h-7 w-12 rounded-full transition-colors disabled:opacity-50 ${effective[permission] ? "bg-brand-blue" : "bg-brand-silver"}`} aria-label={`Toggle ${permissionLabels[permission]}`}><span className={`absolute left-0 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${effective[permission] ? "translate-x-6" : "translate-x-1"}`} /></button>
+                    <button disabled={owner || !canMutate || currentUser?.accessRole !== "admin"} role="switch" aria-checked={effective[permission]} onClick={async () => { const result = await setPermissionOverride(employee.id, permission, !effective[permission]); toast(result.ok ? "Permission updated" : result.error.message, { tone: result.ok ? "success" : "error" }); }} className={`relative h-7 w-12 rounded-full transition-colors disabled:opacity-50 ${effective[permission] ? "bg-brand-blue" : "bg-brand-silver"}`} aria-label={`Toggle ${permissionLabels[permission]}`}><span className={`absolute left-0 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${effective[permission] ? "translate-x-6" : "translate-x-1"}`} /></button>
                   </div>
                 );
               })}
@@ -61,7 +63,7 @@ export default function EmployeeAccessPage({ params }: { params: Promise<{ id: s
               <AccessList title={`Visible (${visible.length})`} items={visible.map((key) => permissionLabels[key])} enabled />
               <AccessList title={`Hidden (${hidden.length})`} items={hidden.map((key) => permissionLabels[key])} />
               <p className="text-xs leading-5 text-brand-steel">Role defaults come from the {accessRoleLabel[employee.accessRole]} preset. Individual overrides take priority and are enforced by the live authorization policy.</p>
-              {currentUser?.accessRole === "admin" && <div className="space-y-2 border-t border-brand-ice pt-4"><Button className="w-full" variant="secondary" disabled={!canMutate || pending} onClick={async () => { setPending(true); const response = await fetch(`/api/admin/employees/${employee.id}/invite`, { method: "POST" }); const body = await response.json() as { error?: string }; setPending(false); toast(response.ok ? "Password reset email initiated" : body.error ?? "Reset could not be initiated", { tone: response.ok ? "success" : "error" }); }}>Send Password Reset</Button><Button className="w-full" variant={employee.status === "active" ? "danger" : "secondary"} disabled={!canMutate || pending} onClick={async () => { setPending(true); const status = employee.status === "active" ? "inactive" : "active"; const response = await fetch(`/api/admin/employees/${employee.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ status }) }); const body = await response.json() as { error?: string }; if (response.ok) await refresh(); setPending(false); toast(response.ok ? `Employee ${status}` : body.error ?? "Employee status could not be updated", { tone: response.ok ? "success" : "error" }); }}>{employee.status === "active" ? "Deactivate Employee" : "Activate Employee"}</Button></div>}
+              {currentUser?.accessRole === "admin" && <div className="space-y-2 border-t border-brand-ice pt-4"><Button className="w-full" variant="secondary" disabled={!canMutate || pending} onClick={async () => { setPending(true); const response = await fetch(`/api/admin/employees/${employee.id}/invite`, { method: "POST" }); const body = await response.json() as { error?: string }; setPending(false); toast(response.ok ? "Password reset email initiated" : body.error ?? "Reset could not be initiated", { tone: response.ok ? "success" : "error" }); }}>Send Password Reset</Button>{owner ? <p className="rounded bg-brand-mist p-3 text-xs text-brand-steel">Owner profiles cannot be deactivated or downgraded from the app.</p> : <Button className="w-full" variant={employee.status === "active" ? "danger" : "secondary"} disabled={!canMutate || pending} onClick={async () => { setPending(true); const status = employee.status === "active" ? "inactive" : "active"; const response = await fetch(`/api/admin/employees/${employee.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ status }) }); const body = await response.json() as { error?: string }; if (response.ok) await refresh(); setPending(false); toast(response.ok ? `Employee ${status}` : body.error ?? "Employee status could not be updated", { tone: response.ok ? "success" : "error" }); }}>{employee.status === "active" ? "Deactivate Employee" : "Activate Employee"}</Button>}</div>}
             </div>
           </Card>
         </div>

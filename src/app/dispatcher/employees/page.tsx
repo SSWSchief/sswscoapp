@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/Field";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { accessRoleLabel } from "@/lib/permissions";
+import { isOwnerProfile } from "@/lib/owners";
 import { EmployeeModal } from "@/components/dispatcher/EmployeeModal";
 
 export default function EmployeesPage() {
@@ -40,7 +41,7 @@ export default function EmployeesPage() {
                 <TR key={employee.id}>
                   <TD className="font-mono text-sm font-semibold text-brand-charcoal">{employee.employeeId}</TD>
                   <TD><div className="flex items-center gap-3"><Avatar initials={employee.initials} size="sm" /><div><div className="font-medium text-brand-charcoal">{employee.fullName}</div><div className="text-xs text-brand-steel">{employee.email}</div></div></div></TD>
-                  <TD>{accessRoleLabel[employee.accessRole]}</TD>
+                  <TD>{isOwnerProfile(employee) ? "Owner" : accessRoleLabel[employee.accessRole]}</TD>
                   <TD>{employee.phone}</TD>
                   <TD><Badge tone={employee.status === "active" ? "green" : "gray"} label={employee.status === "active" ? "Active" : "Inactive"} /></TD>
                   <TD className="text-right"><Link href={`/dispatcher/employees/${employee.id}`} className="inline-flex items-center gap-1.5 font-medium text-brand-blue hover:underline"><Icon name="settings" width={17} height={17} />Manage</Link></TD>
@@ -61,7 +62,7 @@ export default function EmployeesPage() {
                   <Badge tone={employee.status === "active" ? "green" : "gray"} label={employee.status === "active" ? "Active" : "Inactive"} />
                 </div>
                 <div className="mt-2 flex items-center justify-between border-t border-brand-ice/50 pt-2">
-                  <span className="text-sm text-brand-steel">{accessRoleLabel[employee.accessRole]}</span>
+                  <span className="text-sm text-brand-steel">{isOwnerProfile(employee) ? "Owner" : accessRoleLabel[employee.accessRole]}</span>
                   <Link href={`/dispatcher/employees/${employee.id}`} className="flex min-h-11 items-center gap-2 px-2 font-medium text-brand-blue"><Icon name="settings" width={17} height={17} />Manage Access</Link>
                 </div>
               </li>

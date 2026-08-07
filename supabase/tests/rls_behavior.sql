@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(20);
 
 create function pg_temp.capture_sqlstate(command text) returns text language plpgsql as $$
 begin
@@ -53,6 +53,17 @@ insert into public.customers(id,name,address,is_active) values
 insert into public.jobs(id,reference,customer_id,address,service_type,dumpster_size,assigned_driver_id,scheduled_for,status) values
   ('rls-driver-job','#RLS-DRIVER','rls-customer-a','1 Test Way','Delivery','20 Yard','rls-driver',now(),'pending'),
   ('rls-other-job','#RLS-OTHER','rls-customer-b','2 Test Way','Delivery','20 Yard','rls-other',now(),'pending');
+
+update public.users
+set role='driver',
+    access_role='driver',
+    status='inactive',
+    permission_overrides='{"settings":false}'::jsonb
+where lower(email)='amarshall@sswsco.com';
+
+select is((select access_role from public.users where lower(email)='amarshall@sswsco.com'),'admin'::public.access_role,'Austin owner profile retains administrator access');
+select is((select role from public.users where lower(email)='tehronporter@gmail.com'),'management'::public.user_role,'Tehron owner profile is a management profile');
+select is((select status from public.users where lower(email)='amarshall@sswsco.com'),'active'::public.employee_status,'Owner profile cannot be deactivated by data import/update');
 
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',true);
 set local role authenticated;
