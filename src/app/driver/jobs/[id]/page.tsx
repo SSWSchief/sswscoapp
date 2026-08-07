@@ -153,6 +153,7 @@ export default function DriverJobDetailsPage({
             <PlatformMapLink address={job.address} className="flex min-h-12 items-center justify-center gap-2 rounded bg-brand-blue px-2 text-center font-heading text-sm font-semibold uppercase tracking-wide text-white active:bg-brand-navy"><Icon name="pin" width={18} height={18} />Navigate</PlatformMapLink>
             <a href={`tel:${job.phone.replace(/[^\d+]/g, "")}`} className="flex min-h-12 items-center justify-center gap-2 rounded border border-brand-blue/40 px-2 text-center font-heading text-sm font-semibold uppercase tracking-wide text-brand-blue"><Icon name="customers" width={18} height={18} />Call Customer</a>
           </div>
+          <JobProgress status={status} hasPhotos={photoCount > 0} />
         </div>
 
         <Panel title="Job Information">
@@ -277,7 +278,7 @@ export default function DriverJobDetailsPage({
             disabled={busy || !canMutate}
             className="w-full h-12 rounded bg-status-complete text-white font-heading font-semibold uppercase tracking-wide text-sm disabled:opacity-50"
           >
-            En Route
+            Start Route
           </button>
         )}
         {status === "en_route" && (
@@ -335,6 +336,30 @@ export default function DriverJobDetailsPage({
       </div>
       <ReasonDialog open={dryRunOpen} onClose={()=>setDryRunOpen(false)} onSubmit={markDryRun} busy={busy} title="Record dry run" label="What prevented service?" confirmLabel="Cancel as Dry Run" />
     </>
+  );
+}
+
+function JobProgress({ status, hasPhotos }: { status: JobStatus; hasPhotos: boolean }) {
+  const current = status === "complete" ? 4 : status === "arrived" ? hasPhotos ? 3 : 2 : status === "en_route" ? 1 : 0;
+  const steps = ["Start", "Arrive", "Photo", "Complete"];
+  return (
+    <div className="mt-4 rounded border border-brand-ice/70 bg-brand-mist/60 p-3 dark:border-white/10 dark:bg-white/5">
+      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-steel dark:text-gray-400">Job steps</div>
+      <ol className="grid grid-cols-4 gap-2">
+        {steps.map((step, index) => {
+          const done = current > index || status === "complete";
+          const active = current === index && status !== "complete";
+          return (
+            <li key={step} className="min-w-0">
+              <div className={`h-1.5 rounded-full ${done ? "bg-status-complete" : active ? "bg-brand-blue" : "bg-brand-ice dark:bg-white/15"}`} />
+              <div className={`mt-1 truncate text-[11px] font-medium ${done || active ? "text-brand-charcoal dark:text-white" : "text-brand-silver dark:text-gray-500"}`}>
+                {step}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 

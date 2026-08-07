@@ -23,11 +23,13 @@ const defaults: CompanySettings = {
   messageRetentionDays: 365,
   invoicePrefix: "INV",
 };
-const tabs = ["company", "general", "users"] as const;
+const tabs = ["company", "defaults", "checklist", "sops", "users"] as const;
 type Tab = (typeof tabs)[number];
 const tabLabels: Record<Tab, string> = {
   company: "Company",
-  general: "General",
+  defaults: "App Defaults",
+  checklist: "Driver Checklist",
+  sops: "SOP Library",
   users: "Users & Roles",
 };
 
@@ -159,30 +161,46 @@ export default function Page() {
             </section>
           )}
 
-          {activeTab === "general" && (
-            <section className="grid gap-6 p-5 lg:grid-cols-2">
+          {activeTab === "defaults" && (
+            <section className="p-5">
               <div className="space-y-4">
-                <CardHeader title="Operational Defaults" className="-mx-5 -mt-5" />
-                <FormField label="Message Retention Days" required error={errors.messageRetentionDays}><Input type="number" min="30" max="3650" value={form.messageRetentionDays} onChange={event => setForm({ ...form, messageRetentionDays: Number(event.target.value) })} /></FormField>
-                <FormField label="Invoice Prefix" required error={errors.invoicePrefix}><Input value={form.invoicePrefix} onChange={event => setForm({ ...form, invoicePrefix: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })} /></FormField>
-                <Button disabled={disabled || !settings} onClick={() => void save()}>{busy === "settings" ? "Saving..." : "Save Defaults"}</Button>
+                <CardHeader title="Simple app defaults" className="-mx-5 -mt-5" />
+                <p className="text-sm text-brand-steel">These values control how long app records stay visible and how invoice numbers start. Security keys and secrets stay outside the app.</p>
+                <FormField label="Keep messages for" required error={errors.messageRetentionDays} hint="30 to 3650 days"><Input type="number" min="30" max="3650" value={form.messageRetentionDays} onChange={event => setForm({ ...form, messageRetentionDays: Number(event.target.value) })} /></FormField>
+                <FormField label="Invoice numbers start with" required error={errors.invoicePrefix} hint="Example: INV, SSWS, or ROLL"><Input value={form.invoicePrefix} onChange={event => setForm({ ...form, invoicePrefix: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })} /></FormField>
+                <Button disabled={disabled || !settings} onClick={() => void save()}>{busy === "settings" ? "Saving..." : "Save App Defaults"}</Button>
               </div>
+            </section>
+          )}
+
+          {activeTab === "checklist" && (
+            <section className="p-5">
               <div className="space-y-4">
-                <CardHeader title="Content Versions" className="-mx-5 -mt-5" />
+                <CardHeader title="Driver pre-trip checklist" className="-mx-5 -mt-5" />
                 <div className="rounded border border-brand-ice p-3 text-sm text-brand-steel">
-                  <div>Latest SOP version: <span className="font-semibold text-brand-charcoal">{newestSopVersion || "None"}</span></div>
-                  <div>Published checklist: <span className="font-semibold text-brand-charcoal">{newestChecklist ? `${newestChecklist.title} v${newestChecklist.version}` : "None"}</span></div>
+                  Published checklist: <span className="font-semibold text-brand-charcoal">{newestChecklist ? `${newestChecklist.title} v${newestChecklist.version}` : "None"}</span>
                 </div>
-                <FormField label="SOP Title"><Input value={sop.title} onChange={event => setSop({ ...sop, title: event.target.value })} /></FormField>
-                <FormField label="SOP Category"><Input value={sop.category} onChange={event => setSop({ ...sop, category: event.target.value })} /></FormField>
-                <FormField label="SOP Content"><Textarea rows={6} value={sop.body} onChange={event => setSop({ ...sop, body: event.target.value })} /></FormField>
-                <label className="flex min-h-11 items-center gap-2 text-sm text-brand-charcoal"><input type="checkbox" checked={sop.required} onChange={event => setSop({ ...sop, required: event.target.checked })} />Require driver acknowledgement</label>
-                <Button disabled={disabled} onClick={() => void submitSop()}>{busy === "sop" ? "Publishing..." : "Publish SOP Version"}</Button>
-                <div className="pt-4">
-                  <FormField label="Checklist Title"><Input value={checklist.title} onChange={event => setChecklist({ ...checklist, title: event.target.value })} /></FormField>
-                </div>
+                <p className="text-sm text-brand-steel">Publish a new version when the approved inspection form changes. Failed items alert dispatch but do not automatically block truck assignment.</p>
+                <FormField label="Checklist name"><Input value={checklist.title} onChange={event => setChecklist({ ...checklist, title: event.target.value })} /></FormField>
                 <FormField label="Inspection Items" hint="One item per line"><Textarea rows={8} value={checklist.items} onChange={event => setChecklist({ ...checklist, items: event.target.value })} /></FormField>
-                <Button disabled={disabled} onClick={() => void submitChecklist()}>{busy === "checklist" ? "Publishing..." : "Publish Checklist Version"}</Button>
+                <Button disabled={disabled} onClick={() => void submitChecklist()}>{busy === "checklist" ? "Publishing..." : "Publish New Checklist"}</Button>
+              </div>
+            </section>
+          )}
+
+          {activeTab === "sops" && (
+            <section className="p-5">
+              <div className="space-y-4">
+                <CardHeader title="SOP Library" className="-mx-5 -mt-5" />
+                <div className="rounded border border-brand-ice p-3 text-sm text-brand-steel">
+                  Latest SOP version: <span className="font-semibold text-brand-charcoal">{newestSopVersion || "None"}</span>
+                </div>
+                <p className="text-sm text-brand-steel">Publish a new SOP when instructions change. Required SOPs ask drivers to acknowledge the updated version.</p>
+                <FormField label="SOP name"><Input value={sop.title} onChange={event => setSop({ ...sop, title: event.target.value })} /></FormField>
+                <FormField label="Category"><Input value={sop.category} onChange={event => setSop({ ...sop, category: event.target.value })} /></FormField>
+                <FormField label="Instructions"><Textarea rows={8} value={sop.body} onChange={event => setSop({ ...sop, body: event.target.value })} /></FormField>
+                <label className="flex min-h-11 items-center gap-2 text-sm text-brand-charcoal"><input type="checkbox" checked={sop.required} onChange={event => setSop({ ...sop, required: event.target.checked })} />Require drivers to acknowledge this SOP</label>
+                <Button disabled={disabled} onClick={() => void submitSop()}>{busy === "sop" ? "Publishing..." : "Publish New SOP"}</Button>
               </div>
             </section>
           )}

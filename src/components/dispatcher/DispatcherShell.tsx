@@ -7,7 +7,7 @@ import { Sidebar } from "./Sidebar";
 import { CommandPalette } from "./CommandPalette";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { DispatcherUIContext } from "./shell-context";
-import { dispatcherNav } from "./nav";
+import { dispatcherNavSections } from "./nav";
 import { Icon } from "@/components/ui/Icon";
 import { LogoFull } from "@/components/ui/Logo";
 import { useOperations } from "@/components/system/OperationsProvider";
@@ -20,7 +20,10 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = React.useState(false);
   const pathname = usePathname();
   const { notificationsFor, currentUser } = useOperations();
-  const visibleNav = currentUser ? dispatcherNav.filter(item => effectivePermissions(currentUser)[item.permission]) : dispatcherNav;
+  const permissions = currentUser ? effectivePermissions(currentUser) : null;
+  const visibleSections = dispatcherNavSections
+    .map(section => ({ ...section, items: permissions ? section.items.filter(item => permissions[item.permission]) : section.items }))
+    .filter(section => section.items.length > 0);
   const unreadCount = notificationsFor(currentUser?.id ?? "").filter(
     (notification) => !notification.acknowledgedAt
   ).length;
@@ -73,26 +76,33 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
                 <Icon name="close" />
               </button>
             </div>
-            <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-              {visibleNav.map((item) => {
-                const active = pathname.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "flex items-center gap-3 rounded px-3 py-2.5 font-heading text-sm font-medium uppercase tracking-wide",
-                      active
-                        ? "bg-brand-blue text-white"
-                        : "text-brand-ice hover:bg-white/10 hover:text-white"
-                    )}
-                  >
-                    <Icon name={item.icon} width={18} height={18} />
-                    {item.label}
-                  </Link>
-                );
-              })}
+            <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
+              {visibleSections.map((section) => (
+                <div key={section.label} className="space-y-1">
+                  <div className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-ice/55">
+                    {section.label}
+                  </div>
+                  {section.items.map((item) => {
+                    const active = pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(
+                          "flex items-center gap-3 rounded px-3 py-2.5 font-heading text-sm font-medium uppercase tracking-wide",
+                          active
+                            ? "bg-brand-blue text-white"
+                            : "text-brand-ice hover:bg-white/10 hover:text-white"
+                        )}
+                      >
+                        <Icon name={item.icon} width={18} height={18} />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
             </nav>
           </div>
         </div>
