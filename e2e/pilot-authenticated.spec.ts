@@ -25,7 +25,9 @@ const hasReduced = acceptanceEnvironmentAvailable([
 async function signIn(page: Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill(email);
-  await page.getByLabel(/password/i).fill(password);
+  await page
+    .getByRole("textbox", { name: "Password", exact: true })
+    .fill(password);
   await page.getByRole("button", { name: /sign in/i }).click();
 }
 
@@ -33,10 +35,7 @@ test.describe("authenticated production journeys", () => {
   test("administrator reaches every activated office module", async ({
     page,
   }) => {
-    test.skip(
-      !hasAdmin,
-      "Requires approved staging admin identity",
-    );
+    test.skip(!hasAdmin, "Requires approved staging admin identity");
     await signIn(
       page,
       process.env.E2E_ADMIN_EMAIL!,
@@ -66,13 +65,12 @@ test.describe("authenticated production journeys", () => {
       .getByLabel(/Type DELETE TRAINING DATA/)
       .fill("DELETE TRAINING DATA");
     await page.getByRole("button", { name: "Remove All Five Records" }).click();
-    await expect(page.getByText("No training dataset is active.")).toBeVisible();
+    await expect(
+      page.getByText("No training dataset is active."),
+    ).toBeVisible();
   });
   test("dispatcher reaches live daily operations", async ({ page }) => {
-    test.skip(
-      !hasDispatcher,
-      "Requires approved staging dispatcher identity",
-    );
+    test.skip(!hasDispatcher, "Requires approved staging dispatcher identity");
     await signIn(
       page,
       process.env.E2E_DISPATCHER_EMAIL!,
@@ -88,10 +86,7 @@ test.describe("authenticated production journeys", () => {
   test("driver reaches field, time, messages, pre-trip, and SOP workflows", async ({
     page,
   }) => {
-    test.skip(
-      !hasDriver,
-      "Requires approved staging driver identity",
-    );
+    test.skip(!hasDriver, "Requires approved staging driver identity");
     await signIn(
       page,
       process.env.E2E_DRIVER_EMAIL!,
@@ -110,10 +105,7 @@ test.describe("authenticated production journeys", () => {
     }
   });
   test("inactive employee is rejected", async ({ page }) => {
-    test.skip(
-      !hasInactive,
-      "Requires approved inactive staging identity",
-    );
+    test.skip(!hasInactive, "Requires approved inactive staging identity");
     await signIn(
       page,
       process.env.E2E_INACTIVE_EMAIL!,
@@ -123,10 +115,7 @@ test.describe("authenticated production journeys", () => {
     await expect(page.getByRole("alert")).toContainText(/inactive|not linked/i);
   });
   test("reduced dispatcher cannot open revoked modules", async ({ page }) => {
-    test.skip(
-      !hasReduced,
-      "Requires approved reduced-permission identity",
-    );
+    test.skip(!hasReduced, "Requires approved reduced-permission identity");
     await signIn(
       page,
       process.env.E2E_REDUCED_EMAIL!,
