@@ -4,6 +4,7 @@ import * as React from "react";
 
 export function ServiceWorkerRegistrar() {
   const [waiting, setWaiting] = React.useState<ServiceWorker | null>(null);
+  const reloadOnControllerChange = React.useRef(false);
 
   React.useEffect(() => {
     if (
@@ -11,10 +12,9 @@ export function ServiceWorkerRegistrar() {
       !("serviceWorker" in navigator)
     )
       return;
-    let refreshing = false;
     const onControllerChange = () => {
-      if (refreshing) return;
-      refreshing = true;
+      if (!reloadOnControllerChange.current) return;
+      reloadOnControllerChange.current = false;
       window.location.reload();
     };
     navigator.serviceWorker.addEventListener(
@@ -56,7 +56,10 @@ export function ServiceWorkerRegistrar() {
         A new version of Overwatch is ready.
       </span>
       <button
-        onClick={() => waiting.postMessage({ type: "SKIP_WAITING" })}
+        onClick={() => {
+          reloadOnControllerChange.current = true;
+          waiting.postMessage({ type: "SKIP_WAITING" });
+        }}
         className="min-h-11 rounded bg-white px-3 text-sm font-semibold text-brand-navy"
       >
         Update
