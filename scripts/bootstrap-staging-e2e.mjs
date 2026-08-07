@@ -1,5 +1,5 @@
 import { appendFile } from "node:fs/promises";
-import { randomBytes, createHmac } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 const required = (name) => {
@@ -7,53 +7,152 @@ const required = (name) => {
   if (!value) throw new Error(`${name} is required`);
   return value;
 };
-if (process.env.STAGING_ACCEPTANCE !== "true") throw new Error("Refusing to bootstrap without STAGING_ACCEPTANCE=true");
+if (process.env.STAGING_ACCEPTANCE !== "true")
+  throw new Error("Refusing to bootstrap without STAGING_ACCEPTANCE=true");
 const url = required("NEXT_PUBLIC_SUPABASE_URL");
-const publishableKey = required("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+required("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
 const secretKey = required("SUPABASE_SECRET_KEY");
 const stagingRef = required("STAGING_PROJECT_REF");
 const hostRef = new URL(url).hostname.split(".")[0];
-if (hostRef !== stagingRef) throw new Error("STAGING_PROJECT_REF does not match the configured Supabase URL");
-if (process.env.PRODUCTION_PROJECT_REF && stagingRef === process.env.PRODUCTION_PROJECT_REF) throw new Error("Refusing to bootstrap the production project");
-if (!process.env.GITHUB_ENV) throw new Error("This bootstrap is restricted to GitHub Actions staging runs");
+if (hostRef !== stagingRef)
+  throw new Error(
+    "STAGING_PROJECT_REF does not match the configured Supabase URL",
+  );
+if (
+  process.env.PRODUCTION_PROJECT_REF &&
+  stagingRef === process.env.PRODUCTION_PROJECT_REF
+)
+  throw new Error("Refusing to bootstrap the production project");
+if (!process.env.GITHUB_ENV)
+  throw new Error(
+    "This bootstrap is restricted to GitHub Actions staging runs",
+  );
 
-const service = createClient(url, secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
+const service = createClient(url, secretKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 const password = () => `${randomBytes(18).toString("base64url")}aA7!`;
 const suffix = stagingRef.slice(0, 8);
 const identities = [
-  { key: "ADMIN", employeeId: "E2E-ADMIN", name: "E2E Administrator", email: `e2e-admin-${suffix}@example.invalid`, role: "management", accessRole: "admin", status: "active", overrides: {} },
-  { key: "DISPATCHER", employeeId: "E2E-DISPATCH", name: "E2E Dispatcher", email: `e2e-dispatch-${suffix}@example.invalid`, role: "dispatcher", accessRole: "dispatcher", status: "active", overrides: {} },
-  { key: "DRIVER", employeeId: "E2E-DRIVER", name: "E2E Driver", email: `e2e-driver-${suffix}@example.invalid`, role: "driver", accessRole: "driver", status: "active", overrides: {} },
-  { key: "INACTIVE", employeeId: "E2E-INACTIVE", name: "E2E Inactive", email: `e2e-inactive-${suffix}@example.invalid`, role: "driver", accessRole: "driver", status: "inactive", overrides: {} },
-  { key: "REDUCED", employeeId: "E2E-REDUCED", name: "E2E Reduced", email: `e2e-reduced-${suffix}@example.invalid`, role: "dispatcher", accessRole: "dispatcher", status: "active", overrides: { customers: false, jobs: false } },
-  { key: "OTHER_DRIVER", employeeId: "E2E-OTHER", name: "E2E Other Driver", email: `e2e-other-${suffix}@example.invalid`, role: "driver", accessRole: "driver", status: "active", overrides: {} },
+  {
+    key: "ADMIN",
+    employeeId: "E2E-ADMIN",
+    name: "E2E Administrator",
+    email: `e2e-admin-${suffix}@example.invalid`,
+    role: "management",
+    accessRole: "admin",
+    status: "active",
+    overrides: {},
+  },
+  {
+    key: "DISPATCHER",
+    employeeId: "E2E-DISPATCH",
+    name: "E2E Dispatcher",
+    email: `e2e-dispatch-${suffix}@example.invalid`,
+    role: "dispatcher",
+    accessRole: "dispatcher",
+    status: "active",
+    overrides: {},
+  },
+  {
+    key: "DRIVER",
+    employeeId: "E2E-DRIVER",
+    name: "E2E Driver",
+    email: `e2e-driver-${suffix}@example.invalid`,
+    role: "driver",
+    accessRole: "driver",
+    status: "active",
+    overrides: {},
+  },
+  {
+    key: "INACTIVE",
+    employeeId: "E2E-INACTIVE",
+    name: "E2E Inactive",
+    email: `e2e-inactive-${suffix}@example.invalid`,
+    role: "driver",
+    accessRole: "driver",
+    status: "inactive",
+    overrides: {},
+  },
+  {
+    key: "REDUCED",
+    employeeId: "E2E-REDUCED",
+    name: "E2E Reduced",
+    email: `e2e-reduced-${suffix}@example.invalid`,
+    role: "dispatcher",
+    accessRole: "dispatcher",
+    status: "active",
+    overrides: { customers: false, jobs: false },
+  },
+  {
+    key: "OTHER_DRIVER",
+    employeeId: "E2E-OTHER",
+    name: "E2E Other Driver",
+    email: `e2e-other-${suffix}@example.invalid`,
+    role: "driver",
+    accessRole: "driver",
+    status: "active",
+    overrides: {},
+  },
 ];
 
-const authUsers = await service.auth.admin.listUsers({ page: 1, perPage: 1000 });
+const authUsers = await service.auth.admin.listUsers({
+  page: 1,
+  perPage: 1000,
+});
 if (authUsers.error) throw authUsers.error;
 for (const identity of identities) {
-  const existing = authUsers.data.users.find((user) => user.email?.toLowerCase() === identity.email);
+  const existing = authUsers.data.users.find(
+    (user) => user.email?.toLowerCase() === identity.email,
+  );
   if (existing) {
     const removed = await service.auth.admin.deleteUser(existing.id);
     if (removed.error) throw removed.error;
   }
   identity.password = password();
-  const created = await service.auth.admin.createUser({ email: identity.email, password: identity.password, email_confirm: true, user_metadata: { full_name: identity.name } });
+  const created = await service.auth.admin.createUser({
+    email: identity.email,
+    password: identity.password,
+    email_confirm: true,
+    user_metadata: { full_name: identity.name },
+  });
   if (created.error) throw created.error;
   identity.authId = created.data.user.id;
-  const prior = await service.from("users").select("id").eq("employee_id", identity.employeeId).maybeSingle();
+  const prior = await service
+    .from("users")
+    .select("id")
+    .eq("employee_id", identity.employeeId)
+    .maybeSingle();
   if (prior.error) throw prior.error;
-  identity.profileId = prior.data?.id ?? `e2e-${identity.key.toLowerCase().replaceAll("_", "-")}`;
-  const profile = await service.from("users").upsert({
-    id: identity.profileId, auth_user_id: identity.authId, employee_id: identity.employeeId,
-    full_name: identity.name, email: identity.email, phone: "", role: identity.role,
-    access_role: identity.accessRole, permission_overrides: identity.overrides, status: identity.status,
-    initials: identity.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2), deleted_at: null,
-  }, { onConflict: "id" });
+  identity.profileId =
+    prior.data?.id ?? `e2e-${identity.key.toLowerCase().replaceAll("_", "-")}`;
+  const profile = await service.from("users").upsert(
+    {
+      id: identity.profileId,
+      auth_user_id: identity.authId,
+      employee_id: identity.employeeId,
+      full_name: identity.name,
+      email: identity.email,
+      phone: "",
+      role: identity.role,
+      access_role: identity.accessRole,
+      permission_overrides: identity.overrides,
+      status: identity.status,
+      initials: identity.name
+        .split(/\s+/)
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2),
+      deleted_at: null,
+    },
+    { onConflict: "id" },
+  );
   if (profile.error) throw profile.error;
 }
 
-const byKey = Object.fromEntries(identities.map((identity) => [identity.key, identity]));
+const byKey = Object.fromEntries(
+  identities.map((identity) => [identity.key, identity]),
+);
 const fixtureUserIds = identities.map((identity) => identity.profileId);
 const fixtureJobIds = ["e2e-driver-job", "e2e-other-job"];
 const fixtureTruckIds = ["e2e-truck"];
@@ -64,19 +163,39 @@ const cleanupWrites = [
   service.from("invoices").delete().in("job_id", fixtureJobIds),
   service.from("message_reads").delete().in("user_id", fixtureUserIds),
   service.from("messages").delete().in("sender_id", fixtureUserIds),
-  service.from("message_channel_members").delete().in("user_id", fixtureUserIds),
+  service
+    .from("message_channel_members")
+    .delete()
+    .in("user_id", fixtureUserIds),
   service.from("message_channels").delete().in("created_by_id", fixtureUserIds),
   service.from("sop_acknowledgements").delete().in("user_id", fixtureUserIds),
   service.from("pretrip_submissions").delete().in("driver_id", fixtureUserIds),
   service.from("absence_events").delete().in("user_id", fixtureUserIds),
   service.from("time_requests").delete().in("user_id", fixtureUserIds),
   service.from("time_entries").delete().in("user_id", fixtureUserIds),
-  service.from("notifications").delete().in("recipient_user_id", fixtureUserIds),
-  service.from("trucks").update({ current_job_id: null }).in("id", fixtureTruckIds),
-  service.from("dumpsters").update({ current_job_id: null, current_customer_id: null, current_location: "Yard", status: "in_yard" }).in("id", fixtureDumpsterIds),
+  service
+    .from("notifications")
+    .delete()
+    .in("recipient_user_id", fixtureUserIds),
+  service
+    .from("trucks")
+    .update({ current_job_id: null })
+    .in("id", fixtureTruckIds),
+  service
+    .from("dumpsters")
+    .update({
+      current_job_id: null,
+      current_customer_id: null,
+      current_location: "Yard",
+      status: "in_yard",
+    })
+    .in("id", fixtureDumpsterIds),
   service.from("jobs").delete().in("id", fixtureJobIds),
 ];
-for (const write of cleanupWrites) { const result = await write; if (result.error) throw result.error; }
+for (const write of cleanupWrites) {
+  const result = await write;
+  if (result.error) throw result.error;
+}
 
 const settingsReset = await service.from("company_settings").upsert({
   id: true,
@@ -92,47 +211,90 @@ const settingsReset = await service.from("company_settings").upsert({
 if (settingsReset.error) throw settingsReset.error;
 
 const fixtureWrites = [
-  service.from("customers").upsert({ id: "e2e-customer", name: "E2E Customer", phone: "555-0100", email: "e2e-customer@example.invalid", address: "100 Test Way", customer_group: "Commercial", is_active: true, deleted_at: null }),
-  service.from("customers").upsert({ id: "e2e-other-customer", name: "E2E Other Customer", phone: "555-0101", email: "e2e-other@example.invalid", address: "200 Test Way", customer_group: "Commercial", is_active: true, deleted_at: null }),
-  service.from("trucks").upsert({ id: "e2e-truck", number: "E2E-T1", type: "Roll-off Truck", status: "in_use", license_plate: "E2ET1", mileage: 1000, assigned_driver_id: byKey.DRIVER.profileId, notes: "Acceptance fixture", deleted_at: null }),
-  service.from("dumpsters").upsert({ id: "e2e-dumpster", code: "E2E-D1", size: "20 Yard", status: "in_yard", type: "Roll-off", current_location: "Yard", notes: "Acceptance fixture", deleted_at: null }),
+  service.from("customers").upsert({
+    id: "e2e-customer",
+    name: "E2E Customer",
+    phone: "555-0100",
+    email: "e2e-customer@example.invalid",
+    address: "100 Test Way",
+    customer_group: "Commercial",
+    is_active: true,
+    deleted_at: null,
+  }),
+  service.from("customers").upsert({
+    id: "e2e-other-customer",
+    name: "E2E Other Customer",
+    phone: "555-0101",
+    email: "e2e-other@example.invalid",
+    address: "200 Test Way",
+    customer_group: "Commercial",
+    is_active: true,
+    deleted_at: null,
+  }),
+  service.from("trucks").upsert({
+    id: "e2e-truck",
+    number: "E2E-T1",
+    type: "Roll-off Truck",
+    status: "in_use",
+    license_plate: "E2ET1",
+    mileage: 1000,
+    assigned_driver_id: byKey.DRIVER.profileId,
+    notes: "Acceptance fixture",
+    deleted_at: null,
+  }),
+  service.from("dumpsters").upsert({
+    id: "e2e-dumpster",
+    code: "E2E-D1",
+    size: "20 Yard",
+    status: "in_yard",
+    type: "Roll-off",
+    current_location: "Yard",
+    notes: "Acceptance fixture",
+    deleted_at: null,
+  }),
 ];
-for (const write of fixtureWrites) { const result = await write; if (result.error) throw result.error; }
+for (const write of fixtureWrites) {
+  const result = await write;
+  if (result.error) throw result.error;
+}
 const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
 for (const job of [
-  { id: "e2e-driver-job", reference: "#E2E-DRIVER", customer_id: "e2e-customer", assigned_driver_id: byKey.DRIVER.profileId },
-  { id: "e2e-other-job", reference: "#E2E-OTHER", customer_id: "e2e-other-customer", assigned_driver_id: byKey.OTHER_DRIVER.profileId },
+  {
+    id: "e2e-driver-job",
+    reference: "#E2E-DRIVER",
+    customer_id: "e2e-customer",
+    assigned_driver_id: byKey.DRIVER.profileId,
+  },
+  {
+    id: "e2e-other-job",
+    reference: "#E2E-OTHER",
+    customer_id: "e2e-other-customer",
+    assigned_driver_id: byKey.OTHER_DRIVER.profileId,
+  },
 ]) {
-  const result = await service.from("jobs").upsert({ ...job, address: "100 Test Way", phone: "555-0100", service_type: "Delivery", dumpster_size: "20 Yard", scheduled_for: tomorrow, status: "pending", notes: "Acceptance fixture", deleted_at: null });
+  const result = await service.from("jobs").upsert({
+    ...job,
+    address: "100 Test Way",
+    phone: "555-0100",
+    service_type: "Delivery",
+    dumpster_size: "20 Yard",
+    scheduled_for: tomorrow,
+    status: "pending",
+    notes: "Acceptance fixture",
+    deleted_at: null,
+  });
   if (result.error) throw result.error;
 }
 
-function totp(secret) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  const clean = secret.replace(/\s/g, "").toUpperCase().replace(/=+$/, "");
-  let bits = "";
-  for (const char of clean) bits += alphabet.indexOf(char).toString(2).padStart(5, "0");
-  const key = Buffer.from((bits.match(/.{8}/g) ?? []).map((byte) => Number.parseInt(byte, 2)));
-  const counter = Buffer.alloc(8); counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000)));
-  const digest = createHmac("sha1", key).update(counter).digest(); const offset = digest.at(-1) & 15;
-  return ((digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).toString().padStart(6, "0");
-}
-const adminSession = createClient(url, publishableKey, { auth: { persistSession: false, autoRefreshToken: false } });
-const signedIn = await adminSession.auth.signInWithPassword({ email: byKey.ADMIN.email, password: byKey.ADMIN.password });
-if (signedIn.error) throw signedIn.error;
-const enrollment = await adminSession.auth.mfa.enroll({ factorType: "totp", friendlyName: "Automated staging acceptance" });
-if (enrollment.error) throw enrollment.error;
-const challenge = await adminSession.auth.mfa.challenge({ factorId: enrollment.data.id });
-if (challenge.error) throw challenge.error;
-const verified = await adminSession.auth.mfa.verify({ factorId: enrollment.data.id, challengeId: challenge.data.id, code: totp(enrollment.data.totp.secret) });
-if (verified.error) throw verified.error;
-await adminSession.auth.signOut();
-
-const env = identities.filter((identity) => identity.key !== "OTHER_DRIVER").flatMap((identity) => [
-  `E2E_${identity.key}_EMAIL=${identity.email}`,
-  `E2E_${identity.key}_PASSWORD=${identity.password}`,
-]);
-env.push(`E2E_ADMIN_TOTP_SECRET=${enrollment.data.totp.secret}`);
-for (const value of [...identities.map((identity) => identity.password), enrollment.data.totp.secret]) process.stdout.write(`::add-mask::${value}\n`);
-await appendFile(process.env.GITHUB_ENV, `${env.join("\n")}\n`, { mode: 0o600 });
+const env = identities
+  .filter((identity) => identity.key !== "OTHER_DRIVER")
+  .flatMap((identity) => [
+    `E2E_${identity.key}_EMAIL=${identity.email}`,
+    `E2E_${identity.key}_PASSWORD=${identity.password}`,
+  ]);
+for (const value of identities.map((identity) => identity.password))
+  process.stdout.write(`::add-mask::${value}\n`);
+await appendFile(process.env.GITHUB_ENV, `${env.join("\n")}\n`, {
+  mode: 0o600,
+});
 console.log(`Staging acceptance fixtures prepared for project ${stagingRef}.`);

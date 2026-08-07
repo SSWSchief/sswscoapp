@@ -12,14 +12,12 @@ import { DriverShellContext } from "./driver-context";
 import { effectivePermissions } from "@/lib/permissions";
 import { driverSecondaryNav } from "@/components/navigation/routes";
 import { createClient } from "@/lib/supabase/client";
-export { useDriverTheme } from "./driver-context";
 
 const STORAGE_KEY = "ssws-driver-theme";
 
 /**
- * Mobile-first driver shell. It stays full-width on phones and tablets, then
- * presents inside a phone frame on large desktops. Supports an optional night mode (persisted)
- * to cut glare on evening pickups.
+ * Mobile-first driver shell that expands into a centered field workspace on
+ * tablets and desktops. Night mode is persisted to reduce glare after dark.
  */
 export function DriverShell({ children }: { children: React.ReactNode }) {
   const [dark, setDark] = React.useState(false);
@@ -28,8 +26,15 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { notificationsFor, currentUser } = useOperations();
-  const visibleMenu=currentUser?driverSecondaryNav.filter(item=>effectivePermissions(currentUser)[item.permission]):[];
-  const unreadCount = currentUser ? notificationsFor(currentUser.id).filter((item) => !item.acknowledgedAt).length : 0;
+  const visibleMenu = currentUser
+    ? driverSecondaryNav.filter(
+        (item) => effectivePermissions(currentUser)[item.permission],
+      )
+    : [];
+  const unreadCount = currentUser
+    ? notificationsFor(currentUser.id).filter((item) => !item.acknowledgedAt)
+        .length
+    : 0;
 
   React.useEffect(() => {
     setDark(localStorage.getItem(STORAGE_KEY) === "dark");
@@ -51,26 +56,55 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <DriverShellContext.Provider value={{ dark, toggle, openMenu: () => setMenuOpen(true), openNotifications: () => setNotificationsOpen(true), unreadCount }}>
-      <div className="app-viewport-height bg-brand-navy flex items-center justify-center xl:py-8 dark:bg-black">
-        <div className="relative w-full max-w-full min-w-0 xl:max-w-[420px] xl:rounded-[2.25rem] xl:border-[10px] xl:border-brand-charcoal xl:shadow-2xl overflow-hidden bg-white dark:bg-gray-950">
+    <DriverShellContext.Provider
+      value={{
+        dark,
+        toggle,
+        openMenu: () => setMenuOpen(true),
+        openNotifications: () => setNotificationsOpen(true),
+        unreadCount,
+      }}
+    >
+      <div className="app-viewport-height flex items-stretch justify-center bg-brand-navy/5 dark:bg-black">
+        <div
+          data-driver-portal
+          className="relative w-full min-w-0 max-w-3xl overflow-hidden bg-white shadow-xl dark:bg-gray-950 lg:my-6 lg:rounded-xl lg:border lg:border-brand-ice/70"
+        >
           <div className={dark ? "dark" : undefined}>
-            <div className="app-fixed-height flex min-w-0 flex-col xl:h-[860px] bg-surface dark:bg-gray-950">
+            <div className="app-fixed-height flex min-w-0 flex-col bg-surface dark:bg-gray-950 lg:h-[calc(100dvh-3rem)]">
               {children}
               <BottomNav />
             </div>
           </div>
           {menuOpen && (
             <div className="absolute inset-0 z-[85]">
-              <button className="absolute inset-0 bg-brand-navy/55" onClick={() => setMenuOpen(false)} aria-label="Close menu backdrop" />
+              <button
+                className="absolute inset-0 bg-brand-navy/55"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Close menu backdrop"
+              />
               <aside className="safe-area-bottom absolute left-0 top-0 flex h-full w-[82%] max-w-[330px] flex-col bg-white shadow-2xl dark:bg-gray-900">
                 <div className="safe-drawer-header flex items-center justify-between border-b border-brand-ice px-4 dark:border-white/10">
                   <LogoFull className="scale-110 origin-left" />
-                  <button onClick={() => setMenuOpen(false)} className="text-brand-steel" aria-label="Close menu"><Icon name="close" /></button>
+                  <button
+                    onClick={() => setMenuOpen(false)}
+                    className="text-brand-steel"
+                    aria-label="Close menu"
+                  >
+                    <Icon name="close" />
+                  </button>
                 </div>
-                <nav className="flex-1 overflow-y-auto p-3 space-y-1" aria-label="More navigation">
+                <nav
+                  className="flex-1 overflow-y-auto p-3 space-y-1"
+                  aria-label="More navigation"
+                >
                   {visibleMenu.map((item) => (
-                    <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className={`flex items-center gap-3 rounded px-3 py-3 text-sm font-semibold ${pathname.startsWith(item.href) ? "bg-brand-blue text-white" : "text-brand-charcoal dark:text-gray-100"}`}>
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMenuOpen(false)}
+                      className={`flex items-center gap-3 rounded px-3 py-3 text-sm font-semibold ${pathname.startsWith(item.href) ? "bg-brand-blue text-white" : "text-brand-charcoal dark:text-gray-100"}`}
+                    >
                       <Icon name={item.icon} /> {item.label}
                     </Link>
                   ))}
@@ -83,7 +117,9 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
                   >
                     <Icon name="settings" />
                     <span className="flex-1 text-left">Night Mode</span>
-                    <span className="text-xs text-brand-steel">{dark ? "On" : "Off"}</span>
+                    <span className="text-xs text-brand-steel">
+                      {dark ? "On" : "Off"}
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -92,12 +128,17 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
                   >
                     <Icon name="logout" /> Log Out
                   </button>
-                  <div className="px-3 pb-1 text-xs text-brand-steel">{currentUser?.fullName} · Driver</div>
+                  <div className="px-3 pb-1 text-xs text-brand-steel">
+                    {currentUser?.fullName} · Driver
+                  </div>
                 </div>
               </aside>
             </div>
           )}
-          <DriverNotificationsPanel open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
+          <DriverNotificationsPanel
+            open={notificationsOpen}
+            onClose={() => setNotificationsOpen(false)}
+          />
         </div>
       </div>
     </DriverShellContext.Provider>

@@ -18,7 +18,7 @@ jobs:
       STAGING_DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
       PRODUCTION_PROJECT_REF: ${{ secrets.PRODUCTION_PROJECT_REF }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: supabase/setup-cli@v1
         with: { version: 2.111.0 }
       - name: Refuse production target
@@ -43,7 +43,7 @@ jobs:
           supabase migration list 2>&1 | tee migration-evidence/migrations-after.log
           supabase db lint --linked --level warning 2>&1 | tee migration-evidence/lint-linked.log
           supabase test db --linked 2>&1 | tee migration-evidence/pgtap-linked.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: staging-database-evidence

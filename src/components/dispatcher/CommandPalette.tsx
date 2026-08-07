@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { staffNavItems, type AppNavItem } from "@/components/navigation/routes";
 import { effectivePermissions } from "@/lib/permissions";
-import type { Customer,Dumpster,Job,Truck,User } from "@/lib/types";
+import type { Customer, Dumpster, Job, Truck, User } from "@/lib/types";
 
 interface Item {
   id: string;
@@ -18,7 +18,14 @@ interface Item {
   keywords: string;
 }
 
-function buildIndex(routes:AppNavItem[],jobs:Job[],customers:Customer[],trucks:Truck[],dumpsters:Dumpster[],users:User[]): Item[] {
+function buildIndex(
+  routes: AppNavItem[],
+  jobs: Job[],
+  customers: Customer[],
+  trucks: Truck[],
+  dumpsters: Dumpster[],
+  users: User[],
+): Item[] {
   const nav: Item[] = routes.map((route) => ({
     id: `nav-${route.permission}`,
     label: route.label,
@@ -89,7 +96,8 @@ export function CommandPalette({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const {jobs,customers,trucks,dumpsters,users,currentUser}=useOperations();
+  const { jobs, customers, trucks, dumpsters, users, currentUser } =
+    useOperations();
   const [query, setQuery] = React.useState("");
   const [active, setActive] = React.useState(0);
   const routes = React.useMemo(() => {
@@ -97,7 +105,10 @@ export function CommandPalette({
     const permissions = effectivePermissions(currentUser);
     return staffNavItems.filter((route) => permissions[route.permission]);
   }, [currentUser]);
-  const index = React.useMemo(()=>buildIndex(routes,jobs,customers,trucks,dumpsters,users), [routes,jobs,customers,trucks,dumpsters,users]);
+  const index = React.useMemo(
+    () => buildIndex(routes, jobs, customers, trucks, dumpsters, users),
+    [routes, jobs, customers, trucks, dumpsters, users],
+  );
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const results = React.useMemo(() => {
@@ -105,7 +116,7 @@ export function CommandPalette({
     if (!q) return index.slice(0, 8);
     return index
       .filter((i) =>
-        `${i.label} ${i.sub} ${i.keywords}`.toLowerCase().includes(q)
+        `${i.label} ${i.sub} ${i.keywords}`.toLowerCase().includes(q),
       )
       .slice(0, 12);
   }, [query, index]);
@@ -156,7 +167,12 @@ export function CommandPalette({
         className="relative w-full max-w-lg rounded-card bg-white shadow-2xl overflow-hidden border border-brand-ice"
       >
         <div className="flex items-center gap-3 px-4 border-b border-brand-ice/60">
-          <Icon name="search" className="text-brand-steel" width={18} height={18} />
+          <Icon
+            name="search"
+            className="text-brand-steel"
+            width={18}
+            height={18}
+          />
           <input
             ref={inputRef}
             value={query}
@@ -183,7 +199,7 @@ export function CommandPalette({
                 onClick={() => go(item)}
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-2.5 text-left",
-                  i === active ? "bg-brand-mist" : "hover:bg-brand-mist/70"
+                  i === active ? "bg-brand-mist" : "hover:bg-brand-mist/70",
                 )}
               >
                 <span className="h-8 w-8 rounded bg-brand-blue/10 text-brand-blue flex items-center justify-center shrink-0">

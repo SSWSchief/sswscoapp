@@ -1,2 +1,67 @@
-import {readFile} from "node:fs/promises";import {createHash} from "node:crypto";import {createClient} from "@supabase/supabase-js";
-const path=process.argv[2];const apply=process.argv.includes("--apply");if(!path)throw new Error("Usage: npm run import:validate -- <manifest.json> [--apply]");const raw=await readFile(path,"utf8");const payload=JSON.parse(raw);const groups=["users","customers","trucks","dumpsters","jobs"];const errors=[];for(const group of groups){if(payload[group]!==undefined&&!Array.isArray(payload[group]))errors.push(`${group} must be an array`);const seen=new Set();for(const [index,row] of (payload[group]??[]).entries()){if(!row?.id)errors.push(`${group}[${index}] is missing id`);else if(seen.has(row.id))errors.push(`${group} contains duplicate id ${row.id}`);seen.add(row.id);}}for(const [i,row] of (payload.customers??[]).entries())if(!row.name||!row.address)errors.push(`customers[${i}] requires name and address`);for(const [i,row] of (payload.jobs??[]).entries())for(const field of ["reference","customerId","address","serviceType","dumpsterSize","scheduledFor"])if(!row[field])errors.push(`jobs[${i}] requires ${field}`);const counts=Object.fromEntries(groups.map(g=>[g,(payload[g]??[]).length]));if(errors.length){console.error(JSON.stringify({status:"invalid",counts,errors},null,2));process.exit(1);}const hash=createHash("sha256").update(raw).digest("hex");if(!apply){console.log(JSON.stringify({status:"valid",dryRun:true,sourceHash:hash,counts},null,2));process.exit(0);}const url=process.env.NEXT_PUBLIC_SUPABASE_URL;const secret=process.env.SUPABASE_SECRET_KEY;if(!url||!secret)throw new Error("Supabase environment is required for --apply");const db=createClient(url,secret,{auth:{persistSession:false}});const result=await db.rpc("apply_operations_import",{payload,source_name:path,source_hash:hash});if(result.error)throw result.error;console.log(JSON.stringify(result.data,null,2));
+import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
+const path = process.argv[2];
+const apply = process.argv.includes("--apply");
+if (!path)
+  throw new Error(
+    "Usage: npm run import:validate -- <manifest.json> [--apply]",
+  );
+const raw = await readFile(path, "utf8");
+const payload = JSON.parse(raw);
+const groups = ["users", "customers", "trucks", "dumpsters", "jobs"];
+const errors = [];
+for (const group of groups) {
+  if (payload[group] !== undefined && !Array.isArray(payload[group]))
+    errors.push(`${group} must be an array`);
+  const seen = new Set();
+  for (const [index, row] of (payload[group] ?? []).entries()) {
+    if (!row?.id) errors.push(`${group}[${index}] is missing id`);
+    else if (seen.has(row.id))
+      errors.push(`${group} contains duplicate id ${row.id}`);
+    seen.add(row.id);
+  }
+}
+for (const [i, row] of (payload.customers ?? []).entries())
+  if (!row.name || !row.address)
+    errors.push(`customers[${i}] requires name and address`);
+for (const [i, row] of (payload.jobs ?? []).entries())
+  for (const field of [
+    "reference",
+    "customerId",
+    "address",
+    "serviceType",
+    "dumpsterSize",
+    "scheduledFor",
+  ])
+    if (!row[field]) errors.push(`jobs[${i}] requires ${field}`);
+const counts = Object.fromEntries(
+  groups.map((g) => [g, (payload[g] ?? []).length]),
+);
+if (errors.length) {
+  console.error(JSON.stringify({ status: "invalid", counts, errors }, null, 2));
+  process.exit(1);
+}
+const hash = createHash("sha256").update(raw).digest("hex");
+if (!apply) {
+  console.log(
+    JSON.stringify(
+      { status: "valid", dryRun: true, sourceHash: hash, counts },
+      null,
+      2,
+    ),
+  );
+  process.exit(0);
+}
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const secret = process.env.SUPABASE_SECRET_KEY;
+if (!url || !secret)
+  throw new Error("Supabase environment is required for --apply");
+const db = createClient(url, secret, { auth: { persistSession: false } });
+const result = await db.rpc("apply_operations_import", {
+  payload,
+  source_name: path,
+  source_hash: hash,
+});
+if (result.error) throw result.error;
+console.log(JSON.stringify(result.data, null, 2));

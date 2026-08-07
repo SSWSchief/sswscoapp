@@ -40,19 +40,34 @@ function JobsPageContent() {
   const searchParams = useSearchParams();
   const [createOpen, setCreateOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
-  const initialStatus = searchParams.get("status") === "active" ? "active" : filters.some((item) => item.value === searchParams.get("status")) ? searchParams.get("status") as JobStatus : "all";
+  const initialStatus =
+    searchParams.get("status") === "active"
+      ? "active"
+      : filters.some((item) => item.value === searchParams.get("status"))
+        ? (searchParams.get("status") as JobStatus)
+        : "all";
   const [filter, setFilter] = React.useState<StatusFilter>(initialStatus);
   const [sort, setSort] = React.useState<SortKey>("time");
-  const { jobs: allJobs, customers, dumpsters, trucks, users } = useOperations();
-  const todayOnly = searchParams.get("window") === "today" || searchParams.get("queue") === "unassigned";
+  const {
+    jobs: allJobs,
+    customers,
+    dumpsters,
+    trucks,
+    users,
+  } = useOperations();
+  const todayOnly =
+    searchParams.get("window") === "today" ||
+    searchParams.get("queue") === "unassigned";
   const unassignedOnly = searchParams.get("queue") === "unassigned";
 
   const jobs = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     const source = todayOnly ? jobsForPacificDay(allJobs) : allJobs;
     let list = source.filter((j) => {
-      if (filter === "active" && !["en_route", "arrived"].includes(j.status)) return false;
-      if (filter !== "all" && filter !== "active" && j.status !== filter) return false;
+      if (filter === "active" && !["en_route", "arrived"].includes(j.status))
+        return false;
+      if (filter !== "all" && filter !== "active" && j.status !== filter)
+        return false;
       if (unassignedOnly && j.assignedDriverId) return false;
       if (!q) return true;
       const customer = customers.find((item) => item.id === j.customerId);
@@ -108,7 +123,7 @@ function JobsPageContent() {
                     "min-h-11 px-3 rounded font-heading text-sm font-medium uppercase tracking-wide transition-colors",
                     filter === f.value
                       ? "bg-brand-blue text-white"
-                      : "text-brand-steel border border-brand-ice hover:bg-brand-mist"
+                      : "text-brand-steel border border-brand-ice hover:bg-brand-mist",
                   )}
                 >
                   {f.label}
@@ -120,7 +135,7 @@ function JobsPageContent() {
                   "min-h-11 px-3 rounded font-heading text-sm font-medium uppercase tracking-wide transition-colors",
                   filter === "active"
                     ? "bg-brand-blue text-white"
-                    : "text-brand-steel border border-brand-ice hover:bg-brand-mist"
+                    : "text-brand-steel border border-brand-ice hover:bg-brand-mist",
                 )}
               >
                 Active
@@ -175,7 +190,9 @@ function JobsPageContent() {
                   </THead>
                   <TBody>
                     {jobs.map((job) => {
-                      const customer = customers.find((item) => item.id === job.customerId);
+                      const customer = customers.find(
+                        (item) => item.id === job.customerId,
+                      );
                       const driver = job.assignedDriverId
                         ? users.find((item) => item.id === job.assignedDriverId)
                         : null;
@@ -183,7 +200,9 @@ function JobsPageContent() {
                         ? trucks.find((item) => item.id === job.assignedTruckId)
                         : null;
                       const dumpster = job.assignedDumpsterId
-                        ? dumpsters.find((item) => item.id === job.assignedDumpsterId)
+                        ? dumpsters.find(
+                            (item) => item.id === job.assignedDumpsterId,
+                          )
                         : null;
                       return (
                         <TR key={job.id}>
@@ -193,7 +212,9 @@ function JobsPageContent() {
                           <TD className="whitespace-nowrap">
                             {formatTime(job.scheduledFor)}
                           </TD>
-                          <TD className="whitespace-nowrap">{customer?.name}</TD>
+                          <TD className="whitespace-nowrap">
+                            {customer?.name}
+                          </TD>
                           <TD className="whitespace-nowrap">
                             {driver?.fullName ?? "—"}
                           </TD>
@@ -220,7 +241,9 @@ function JobsPageContent() {
               {/* Mobile cards */}
               <ul className="md:hidden divide-y divide-brand-ice/50">
                 {jobs.map((job) => {
-                  const customer = customers.find((item) => item.id === job.customerId);
+                  const customer = customers.find(
+                    (item) => item.id === job.customerId,
+                  );
                   const driver = job.assignedDriverId
                     ? users.find((item) => item.id === job.assignedDriverId)
                     : null;

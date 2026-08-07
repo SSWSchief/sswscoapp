@@ -27,9 +27,15 @@ export function MobileHeader({
           </Link>
         ) : null}
       </div>
-      <Link href="/driver/jobs" className="mx-auto flex min-w-0 items-center gap-2" aria-label="SSWSCO home">
+      <Link
+        href="/driver/jobs"
+        className="mx-auto flex min-w-0 items-center gap-2"
+        aria-label="SSWSCO home"
+      >
         <LogoMark className="h-9 w-10" />
-        <h1 className="truncate font-heading text-sm font-semibold uppercase tracking-wide text-brand-charcoal dark:text-white">{title}</h1>
+        <h1 className="truncate font-heading text-sm font-semibold uppercase tracking-wide text-brand-charcoal dark:text-white">
+          {title}
+        </h1>
       </Link>
       <button
         onClick={openNotifications}
@@ -37,7 +43,11 @@ export function MobileHeader({
         aria-label="Notifications"
       >
         <Icon name="bell" width={22} height={22} />
-        {unreadCount > 0 && <span className="absolute -right-1 -top-1 min-w-4 h-4 rounded-full bg-red-500 px-1 text-[10px] font-bold text-white flex items-center justify-center">{unreadCount}</span>}
+        {unreadCount > 0 && (
+          <span className="absolute -right-1 -top-1 min-w-4 h-4 rounded-full bg-red-500 px-1 text-[10px] font-bold text-white flex items-center justify-center">
+            {unreadCount}
+          </span>
+        )}
       </button>
     </header>
   );

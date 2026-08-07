@@ -54,13 +54,19 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       const duration = options.duration ?? 4000;
       setToasts((t) => [
         ...t,
-        { id, message, tone: options.tone ?? "info", duration, action: options.action },
+        {
+          id,
+          message,
+          tone: options.tone ?? "info",
+          duration,
+          action: options.action,
+        },
       ]);
       if (duration > 0) {
         window.setTimeout(() => dismiss(id), duration);
       }
     },
-    [dismiss]
+    [dismiss],
   );
 
   return (
@@ -78,7 +84,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               role={t.tone === "error" ? "alert" : "status"}
               className="w-full flex items-center gap-3 rounded bg-brand-navy text-white shadow-lg px-4 py-3 animate-[toastIn_.18s_ease-out]"
             >
-              <Icon name={meta.icon} width={18} height={18} className={cn("shrink-0", meta.className)} />
+              <Icon
+                name={meta.icon}
+                width={18}
+                height={18}
+                className={cn("shrink-0", meta.className)}
+              />
               <span className="text-sm flex-1">{t.message}</span>
               {t.action && (
                 <button

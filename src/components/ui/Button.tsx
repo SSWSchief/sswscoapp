@@ -4,14 +4,14 @@ import { cn } from "@/lib/utils";
 type Variant = "primary" | "secondary" | "danger" | "success" | "ghost";
 type Size = "sm" | "md";
 
-interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
 }
 
 const variants: Record<Variant, string> = {
-  primary: "bg-brand-blue text-white hover:bg-brand-navy focus-visible:ring-brand-blue",
+  primary:
+    "bg-brand-blue text-white hover:bg-brand-navy focus-visible:ring-brand-blue",
   secondary:
     "bg-white text-brand-blue border border-brand-blue/40 hover:bg-brand-mist focus-visible:ring-brand-blue",
   danger: "bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-600",
@@ -41,7 +41,7 @@ export function Button({
         "disabled:opacity-50 disabled:pointer-events-none",
         variants[variant],
         sizes[size],
-        className
+        className,
       )}
       {...props}
     >

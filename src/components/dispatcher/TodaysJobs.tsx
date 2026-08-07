@@ -16,15 +16,26 @@ import { jobsForPacificDay } from "@/lib/job-dates";
 /** Live operational jobs with transactional driver assignment. */
 export function TodaysJobs() {
   const { toast } = useToast();
-  const { jobs, users, customers, trucks, assignDriver: persistAssignment } = useOperations();
+  const {
+    jobs,
+    users,
+    customers,
+    trucks,
+    assignDriver: persistAssignment,
+  } = useOperations();
   const todaysJobs = React.useMemo(() => jobsForPacificDay(jobs), [jobs]);
-  const drivers = users.filter((user) => user.accessRole === "driver" && user.status === "active");
+  const drivers = users.filter(
+    (user) => user.accessRole === "driver" && user.status === "active",
+  );
 
   // A driver is "busy" if they already own an active job.
   const busyDriverIds = React.useMemo(() => {
     const s = new Set<string>();
     todaysJobs.forEach((j) => {
-      if ((j.status === "en_route" || j.status === "arrived") && j.assignedDriverId) {
+      if (
+        (j.status === "en_route" || j.status === "arrived") &&
+        j.assignedDriverId
+      ) {
         s.add(j.assignedDriverId);
       }
     });
@@ -34,7 +45,12 @@ export function TodaysJobs() {
   const assignDriver = async (jobId: string, driverId: string) => {
     const driver = drivers.find((d) => d.id === driverId);
     const result = await persistAssignment(jobId, driverId);
-    toast(result.ok ? `Assigned ${driver?.fullName ?? "driver"} to ${jobRef(jobs, jobId)}` : result.error.message, { tone: result.ok ? "success" : "error" });
+    toast(
+      result.ok
+        ? `Assigned ${driver?.fullName ?? "driver"} to ${jobRef(jobs, jobId)}`
+        : result.error.message,
+      { tone: result.ok ? "success" : "error" },
+    );
   };
 
   return (
@@ -82,8 +98,12 @@ export function TodaysJobs() {
               </THead>
               <TBody>
                 {todaysJobs.map((job) => {
-                  const customer = customers.find((item) => item.id === job.customerId);
-                  const truck = job.assignedTruckId ? trucks.find((item) => item.id === job.assignedTruckId) : null;
+                  const customer = customers.find(
+                    (item) => item.id === job.customerId,
+                  );
+                  const truck = job.assignedTruckId
+                    ? trucks.find((item) => item.id === job.assignedTruckId)
+                    : null;
                   return (
                     <TR key={job.id}>
                       <TD className="whitespace-nowrap font-medium text-brand-charcoal">
@@ -123,7 +143,9 @@ export function TodaysJobs() {
           {/* Mobile: cards instead of a horizontally scrolling table */}
           <ul className="md:hidden divide-y divide-gray-100">
             {todaysJobs.map((job) => {
-              const customer = customers.find((item) => item.id === job.customerId);
+              const customer = customers.find(
+                (item) => item.id === job.customerId,
+              );
               return (
                 <li key={job.id} className="p-4">
                   <div className="flex items-start justify-between gap-2">

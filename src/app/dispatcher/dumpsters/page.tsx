@@ -22,7 +22,13 @@ export default function DumpstersPage() {
       <Topbar
         title="Dumpsters"
         action={
-          <Button onClick={() => { setEditing(undefined); setOpen(true); }} aria-label="Add dumpster">
+          <Button
+            onClick={() => {
+              setEditing(undefined);
+              setOpen(true);
+            }}
+            aria-label="Add dumpster"
+          >
             <Icon name="plus" width={18} height={18} />
             <span className="hidden sm:inline">Add Dumpster</span>
           </Button>
@@ -43,14 +49,27 @@ export default function DumpstersPage() {
             <TBody>
               {dumpsters.map((d) => (
                 <TR key={d.id}>
-                  <TD className="font-semibold text-brand-charcoal">{d.code}</TD>
+                  <TD className="font-semibold text-brand-charcoal">
+                    {d.code}
+                  </TD>
                   <TD>{d.size}</TD>
                   <TD>
                     <DumpsterStatusBadge status={d.status} />
                   </TD>
                   <TD className="text-brand-steel">{d.currentLocation}</TD>
                   <TD className="text-brand-steel">{d.airTagId ?? "—"}</TD>
-                  <TD><button className="min-h-11 min-w-11 text-brand-blue" onClick={() => { setEditing(d); setOpen(true); }} aria-label={`Edit ${d.code}`}><Icon name="edit" width={18} height={18} /></button></TD>
+                  <TD>
+                    <button
+                      className="min-h-11 min-w-11 text-brand-blue"
+                      onClick={() => {
+                        setEditing(d);
+                        setOpen(true);
+                      }}
+                      aria-label={`Edit ${d.code}`}
+                    >
+                      <Icon name="edit" width={18} height={18} />
+                    </button>
+                  </TD>
                 </TR>
               ))}
             </TBody>
@@ -59,12 +78,33 @@ export default function DumpstersPage() {
             {dumpsters.map((dumpster) => (
               <li key={dumpster.id} className="p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div><h2 className="font-semibold text-brand-charcoal">{dumpster.code}</h2><p className="mt-1 text-sm text-brand-steel">{dumpster.size} · {dumpster.type}</p></div>
+                  <div>
+                    <h2 className="font-semibold text-brand-charcoal">
+                      {dumpster.code}
+                    </h2>
+                    <p className="mt-1 text-sm text-brand-steel">
+                      {dumpster.size} · {dumpster.type}
+                    </p>
+                  </div>
                   <DumpsterStatusBadge status={dumpster.status} />
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div><dt className="text-xs uppercase text-brand-silver">Location</dt><dd className="mt-0.5 break-words text-brand-charcoal">{dumpster.currentLocation}</dd></div>
-                  <div><dt className="text-xs uppercase text-brand-silver">AirTag</dt><dd className="mt-0.5 text-brand-charcoal">{dumpster.airTagId ?? "—"}</dd></div>
+                  <div>
+                    <dt className="text-xs uppercase text-brand-silver">
+                      Location
+                    </dt>
+                    <dd className="mt-0.5 break-words text-brand-charcoal">
+                      {dumpster.currentLocation}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs uppercase text-brand-silver">
+                      AirTag
+                    </dt>
+                    <dd className="mt-0.5 text-brand-charcoal">
+                      {dumpster.airTagId ?? "—"}
+                    </dd>
+                  </div>
                 </dl>
               </li>
             ))}
@@ -75,7 +115,11 @@ export default function DumpstersPage() {
         </Card>
       </div>
 
-      <AddDumpsterModal open={open} onClose={() => setOpen(false)} dumpster={editing} />
+      <AddDumpsterModal
+        open={open}
+        onClose={() => setOpen(false)}
+        dumpster={editing}
+      />
     </>
   );
 }

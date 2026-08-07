@@ -13,19 +13,33 @@ import { useState } from "react";
 
 // Screen 5 — Driver Dashboard (My Jobs).
 export default function DriverJobsPage() {
-  const { jobs: allJobs, currentUser, customers, trucks, dumpsters } = useOperations();
-  const [window,setWindow]=useState<DriverJobWindow>("today");
-  const jobs = driverJobsForWindow(allJobs,currentUser?.id??"",window);
+  const {
+    jobs: allJobs,
+    currentUser,
+    customers,
+    trucks,
+    dumpsters,
+  } = useOperations();
+  const [window, setWindow] = useState<DriverJobWindow>("today");
+  const jobs = driverJobsForWindow(allJobs, currentUser?.id ?? "", window);
 
   return (
     <>
       <MobileHeader title="My Jobs" />
 
       <div className="shrink-0 flex border-b border-brand-ice/70 bg-white dark:bg-gray-900 dark:border-white/10">
-        <button onClick={()=>setWindow("today")} aria-pressed={window==="today"} className={`flex-1 py-3 font-heading text-sm font-medium uppercase tracking-wide ${window==="today"?"text-brand-blue border-b-2 border-brand-blue":"text-brand-steel dark:text-gray-500"}`}>
+        <button
+          onClick={() => setWindow("today")}
+          aria-pressed={window === "today"}
+          className={`flex-1 py-3 font-heading text-sm font-medium uppercase tracking-wide ${window === "today" ? "text-brand-blue border-b-2 border-brand-blue" : "text-brand-steel dark:text-gray-500"}`}
+        >
           Today
         </button>
-        <button onClick={()=>setWindow("upcoming")} aria-pressed={window==="upcoming"} className={`flex-1 py-3 font-heading text-sm font-medium uppercase tracking-wide ${window==="upcoming"?"text-brand-blue border-b-2 border-brand-blue":"text-brand-steel dark:text-gray-500"}`}>
+        <button
+          onClick={() => setWindow("upcoming")}
+          aria-pressed={window === "upcoming"}
+          className={`flex-1 py-3 font-heading text-sm font-medium uppercase tracking-wide ${window === "upcoming" ? "text-brand-blue border-b-2 border-brand-blue" : "text-brand-steel dark:text-gray-500"}`}
+        >
           Upcoming
         </button>
       </div>
@@ -35,12 +49,20 @@ export default function DriverJobsPage() {
           <EmptyState
             icon="check"
             title="You're all caught up"
-            message={window==="today"?"No jobs assigned for today.":"No upcoming jobs assigned."}
+            message={
+              window === "today"
+                ? "No jobs assigned for today."
+                : "No upcoming jobs assigned."
+            }
           />
         ) : (
           jobs.map((job) => {
-            const customer = customers.find((item) => item.id === job.customerId);
-            const truck = job.assignedTruckId ? trucks.find((item) => item.id === job.assignedTruckId) : null;
+            const customer = customers.find(
+              (item) => item.id === job.customerId,
+            );
+            const truck = job.assignedTruckId
+              ? trucks.find((item) => item.id === job.assignedTruckId)
+              : null;
             const dumpster = job.assignedDumpsterId
               ? dumpsters.find((item) => item.id === job.assignedDumpsterId)
               : null;
@@ -73,7 +95,9 @@ export default function DriverJobsPage() {
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <Icon name="dumpster" width={14} height={14} />
-                      {dumpster ? `${dumpster.code} · ${job.dumpsterSize}` : job.dumpsterSize}
+                      {dumpster
+                        ? `${dumpster.code} · ${job.dumpsterSize}`
+                        : job.dumpsterSize}
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <Icon name="jobs" width={14} height={14} />

@@ -9,7 +9,9 @@ interface DispatcherUI {
   unreadCount: number;
 }
 
-export const DispatcherUIContext = React.createContext<DispatcherUI | null>(null);
+export const DispatcherUIContext = React.createContext<DispatcherUI | null>(
+  null,
+);
 
 export function useDispatcherUI(): DispatcherUI {
   return (

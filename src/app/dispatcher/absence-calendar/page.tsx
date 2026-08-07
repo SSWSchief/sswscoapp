@@ -7,7 +7,11 @@ import { useOperations } from "@/components/system/OperationsProvider";
 import { formatDate } from "@/lib/utils";
 
 export default function AbsenceCalendarPage() {
-  const { users, absenceEvents: absences, timeRequests: requests } = useOperations();
+  const {
+    users,
+    absenceEvents: absences,
+    timeRequests: requests,
+  } = useOperations();
   const drivers = users.filter((user) => user.accessRole === "driver");
 
   return (
@@ -20,9 +24,12 @@ export default function AbsenceCalendarPage() {
               <div className="font-heading text-xl font-semibold text-brand-charcoal">
                 {driver.initials}
               </div>
-              <div className="text-sm font-medium text-brand-charcoal">{driver.fullName}</div>
+              <div className="text-sm font-medium text-brand-charcoal">
+                {driver.fullName}
+              </div>
               <div className="text-xs text-brand-steel mt-1">
-                PTO {driver.ptoBalanceHours ?? 0}h · Week {driver.weeklyHours ?? 0}h
+                PTO {driver.ptoBalanceHours ?? 0}h · Week{" "}
+                {driver.weeklyHours ?? 0}h
               </div>
             </Card>
           ))}
@@ -34,14 +41,22 @@ export default function AbsenceCalendarPage() {
             {absences.map((absence) => {
               const user = users.find((item) => item.id === absence.userId);
               return (
-                <div key={absence.id} className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                <div
+                  key={absence.id}
+                  className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+                >
                   <div className="min-w-0">
-                    <div className="font-semibold text-brand-charcoal">{user?.fullName}</div>
+                    <div className="font-semibold text-brand-charcoal">
+                      {user?.fullName}
+                    </div>
                     <div className="text-sm text-brand-steel">
                       {formatDate(absence.date)} · {absence.note}
                     </div>
                   </div>
-                  <Badge tone={absence.status === "approved" ? "green" : "amber"} label={`${absence.type} ${absence.status}`} />
+                  <Badge
+                    tone={absence.status === "approved" ? "green" : "amber"}
+                    label={`${absence.type} ${absence.status}`}
+                  />
                 </div>
               );
             })}
@@ -54,14 +69,23 @@ export default function AbsenceCalendarPage() {
             {requests.map((request) => {
               const user = users.find((item) => item.id === request.userId);
               return (
-                <div key={request.id} className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                <div
+                  key={request.id}
+                  className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+                >
                   <div className="min-w-0">
-                    <div className="font-semibold text-brand-charcoal">{user?.fullName}</div>
+                    <div className="font-semibold text-brand-charcoal">
+                      {user?.fullName}
+                    </div>
                     <div className="text-sm text-brand-steel">
-                      {request.kind === "pto" ? "PTO" : "Time edit"} · {request.hours}h · {request.reason}
+                      {request.kind === "pto" ? "PTO" : "Time edit"} ·{" "}
+                      {request.hours}h · {request.reason}
                     </div>
                   </div>
-                  <Badge tone={request.status === "approved" ? "green" : "amber"} label={request.status} />
+                  <Badge
+                    tone={request.status === "approved" ? "green" : "amber"}
+                    label={request.status}
+                  />
                 </div>
               );
             })}

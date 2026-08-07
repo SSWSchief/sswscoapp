@@ -1,7 +1,7 @@
 "use client";
 
 interface ExportErrorBody {
-  error?: string | { message?: string };
+  error?: string | { message?: string; requestId?: string };
 }
 
 function filenameFromDisposition(header: string | null, fallbackName: string) {
@@ -14,7 +14,10 @@ async function safeErrorMessage(response: Response) {
   try {
     const body = (await response.json()) as ExportErrorBody;
     if (typeof body.error === "string") return body.error;
-    return body.error?.message ?? fallback;
+    const message = body.error?.message ?? fallback;
+    return body.error?.requestId
+      ? `${message} (Reference ${body.error.requestId})`
+      : message;
   } catch {
     return fallback;
   }
@@ -28,7 +31,10 @@ export async function downloadCsv(url: string, fallbackName: string) {
   const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = objectUrl;
-  link.download = filenameFromDisposition(response.headers.get("content-disposition"), fallbackName);
+  link.download = filenameFromDisposition(
+    response.headers.get("content-disposition"),
+    fallbackName,
+  );
   document.body.appendChild(link);
   link.click();
   link.remove();

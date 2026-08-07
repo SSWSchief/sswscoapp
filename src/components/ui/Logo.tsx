@@ -13,7 +13,7 @@ export function LogoMark({
       className={cn(
         "relative block shrink-0 overflow-hidden",
         dark && "brightness-0 invert",
-        className
+        className,
       )}
     >
       <Image
@@ -41,7 +41,11 @@ export function LogoFull({
     <div className={cn("flex items-center", className)}>
       <LogoMark
         dark={dark}
-        className={cn("h-16 w-36", markClassName, dark ? "opacity-95" : undefined)}
+        className={cn(
+          "h-16 w-36",
+          markClassName,
+          dark ? "opacity-95" : undefined,
+        )}
       />
     </div>
   );

@@ -1,2 +1,57 @@
-"use client";import {MobileHeader} from "@/components/driver/MobileHeader";import {Card} from "@/components/ui/Card";import {Button} from "@/components/ui/Button";import {Badge} from "@/components/ui/StatusBadge";import {useExpandedOperations} from "@/components/system/ExpandedOperationsProvider";import {useToast} from "@/components/system/ToastProvider";
-export default function Page(){const {sops,acknowledgeSop}=useExpandedOperations();const {toast}=useToast();return <><MobileHeader title="SOPs"/><div className="flex-1 space-y-3 overflow-y-auto bg-surface p-4">{sops.filter(s=>s.isPublished).map(s=><Card key={s.id} className="p-4"><div className="flex items-start justify-between gap-3"><div><div className="text-xs font-semibold uppercase text-brand-blue">{s.category} · v{s.version}</div><h2 className="mt-1 font-semibold">{s.title}</h2></div><Badge tone={s.acknowledged?"green":"amber"} label={s.acknowledged?"Reviewed":"Review"}/></div><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-brand-steel">{s.body}</p>{!s.acknowledged&&<Button className="mt-4 w-full" onClick={async()=>{const r=await acknowledgeSop(s.id);toast(r.ok?"SOP acknowledged":r.error.message,{tone:r.ok?"success":"error"})}}>I Have Read This SOP</Button>}</Card>)}{!sops.some(s=>s.isPublished)&&<Card className="p-6 text-center text-brand-steel">No published SOPs.</Card>}</div></>}
+"use client";
+import { MobileHeader } from "@/components/driver/MobileHeader";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/StatusBadge";
+import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
+import { useToast } from "@/components/system/ToastProvider";
+export default function Page() {
+  const { sops, acknowledgeSop } = useExpandedOperations();
+  const { toast } = useToast();
+  return (
+    <>
+      <MobileHeader title="SOPs" />
+      <div className="flex-1 space-y-3 overflow-y-auto bg-surface p-4">
+        {sops
+          .filter((s) => s.isPublished)
+          .map((s) => (
+            <Card key={s.id} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs font-semibold uppercase text-brand-blue">
+                    {s.category} · v{s.version}
+                  </div>
+                  <h2 className="mt-1 font-semibold">{s.title}</h2>
+                </div>
+                <Badge
+                  tone={s.acknowledged ? "green" : "amber"}
+                  label={s.acknowledged ? "Reviewed" : "Review"}
+                />
+              </div>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-brand-steel">
+                {s.body}
+              </p>
+              {!s.acknowledged && (
+                <Button
+                  className="mt-4 w-full"
+                  onClick={async () => {
+                    const r = await acknowledgeSop(s.id);
+                    toast(r.ok ? "SOP acknowledged" : r.error.message, {
+                      tone: r.ok ? "success" : "error",
+                    });
+                  }}
+                >
+                  I Have Read This SOP
+                </Button>
+              )}
+            </Card>
+          ))}
+        {!sops.some((s) => s.isPublished) && (
+          <Card className="p-6 text-center text-brand-steel">
+            No published SOPs.
+          </Card>
+        )}
+      </div>
+    </>
+  );
+}

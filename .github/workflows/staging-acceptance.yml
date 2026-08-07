@@ -14,15 +14,15 @@ jobs:
       PRODUCTION_PROJECT_REF: ${{ secrets.PRODUCTION_PROJECT_REF }}
       STAGING_ACCEPTANCE: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: Bootstrap isolated staging identities and fixtures
         run: npm run staging:bootstrap
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: staging-playwright-evidence

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-export interface DriverShellContextValue {
+interface DriverShellContextValue {
   dark: boolean;
   toggle: () => void;
   openMenu: () => void;

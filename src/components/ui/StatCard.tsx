@@ -22,7 +22,12 @@ export function StatCard({
 
   return (
     <Card className="p-5">
-      <div className={cn("font-heading text-4xl font-bold leading-none", valueTone)}>
+      <div
+        className={cn(
+          "font-heading text-4xl font-bold leading-none",
+          valueTone,
+        )}
+      >
         {value}
       </div>
       <div className="mt-2 font-heading text-sm font-semibold uppercase tracking-wide text-brand-charcoal">

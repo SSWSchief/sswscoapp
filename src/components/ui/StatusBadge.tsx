@@ -4,11 +4,7 @@ import {
   jobStatusLabel,
   truckStatusLabel,
 } from "@/lib/utils";
-import type {
-  DumpsterStatus,
-  JobStatus,
-  TruckStatus,
-} from "@/lib/types";
+import type { DumpsterStatus, JobStatus, TruckStatus } from "@/lib/types";
 import { Icon, type IconName } from "./Icon";
 
 /**
@@ -41,7 +37,7 @@ function Pill({
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-sm px-2.5 py-0.5 font-heading text-xs font-semibold uppercase tracking-wide whitespace-nowrap",
-        toneClasses[tone]
+        toneClasses[tone],
       )}
     >
       {icon && <Icon name={icon} width={12} height={12} className="shrink-0" />}
@@ -64,7 +60,11 @@ const jobIcon: Partial<Record<JobStatus, IconName>> = {
 
 export function JobStatusBadge({ status }: { status: JobStatus }) {
   return (
-    <Pill tone={jobTone[status]} label={jobStatusLabel[status]} icon={jobIcon[status]} />
+    <Pill
+      tone={jobTone[status]}
+      label={jobStatusLabel[status]}
+      icon={jobIcon[status]}
+    />
   );
 }
 
@@ -80,7 +80,11 @@ const truckIcon: Partial<Record<TruckStatus, IconName>> = {
 
 export function TruckStatusBadge({ status }: { status: TruckStatus }) {
   return (
-    <Pill tone={truckTone[status]} label={truckStatusLabel[status]} icon={truckIcon[status]} />
+    <Pill
+      tone={truckTone[status]}
+      label={truckStatusLabel[status]}
+      icon={truckIcon[status]}
+    />
   );
 }
 
@@ -95,7 +99,11 @@ const dumpsterIcon: Partial<Record<DumpsterStatus, IconName>> = {
 
 export function DumpsterStatusBadge({ status }: { status: DumpsterStatus }) {
   return (
-    <Pill tone={dumpsterTone[status]} label={dumpsterStatusLabel[status]} icon={dumpsterIcon[status]} />
+    <Pill
+      tone={dumpsterTone[status]}
+      label={dumpsterStatusLabel[status]}
+      icon={dumpsterIcon[status]}
+    />
   );
 }
 

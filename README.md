@@ -27,14 +27,14 @@ npm run db:lint
 npm audit
 ```
 
-`npm run check` runs ESLint, TypeScript, unit tests, and a production build. Playwright authenticated journeys require the staging identities documented in the manual launch checklist. Supabase database lint requires a running local stack or an explicit database URL.
+`npm run check` runs ESLint, TypeScript, coverage-gated unit tests, dead-code analysis, and a production build. Playwright authenticated journeys require the isolated staging identities documented in the manual launch checklist. Supabase database lint requires a running local stack or an explicit database URL.
 
 ## Operational behavior
 
 - Live Supabase data is the only production data source. Seed fixtures are isolated to development/tests and are never a runtime fallback.
 - When connectivity or session state is unhealthy, loaded records remain visible in memory but all mutations fail closed. Private records are never persisted offline.
 - The service worker caches only public shell/static assets; authenticated routes, APIs, Supabase responses, photos, and writes are network-only.
-- The Management Overview is an administrator-only dashboard whose drill-downs enter the same permission-enforced operations workspace. TOTP verification is temporarily disabled during acceptance testing; active-profile and administrator-role checks remain enforced.
+- The Management Overview is an administrator-only workspace whose drill-downs enter the same permission-enforced operations shell. Administrator MFA is intentionally disabled under the current release policy; active-profile, role, immutable-owner, rate-limit, short-session, and audit controls are the compensating safeguards. This accepted residual risk is reviewed before every production release.
 - Driver time events support clock-out after clock-in and zero or more complete break pairs in `America/Los_Angeles`; impossible sequences are rejected. Totals are exact and have no payroll, overtime, rounding, or automatic deductions.
 - Driver completion requires a private-bucket photo. Dispatcher completion without a photo requires an audited reason.
 

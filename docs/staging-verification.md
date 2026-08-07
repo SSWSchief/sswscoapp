@@ -4,7 +4,7 @@ The release uses two independent evidence lanes. Neither lane targets production
 
 ## Lane A: blank-database proof
 
-The `CI` workflow starts an isolated Supabase stack, resets it to an empty database, reapplies every migration through `202608060008`, lints the resulting schema, runs schema and behavioral pgTAP tests, and captures generated database types. The `migration-evidence` artifact is required release evidence.
+The `CI` workflow starts an isolated Supabase stack, resets it to an empty database, reapplies every committed migration, lints the resulting schema, runs schema and behavioral pgTAP tests, captures generated database types, and verifies the committed database contract contains every generated table and function. The `migration-evidence` artifact is required release evidence.
 
 Migration 008 may be amended only while it has never been applied to a shared staging or production project. After its first shared staging application, freeze it and make every correction in a new forward migration.
 
@@ -22,9 +22,9 @@ Configure the GitHub `staging` environment with required reviewers and these sec
 
 Run `Staging Database Verification` first with `apply_migrations=false`. Review the migration list and dry-run artifact. After approval and a staging backup, run it again with `apply_migrations=true`. This applies the pending migration set, then runs linked lint and pgTAP.
 
-Run `Staging Acceptance` only after the database workflow is green. Its bootstrap checks that the configured URL matches `STAGING_PROJECT_REF`, refuses a matching production reference, and only runs inside GitHub Actions with `STAGING_ACCEPTANCE=true`. It creates reserved `E2E-*` profiles, fresh Auth identities, an MFA-enrolled administrator, and isolated fixtures. Generated credentials are written to the current job environment without being printed.
+Run `Staging Acceptance` only after the database workflow is green. Its bootstrap checks that the configured URL matches `STAGING_PROJECT_REF`, refuses a matching production reference, and only runs inside GitHub Actions with `STAGING_ACCEPTANCE=true`. It creates reserved `E2E-*` profiles, fresh Auth identities, and isolated fixtures. Generated credentials are written to the current job environment without being printed.
 
-The acceptance suite then verifies browser routes on Chromium and mobile WebKit plus direct authenticated RLS behavior for administrator AAL1/AAL2, dispatcher defaults, revoked overrides, driver isolation, direct-write denial, and inactive profiles.
+The acceptance suite then verifies browser routes on Chromium and mobile WebKit plus direct authenticated RLS behavior for the password-only administrator policy, dispatcher defaults, revoked overrides, driver isolation, direct-write denial, and inactive profiles. Password-only administration is an explicitly accepted residual risk; strong passwords, short administrator sessions, Auth/application rate limits, immutable-owner protections, and audited administrator actions are mandatory compensating controls.
 
 ## Promotion rule
 

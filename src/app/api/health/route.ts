@@ -1,3 +1,56 @@
-import {NextResponse} from "next/server";import {createAdminClient} from "@/lib/supabase/admin";import {log} from "@/lib/logger";
-export const dynamic="force-dynamic";
-export async function GET(){const started=Date.now();try{const result=await createAdminClient().from("company_settings").select("id",{head:true,count:"exact"}).limit(1);if(result.error)throw result.error;return NextResponse.json({status:"ok",database:"reachable",latencyMs:Date.now()-started},{headers:{"cache-control":"no-store"}});}catch(error){log("error","health_check_failed",{message:error instanceof Error?error.message:"unknown"});return NextResponse.json({status:"unavailable"},{status:503,headers:{"cache-control":"no-store"}});}}
+import {
+  apiFailure,
+  apiSuccess,
+  logRequest,
+  requestId,
+} from "@/lib/api-response";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
+const route = "/api/health";
+
+export async function GET(request: Request) {
+  const startedAt = Date.now();
+  const requestIdValue = requestId(request);
+  try {
+    const databaseStartedAt = Date.now();
+    const result = await createAdminClient()
+      .from("company_settings")
+      .select("id", { head: true, count: "exact" })
+      .limit(1);
+    if (result.error) throw result.error;
+    const data = {
+      status: "ok",
+      dependencies: {
+        database: {
+          status: "reachable",
+          latencyMs: Date.now() - databaseStartedAt,
+        },
+      },
+      release: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? "local",
+    };
+    logRequest("info", "health_check_complete", {
+      requestId: requestIdValue,
+      route,
+      method: "GET",
+      startedAt,
+      status: 200,
+    });
+    return apiSuccess(data, requestIdValue);
+  } catch {
+    logRequest("error", "health_check_failed", {
+      requestId: requestIdValue,
+      route,
+      method: "GET",
+      startedAt,
+      status: 503,
+      code: "dependency_unavailable",
+    });
+    return apiFailure(
+      "dependency_unavailable",
+      "A required dependency is unavailable.",
+      503,
+      requestIdValue,
+    );
+  }
+}

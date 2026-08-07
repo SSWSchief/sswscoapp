@@ -1,0 +1,28 @@
+name: Production Health Smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify production health endpoint
+        env:
+          HEALTH_URL: https://sswscoapp.vercel.app/api/health
+        run: |
+          response="$(curl --fail-with-body --silent --show-error \
+            --connect-timeout 10 --max-time 30 \
+            --header 'Accept: application/json' "$HEALTH_URL")"
+          node -e '
+            const payload = JSON.parse(process.argv[1]);
+            if (!payload.data || payload.data.status !== "ok" || payload.data.database?.status !== "ok") {
+              throw new Error("Production health response is not healthy");
+            }
+          ' "$response"

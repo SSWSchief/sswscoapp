@@ -7,7 +7,7 @@ import { useOperations } from "@/components/system/OperationsProvider";
 import { LogoFull } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
 import { effectivePermissions } from "@/lib/permissions";
-import { dispatcherNavSections } from "./nav";
+import { staffNavSections } from "@/components/navigation/routes";
 import { DispatcherAccount } from "./DispatcherAccount";
 
 /** Desktop sidebar. The mobile drawer reuses `dispatcherNav` from ./nav. */
@@ -15,9 +15,14 @@ export function Sidebar() {
   const { currentUser } = useOperations();
   const pathname = usePathname();
   const permissions = currentUser ? effectivePermissions(currentUser) : null;
-  const visibleSections = dispatcherNavSections
-    .map(section => ({ ...section, items: permissions ? section.items.filter(item => permissions[item.permission]) : section.items }))
-    .filter(section => section.items.length > 0);
+  const visibleSections = staffNavSections
+    .map((section) => ({
+      ...section,
+      items: permissions
+        ? section.items.filter((item) => permissions[item.permission])
+        : section.items,
+    }))
+    .filter((section) => section.items.length > 0);
   return (
     <aside className="hidden md:flex md:flex-col w-60 shrink-0 bg-brand-navy text-white">
       <div className="h-24 flex items-center px-3 border-b border-white/10 bg-white">
@@ -41,7 +46,7 @@ export function Sidebar() {
                     "flex items-center gap-3 rounded px-3 py-2 font-heading text-sm font-medium uppercase tracking-wide transition-colors",
                     active
                       ? "bg-brand-blue text-white shadow-sm"
-                      : "text-brand-ice hover:bg-white/10 hover:text-white"
+                      : "text-brand-ice hover:bg-white/10 hover:text-white",
                   )}
                 >
                   <Icon name={item.icon} width={18} height={18} />

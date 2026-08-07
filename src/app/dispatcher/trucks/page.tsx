@@ -23,7 +23,13 @@ export default function TrucksPage() {
       <Topbar
         title="Trucks"
         action={
-          <Button onClick={() => { setEditing(undefined); setOpen(true); }} aria-label="Add truck">
+          <Button
+            onClick={() => {
+              setEditing(undefined);
+              setOpen(true);
+            }}
+            aria-label="Add truck"
+          >
             <Icon name="plus" width={18} height={18} />
             <span className="hidden sm:inline">Add Truck</span>
           </Button>
@@ -48,11 +54,16 @@ export default function TrucksPage() {
                 const driver = t.assignedDriverId
                   ? users.find((item) => item.id === t.assignedDriverId)
                   : null;
-                const job = t.currentJobId ? jobs.find((item) => item.id === t.currentJobId) : null;
+                const job = t.currentJobId
+                  ? jobs.find((item) => item.id === t.currentJobId)
+                  : null;
                 return (
                   <TR key={t.id}>
                     <TD className="font-semibold">
-                      <Link href={`/dispatcher/trucks/${t.id}`} className="text-brand-blue hover:underline">
+                      <Link
+                        href={`/dispatcher/trucks/${t.id}`}
+                        className="text-brand-blue hover:underline"
+                      >
                         {t.number}
                       </Link>
                     </TD>
@@ -74,11 +85,26 @@ export default function TrucksPage() {
                     </TD>
                     <TD className="text-brand-steel">{t.licensePlate}</TD>
                     <TD>
-                      <div className="text-sm text-brand-charcoal">{t.airTagId ?? "—"}</div>
-                      <div className="text-xs text-brand-steel">{t.gpsSource ?? "manual"}</div>
+                      <div className="text-sm text-brand-charcoal">
+                        {t.airTagId ?? "—"}
+                      </div>
+                      <div className="text-xs text-brand-steel">
+                        {t.gpsSource ?? "manual"}
+                      </div>
                     </TD>
                     <TD className="text-brand-steel">{t.notes || "—"}</TD>
-                    <TD><button className="min-h-11 min-w-11 text-brand-blue" onClick={() => { setEditing(t); setOpen(true); }} aria-label={`Edit ${t.number}`}><Icon name="edit" width={18} height={18} /></button></TD>
+                    <TD>
+                      <button
+                        className="min-h-11 min-w-11 text-brand-blue"
+                        onClick={() => {
+                          setEditing(t);
+                          setOpen(true);
+                        }}
+                        aria-label={`Edit ${t.number}`}
+                      >
+                        <Icon name="edit" width={18} height={18} />
+                      </button>
+                    </TD>
                   </TR>
                 );
               })}
@@ -86,19 +112,56 @@ export default function TrucksPage() {
           </Table>
           <ul className="divide-y divide-brand-ice/60 lg:hidden">
             {trucks.map((truck) => {
-              const driver = truck.assignedDriverId ? users.find((item) => item.id === truck.assignedDriverId) : null;
-              const job = truck.currentJobId ? jobs.find((item) => item.id === truck.currentJobId) : null;
+              const driver = truck.assignedDriverId
+                ? users.find((item) => item.id === truck.assignedDriverId)
+                : null;
+              const job = truck.currentJobId
+                ? jobs.find((item) => item.id === truck.currentJobId)
+                : null;
               return (
                 <li key={truck.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <Link href={`/dispatcher/trucks/${truck.id}`} className="flex min-h-11 items-center font-heading text-lg font-semibold text-brand-blue">{truck.number}</Link>
+                    <Link
+                      href={`/dispatcher/trucks/${truck.id}`}
+                      className="flex min-h-11 items-center font-heading text-lg font-semibold text-brand-blue"
+                    >
+                      {truck.number}
+                    </Link>
                     <TruckStatusBadge status={truck.status} />
                   </div>
                   <dl className="mt-2 grid grid-cols-2 gap-3 text-sm">
-                    <div><dt className="text-xs uppercase text-brand-silver">Driver</dt><dd className="mt-0.5 text-brand-charcoal">{driver?.fullName ?? "Unassigned"}</dd></div>
-                    <div><dt className="text-xs uppercase text-brand-silver">Job</dt><dd className="mt-0.5 text-brand-charcoal">{job?.reference ?? "—"}</dd></div>
-                    <div><dt className="text-xs uppercase text-brand-silver">License</dt><dd className="mt-0.5 text-brand-charcoal">{truck.licensePlate}</dd></div>
-                    <div><dt className="text-xs uppercase text-brand-silver">Mileage</dt><dd className="mt-0.5 text-brand-charcoal">{truck.mileage.toLocaleString()} mi</dd></div>
+                    <div>
+                      <dt className="text-xs uppercase text-brand-silver">
+                        Driver
+                      </dt>
+                      <dd className="mt-0.5 text-brand-charcoal">
+                        {driver?.fullName ?? "Unassigned"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs uppercase text-brand-silver">
+                        Job
+                      </dt>
+                      <dd className="mt-0.5 text-brand-charcoal">
+                        {job?.reference ?? "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs uppercase text-brand-silver">
+                        License
+                      </dt>
+                      <dd className="mt-0.5 text-brand-charcoal">
+                        {truck.licensePlate}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs uppercase text-brand-silver">
+                        Mileage
+                      </dt>
+                      <dd className="mt-0.5 text-brand-charcoal">
+                        {truck.mileage.toLocaleString()} mi
+                      </dd>
+                    </div>
                   </dl>
                 </li>
               );
@@ -110,7 +173,11 @@ export default function TrucksPage() {
         </Card>
       </div>
 
-      <AddTruckModal open={open} onClose={() => setOpen(false)} truck={editing} />
+      <AddTruckModal
+        open={open}
+        onClose={() => setOpen(false)}
+        truck={editing}
+      />
     </>
   );
 }

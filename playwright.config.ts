@@ -7,8 +7,17 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   timeout: 60_000,
   reporter: process.env.CI ? "github" : "list",
-  use: { baseURL: "http://127.0.0.1:3000", trace: "on-first-retry", navigationTimeout: 30_000 },
-  webServer: { command: "npm run dev", url: "http://127.0.0.1:3000", reuseExistingServer: !process.env.CI, timeout: 120_000 },
+  use: {
+    baseURL: "http://127.0.0.1:3000",
+    trace: "on-first-retry",
+    navigationTimeout: 30_000,
+  },
+  webServer: {
+    command: "npm run dev",
+    url: "http://127.0.0.1:3000",
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "mobile-safari", use: { ...devices["iPhone 13"] } },

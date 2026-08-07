@@ -17,8 +17,7 @@ const oswald = Oswald({
 
 export const metadata: Metadata = {
   title: "Overwatch | SSWSCO",
-  description:
-    "Silver State Waste Solutions — Overwatch operations platform.",
+  description: "Silver State Waste Solutions — Overwatch operations platform.",
   applicationName: "SSWSCO Overwatch",
   manifest: "/manifest.webmanifest",
   appleWebApp: {

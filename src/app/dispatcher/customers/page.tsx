@@ -18,17 +18,27 @@ export default function CustomersPage() {
   const { customers, deactivateCustomer, canMutate } = useOperations();
   const { toast } = useToast();
   const confirm = useConfirm();
-  const [query,setQuery]=React.useState("");
-  const [editing,setEditing]=React.useState<Customer|undefined>();
-  const [open,setOpen]=React.useState(false);
-  const visible=customers.filter(customer=>`${customer.name} ${customer.email} ${customer.phone} ${customer.address}`.toLowerCase().includes(query.toLowerCase()));
+  const [query, setQuery] = React.useState("");
+  const [editing, setEditing] = React.useState<Customer | undefined>();
+  const [open, setOpen] = React.useState(false);
+  const visible = customers.filter((customer) =>
+    `${customer.name} ${customer.email} ${customer.phone} ${customer.address}`
+      .toLowerCase()
+      .includes(query.toLowerCase()),
+  );
 
   return (
     <>
       <Topbar
         title="Customers"
         action={
-          <Button aria-label="Add customer" onClick={()=>{setEditing(undefined);setOpen(true)}}>
+          <Button
+            aria-label="Add customer"
+            onClick={() => {
+              setEditing(undefined);
+              setOpen(true);
+            }}
+          >
             <Icon name="plus" width={18} height={18} />
             <span className="hidden sm:inline">Add Customer</span>
           </Button>
@@ -45,7 +55,12 @@ export default function CustomersPage() {
                 width={18}
                 height={18}
               />
-              <Input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search customers..." className="pl-10" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search customers..."
+                className="pl-10"
+              />
             </div>
           </div>
 
@@ -65,10 +80,45 @@ export default function CustomersPage() {
                   <TD className="text-brand-steel">{c.email}</TD>
                   <TD>{c.activeJobs}</TD>
                   <TD className="text-right">
-                    <button onClick={()=>{setEditing(c);setOpen(true)}} aria-label={`Edit ${c.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center text-brand-steel hover:text-brand-blue">
+                    <button
+                      onClick={() => {
+                        setEditing(c);
+                        setOpen(true);
+                      }}
+                      aria-label={`Edit ${c.name}`}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-brand-steel hover:text-brand-blue"
+                    >
                       <Icon name="edit" width={18} height={18} />
                     </button>
-                    <button disabled={!canMutate || c.activeJobs > 0} title={c.activeJobs > 0 ? "Finish or cancel active jobs first" : "Deactivate customer"} onClick={async () => { if (!await confirm({ title: `Deactivate ${c.name}?`, message: "The customer will be removed from active operational lists. Audit history is retained.", confirmLabel: "Deactivate", tone: "danger" })) return; const result = await deactivateCustomer(c.id); toast(result.ok ? "Customer deactivated" : result.error.message, { tone: result.ok ? "success" : "error" }); }} aria-label={`Deactivate ${c.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center text-red-600 disabled:text-brand-silver">
+                    <button
+                      disabled={!canMutate || c.activeJobs > 0}
+                      title={
+                        c.activeJobs > 0
+                          ? "Finish or cancel active jobs first"
+                          : "Deactivate customer"
+                      }
+                      onClick={async () => {
+                        if (
+                          !(await confirm({
+                            title: `Deactivate ${c.name}?`,
+                            message:
+                              "The customer will be removed from active operational lists. Audit history is retained.",
+                            confirmLabel: "Deactivate",
+                            tone: "danger",
+                          }))
+                        )
+                          return;
+                        const result = await deactivateCustomer(c.id);
+                        toast(
+                          result.ok
+                            ? "Customer deactivated"
+                            : result.error.message,
+                          { tone: result.ok ? "success" : "error" },
+                        );
+                      }}
+                      aria-label={`Deactivate ${c.name}`}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-red-600 disabled:text-brand-silver"
+                    >
                       <Icon name="close" width={18} height={18} />
                     </button>
                   </TD>
@@ -82,11 +132,25 @@ export default function CustomersPage() {
               <li key={customer.id} className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <h2 className="font-semibold text-brand-charcoal">{customer.name}</h2>
-                    <a href={`tel:${customer.phone.replace(/[^\d+]/g, "")}`} className="mt-2 flex min-h-11 items-center text-sm font-medium text-brand-blue">{customer.phone}</a>
-                    <a href={`mailto:${customer.email}`} className="flex min-h-11 items-center break-all text-sm text-brand-blue">{customer.email}</a>
+                    <h2 className="font-semibold text-brand-charcoal">
+                      {customer.name}
+                    </h2>
+                    <a
+                      href={`tel:${customer.phone.replace(/[^\d+]/g, "")}`}
+                      className="mt-2 flex min-h-11 items-center text-sm font-medium text-brand-blue"
+                    >
+                      {customer.phone}
+                    </a>
+                    <a
+                      href={`mailto:${customer.email}`}
+                      className="flex min-h-11 items-center break-all text-sm text-brand-blue"
+                    >
+                      {customer.email}
+                    </a>
                   </div>
-                  <span className="rounded bg-brand-mist px-2.5 py-1 text-xs font-semibold text-brand-steel">{customer.activeJobs} active</span>
+                  <span className="rounded bg-brand-mist px-2.5 py-1 text-xs font-semibold text-brand-steel">
+                    {customer.activeJobs} active
+                  </span>
                 </div>
               </li>
             ))}
@@ -97,7 +161,11 @@ export default function CustomersPage() {
           </div>
         </Card>
       </div>
-      <CustomerModal open={open} onClose={()=>setOpen(false)} customer={editing}/>
+      <CustomerModal
+        open={open}
+        onClose={() => setOpen(false)}
+        customer={editing}
+      />
     </>
   );
 }
