@@ -26,7 +26,7 @@ jobs:
           test -n "$STAGING_DB_URL"
           test -n "$PRODUCTION_PROJECT_REF"
           test "$STAGING_PROJECT_REF" != "$PRODUCTION_PROJECT_REF"
-          node -e 'const url = new URL(process.env.STAGING_DB_URL); if (!url.hostname.includes(process.env.STAGING_PROJECT_REF)) process.exit(1)'
+          node -e 'const url = new URL(process.env.STAGING_DB_URL); const ref = process.env.STAGING_PROJECT_REF; const matchesProject = url.hostname.includes(ref) || url.username.endsWith(`.${ref}`); if (!url.hostname.endsWith(".supabase.com") || !matchesProject) process.exit(1)'
       - name: Capture migration status and dry run
         run: |
           mkdir -p migration-evidence
