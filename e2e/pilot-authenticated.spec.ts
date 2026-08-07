@@ -43,6 +43,7 @@ test.describe("authenticated production journeys", () => {
       process.env.E2E_ADMIN_EMAIL!,
       process.env.E2E_ADMIN_PASSWORD!,
     );
+    await expect(page).toHaveURL(/\/management/);
     for (const [path, heading] of [
       ["/dispatcher/invoices", "Invoices"],
       ["/dispatcher/reports", "Reports"],
@@ -79,7 +80,9 @@ test.describe("authenticated production journeys", () => {
       process.env.E2E_DISPATCHER_PASSWORD!,
     );
     await expect(page).toHaveURL(/\/dispatcher\/dashboard/);
-    await expect(page.getByRole("button", { name: /new job/i })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /view all jobs/i }),
+    ).toBeVisible();
     await page.goto("/dispatcher/jobs");
     await expect(page.getByText("Jobs", { exact: true }).first()).toBeVisible();
     await page.goto("/dispatcher/messages");
