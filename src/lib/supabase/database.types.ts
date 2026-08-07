@@ -327,6 +327,9 @@ export interface Database {
       company_settings: Table<CompanySettingsRow>;
       export_audit: Table<Record<string, unknown>>;
       import_runs: Table<Record<string, unknown>>;
+      unassigned_job_alerts: Table<
+        Record<string, unknown> & { job_id: string; alerted_at: string }
+      >;
       api_rate_limits: Table<
         Record<string, unknown> & {
           subject: string;
@@ -338,6 +341,14 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      admin_mfa_verified: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      assert_active_user: {
+        Args: { target_user_id: string; required_role?: AccessRole };
+        Returns: undefined;
+      };
       create_job: {
         Args: {
           customer_id: string;
@@ -425,6 +436,14 @@ export interface Database {
         Args: Record<PropertyKey, never>;
         Returns: Json;
       };
+      release_job_assets: {
+        Args: { previous_job: JobRow };
+        Returns: undefined;
+      };
+      reserve_job_assets: {
+        Args: { next_job: JobRow };
+        Returns: undefined;
+      };
       consume_api_rate_limit: {
         Args: {
           rate_bucket: string;
@@ -479,6 +498,17 @@ export interface Database {
       create_direct_message_channel: {
         Args: { other_user_id: string };
         Returns: string;
+      };
+      write_audit: {
+        Args: {
+          audit_action: string;
+          audit_reason?: string;
+          previous_values?: Json;
+          resulting_values?: Json;
+          target_id: string;
+          target_table: string;
+        };
+        Returns: undefined;
       };
     };
     Enums: {

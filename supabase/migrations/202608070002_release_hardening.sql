@@ -62,6 +62,41 @@ $$;
 revoke all on function public.customer_active_job_counts() from public,anon;
 grant execute on function public.customer_active_job_counts() to authenticated,service_role;
 
+create or replace function public.save_company_settings(
+  company_name text,
+  company_address text,
+  company_phone text,
+  company_email text,
+  company_time_zone text,
+  company_date_format text,
+  retention_days integer,
+  invoice_prefix text
+) returns public.company_settings language plpgsql security definer set search_path='' as $$
+declare changed public.company_settings;
+begin
+  if not public.admin_mfa_verified() then raise exception 'Administrator access required'; end if;
+  if length(trim(coalesce($1,''))) < 2 then raise exception 'Company name is required'; end if;
+  if nullif(trim(coalesce($4,'')),'') is not null and trim($4) !~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$' then raise exception 'Enter a valid company email'; end if;
+  if $5 <> 'America/Los_Angeles' then raise exception 'Unsupported time zone'; end if;
+  if $6 not in('MM/DD/YYYY','DD/MM/YYYY') then raise exception 'Unsupported date format'; end if;
+  if $7 < 30 or $7 > 3650 then raise exception 'Message retention must be between 30 and 3650 days'; end if;
+  if upper(trim(coalesce($8,''))) !~ '^[A-Z0-9]{2,12}$' then raise exception 'Invoice prefix must be 2 to 12 letters or numbers'; end if;
+  update public.company_settings as settings set
+    company_name=trim($1),
+    address=trim(coalesce($2,'')),
+    phone=trim(coalesce($3,'')),
+    email=lower(trim(coalesce($4,''))),
+    time_zone=$5,
+    date_format=$6,
+    message_retention_days=$7,
+    invoice_prefix=upper(trim($8)),
+    updated_at=now()
+  where settings.id=true returning settings.* into changed;
+  if changed.id is null then raise exception 'Company settings row is missing'; end if;
+  return changed;
+end;
+$$;
+
 create or replace function public.run_scheduled_maintenance_safe()
 returns jsonb language plpgsql security definer set search_path='' as $$
 begin
