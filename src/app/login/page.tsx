@@ -16,8 +16,13 @@ export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = React.useState("");
   const [message, setMessage] = React.useState("");
+  const [hydrated, setHydrated] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
+
+  React.useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const signIn = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -147,7 +152,7 @@ export default function LoginPage() {
             </p>
           )}
           <button
-            disabled={submitting}
+            disabled={!hydrated || submitting}
             className="flex min-h-11 w-full items-center justify-center rounded bg-brand-blue font-heading text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:bg-brand-navy disabled:opacity-60"
           >
             {submitting ? "Signing In…" : "Sign In"}

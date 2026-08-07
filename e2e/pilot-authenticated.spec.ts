@@ -24,11 +24,13 @@ const hasReduced = acceptanceEnvironmentAvailable([
 
 async function signIn(page: Page, email: string, password: string) {
   await page.goto("/login");
+  const submit = page.getByRole("button", { name: /sign in/i });
+  await expect(submit).toBeEnabled();
   await page.getByLabel(/email/i).fill(email);
   await page
     .getByRole("textbox", { name: "Password", exact: true })
     .fill(password);
-  await page.getByRole("button", { name: /sign in/i }).click();
+  await submit.click();
 }
 
 test.describe("authenticated production journeys", () => {
@@ -112,7 +114,9 @@ test.describe("authenticated production journeys", () => {
       process.env.E2E_INACTIVE_PASSWORD!,
     );
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByRole("alert")).toContainText(/inactive|not linked/i);
+    await expect(page.locator('p[role="alert"]')).toContainText(
+      /inactive|not linked/i,
+    );
   });
   test("reduced dispatcher cannot open revoked modules", async ({ page }) => {
     test.skip(!hasReduced, "Requires approved reduced-permission identity");
