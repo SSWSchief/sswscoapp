@@ -26,7 +26,7 @@ export default function EmployeesPage() {
   return (
     <>
       <Topbar title="Employees" action={<Button disabled={!canMutate || currentUser?.accessRole !== "admin"} onClick={() => setOpen(true)} aria-label="Add employee"><Icon name="plus" width={18} height={18} /><span className="hidden sm:inline">Add Employee</span></Button>} />
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="portal-content">
         <Card>
           <div className="p-5 border-b border-brand-ice/60">
             <div className="relative max-w-md">

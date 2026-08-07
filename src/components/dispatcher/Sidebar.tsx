@@ -2,31 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { Avatar } from "@/components/ui/Avatar";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { LogoFull } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
 import { effectivePermissions } from "@/lib/permissions";
-import { createClient } from "@/lib/supabase/client";
 import { dispatcherNavSections } from "./nav";
+import { DispatcherAccount } from "./DispatcherAccount";
 
 /** Desktop sidebar. The mobile drawer reuses `dispatcherNav` from ./nav. */
 export function Sidebar() {
   const { currentUser } = useOperations();
   const pathname = usePathname();
-  const router = useRouter();
   const permissions = currentUser ? effectivePermissions(currentUser) : null;
   const visibleSections = dispatcherNavSections
     .map(section => ({ ...section, items: permissions ? section.items.filter(item => permissions[item.permission]) : section.items }))
     .filter(section => section.items.length > 0);
-  const signOut = async () => {
-    await createClient().auth.signOut();
-    router.replace("/login");
-    router.refresh();
-  };
-
   return (
     <aside className="hidden md:flex md:flex-col w-60 shrink-0 bg-brand-navy text-white">
       <div className="h-24 flex items-center px-3 border-b border-white/10 bg-white">
@@ -63,19 +54,7 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-white/10 p-3">
-        <button type="button" onClick={signOut} className="flex w-full items-center gap-2.5 rounded px-2 py-2 text-left hover:bg-white/10">
-          <Avatar
-            initials={currentUser?.initials ?? "--"}
-            size="sm"
-            colorful={false}
-            className="bg-brand-blue/25 text-brand-ice"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">{currentUser?.fullName ?? "Loading account"}</div>
-            <div className="text-xs capitalize text-brand-ice/70">{currentUser?.accessRole ?? ""}</div>
-          </div>
-          <Icon name="logout" width={16} height={16} className="text-brand-ice/70" />
-        </button>
+        <DispatcherAccount />
       </div>
     </aside>
   );

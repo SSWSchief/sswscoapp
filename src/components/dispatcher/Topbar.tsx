@@ -25,7 +25,7 @@ export function Topbar({
         >
           <Icon name="menu" />
         </button>
-        <h1 className="font-heading text-xl font-semibold uppercase tracking-wide text-brand-charcoal truncate">
+        <h1 className="truncate font-heading text-lg font-semibold uppercase tracking-normal text-brand-charcoal min-[390px]:text-xl min-[390px]:tracking-wide">
           {title}
         </h1>
       </div>

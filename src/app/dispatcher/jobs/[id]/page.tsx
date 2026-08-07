@@ -58,7 +58,7 @@ export default function JobDetailsPage({
         }
       />
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+      <div className="portal-content space-y-5">
         <Link
           href="/dispatcher/jobs"
           className="inline-flex min-h-11 items-center gap-1.5 text-sm text-brand-steel hover:text-brand-charcoal"

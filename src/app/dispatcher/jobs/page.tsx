@@ -82,7 +82,7 @@ function JobsPageContent() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="portal-content">
         <Card>
           <div className="flex flex-col gap-3 p-4 sm:p-5 border-b border-brand-ice/60">
             <div className="relative">
@@ -276,7 +276,7 @@ function JobsPageShell() {
   return (
     <>
       <Topbar title="Jobs" />
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="portal-content">
         <Card className="p-6 text-sm text-brand-steel">Loading jobs…</Card>
       </div>
     </>

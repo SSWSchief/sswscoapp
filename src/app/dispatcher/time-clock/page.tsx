@@ -22,7 +22,7 @@ export default function TimeClockPage() {
   return (
     <>
       <Topbar title="Time Clock" />
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="portal-content">
         <Card>
           <div className="px-5 py-4 border-b border-brand-ice/60">
             <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">

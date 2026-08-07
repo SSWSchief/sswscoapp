@@ -63,7 +63,7 @@ export default function Page() {
     return (
       <>
         <Topbar title="Settings" />
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="portal-content">
           <Card className="p-5">
             <h2 className="font-heading text-lg font-semibold uppercase">Administrator access required</h2>
             <p className="mt-2 text-sm text-brand-steel">Settings are restricted to administrator accounts with MFA.</p>

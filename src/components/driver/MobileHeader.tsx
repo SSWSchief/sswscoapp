@@ -9,13 +9,11 @@ import { useDriverTheme } from "./driver-context";
 export function MobileHeader({
   title,
   back,
-  menu,
 }: {
   title: string;
   back?: string;
-  menu?: boolean;
 }) {
-  const { openMenu, openNotifications, unreadCount } = useDriverTheme();
+  const { openNotifications, unreadCount } = useDriverTheme();
   return (
     <header className="safe-header safe-area-x grid shrink-0 grid-cols-[44px_minmax(0,1fr)_44px] items-center bg-white border-b border-brand-ice/70 dark:bg-gray-900 dark:border-white/10">
       <div className="flex justify-start">
@@ -27,10 +25,6 @@ export function MobileHeader({
           >
             <Icon name="chevron-right" className="rotate-180" />
           </Link>
-        ) : menu ? (
-          <button onClick={openMenu} className="-ml-2 inline-flex min-h-11 min-w-11 items-center justify-center text-brand-steel dark:text-gray-300" aria-label="Menu">
-            <Icon name="menu" />
-          </button>
         ) : null}
       </div>
       <Link href="/driver/jobs" className="mx-auto flex min-w-0 items-center gap-2" aria-label="SSWSCO home">

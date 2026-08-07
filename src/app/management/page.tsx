@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { LogoFull } from "@/components/ui/Logo";
+import { Topbar } from "@/components/dispatcher/Topbar";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { jobsForPacificDay } from "@/lib/job-dates";
 
-const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const currency = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
 
 export default function Page() {
   const { jobs, trucks, dumpsters, timeRequests, users } = useOperations();
@@ -35,39 +38,30 @@ export default function Page() {
   ];
 
   return (
-    <main className="app-viewport-height bg-brand-mist">
-      <div className="safe-area-all mx-auto flex min-h-dvh max-w-6xl flex-col gap-5">
-        <div className="rounded-card border border-brand-ice/60 bg-white p-4 shadow-card sm:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <LogoFull markClassName="h-14 w-32 sm:h-16 sm:w-36" />
-            <div className="min-w-0 sm:text-right">
-              <p className="font-heading text-xs font-semibold uppercase tracking-wide text-brand-blue">Management</p>
-              <h1 className="truncate font-heading text-2xl font-bold uppercase text-brand-charcoal">Operations Overview</h1>
-              <p className="text-sm text-brand-steel">Administrator oversight · live operational data</p>
-            </div>
-          </div>
-        </div>
+    <>
+      <Topbar title="Management Overview" />
+      <div className="portal-content portal-stack">
+        <Card className="portal-card-pad">
+          <p className="font-heading text-xs font-semibold uppercase tracking-wide text-brand-blue">Administrator oversight</p>
+          <p className="mt-1 text-sm text-brand-steel">Live operational metrics, exceptions, and administrative tools.</p>
+        </Card>
 
         <div className="portal-metric-grid">
-          {metrics.map((metric) => (
-            <MetricLink key={metric.label} {...metric} />
-          ))}
+          {metrics.map((metric) => <MetricLink key={metric.label} {...metric} />)}
         </div>
 
         <div className="grid gap-5 lg:grid-cols-2">
           <Card>
             <CardHeader title="Exceptions" />
             <div className="divide-y divide-brand-ice">
-              {exceptions.map((exception) => (
-                <ExceptionLink key={exception.label} {...exception} />
-              ))}
+              {exceptions.map((exception) => <ExceptionLink key={exception.label} {...exception} />)}
             </div>
           </Card>
           <Card>
-            <CardHeader title="Management Links" />
+            <CardHeader title="Admin Tools" />
             <div className="portal-action-grid p-4">
               {[
-                ["Operations", "/dispatcher/dashboard"],
+                ["Operations Workspace", "/dispatcher/dashboard"],
                 ["Invoices", "/dispatcher/invoices"],
                 ["Reports", "/dispatcher/reports"],
                 ["Settings", "/dispatcher/settings"],
@@ -75,7 +69,7 @@ export default function Page() {
                 <Link
                   key={href}
                   href={href}
-                  className="flex min-h-14 items-center justify-center rounded border border-brand-blue font-semibold text-brand-blue transition-colors hover:bg-brand-blue hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
+                  className="flex min-h-14 items-center justify-center rounded border border-brand-blue px-3 text-center font-semibold text-brand-blue transition-colors hover:bg-brand-blue hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
                 >
                   {label}
                 </Link>
@@ -84,17 +78,13 @@ export default function Page() {
           </Card>
         </div>
       </div>
-    </main>
+    </>
   );
 }
 
 function MetricLink({ label, value, href }: { label: string; value: React.ReactNode; href: string }) {
   return (
-    <Link
-      href={href}
-      aria-label={`Open ${label}`}
-      className="block rounded-card focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
-    >
+    <Link href={href} aria-label={`Open ${label}`} className="block rounded-card focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue">
       <Card className="portal-card-pad transition-colors hover:border-brand-blue hover:bg-white">
         <div className="font-heading text-2xl font-bold min-[390px]:text-3xl">{value}</div>
         <div className="text-sm uppercase text-brand-steel">{label}</div>
@@ -106,10 +96,7 @@ function MetricLink({ label, value, href }: { label: string; value: React.ReactN
 
 function ExceptionLink({ label, value, href }: { label: string; value: React.ReactNode; href: string }) {
   return (
-    <Link
-      href={href}
-      className="flex min-h-14 justify-between p-4 transition-colors hover:bg-brand-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-blue"
-    >
+    <Link href={href} className="flex min-h-14 justify-between p-4 transition-colors hover:bg-brand-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-blue">
       <span>{label}</span>
       <strong>{value}</strong>
     </Link>

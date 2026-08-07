@@ -8,7 +8,7 @@ import { useToast } from "@/components/system/ToastProvider";
 import { useConfirm } from "@/components/system/ConfirmProvider";
 import { cn } from "@/lib/utils";
 import { useOperations } from "@/components/system/OperationsProvider";
-import { formatPacificTime, summarizeTime } from "@/lib/time-clock";
+import { formatHoursDuration, formatPacificTime, summarizeTime } from "@/lib/time-clock";
 import { TimeRequestModal } from "@/components/driver/TimeRequestModal";
 
 const dot = {
@@ -42,7 +42,7 @@ export default function DriverTimeClockPage() {
     return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   }, [elapsed]);
 
-  const totalHours = (elapsed / 3600).toFixed(2);
+  const todayDuration = formatHoursDuration(elapsed / 3600);
 
   const record=async(type:"clock_in"|"break_start"|"break_end"|"clock_out",success:string)=>{const result=await recordTimeEntry(type);toast(result.ok?success:result.error.message,{tone:result.ok?"success":"error"});};
   const startBreak = () => void record("break_start","Break started");
@@ -50,7 +50,7 @@ export default function DriverTimeClockPage() {
   const clockOut = async () => {
     const ok = await confirm({
       title: "Clock out?",
-      message: `You'll be clocked out at ${nowLabel()} with ${totalHours} hours today.`,
+      message: `You'll be clocked out at ${nowLabel()} with ${todayDuration} worked today.`,
       confirmLabel: "Clock Out",
       tone: "danger",
     });
@@ -73,7 +73,7 @@ export default function DriverTimeClockPage() {
 
   return (
     <>
-      <MobileHeader title="Time Clock" menu />
+      <MobileHeader title="Time Clock" />
 
       <div className="flex-1 overflow-y-auto bg-surface dark:bg-gray-950">
         <div className="bg-white dark:bg-gray-900 p-6 text-center border-b border-brand-ice/60 dark:border-white/10">
@@ -82,7 +82,7 @@ export default function DriverTimeClockPage() {
             {hhmmss}
           </div>
           <p className="text-sm text-brand-steel mt-1">
-            {summary.clockIn ? `Started at ${formatPacificTime(summary.clockIn)} · ` : ""}{totalHours} hrs today
+            {summary.clockIn ? `Started at ${formatPacificTime(summary.clockIn)} · ` : ""}{todayDuration} today
           </p>
 
           {phase !== "out" ? (
@@ -140,13 +140,13 @@ export default function DriverTimeClockPage() {
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div className="rounded border border-brand-ice p-3">
               <div className="font-heading text-2xl font-bold text-brand-charcoal dark:text-white">
-                {driver?.ptoBalanceHours ?? 0}h
+                {formatHoursDuration(driver?.ptoBalanceHours ?? 0)}
               </div>
               <div className="text-xs text-brand-steel">PTO balance</div>
             </div>
             <div className="rounded border border-brand-ice p-3">
               <div className="font-heading text-2xl font-bold text-brand-charcoal dark:text-white">
-                {driver?.weeklyHours ?? totalHours}h
+                {formatHoursDuration(driver?.weeklyHours ?? elapsed / 3600)}
               </div>
               <div className="text-xs text-brand-steel">This week</div>
             </div>
@@ -159,11 +159,16 @@ export default function DriverTimeClockPage() {
               Request PTO
             </button>
           </div>
+          {requests.length > 0 && (
+            <h4 className="mb-2 font-heading text-xs font-semibold uppercase tracking-wide text-brand-steel dark:text-gray-400">
+              Recent Requests
+            </h4>
+          )}
           <div className="space-y-2">
             {requests.map((request) => (
               <div key={request.id} className="flex items-center justify-between gap-3 rounded bg-brand-mist dark:bg-white/5 px-3 py-2">
                 <span className="text-sm text-brand-charcoal dark:text-gray-200">
-                  {request.kind === "pto" ? "PTO" : "Time edit"} · {request.hours}h
+                  {request.kind === "pto" ? "PTO" : "Time edit"} · {formatHoursDuration(request.hours)}
                 </span>
                 <Badge tone={request.status === "approved" ? "green" : "amber"} label={request.status} />
               </div>

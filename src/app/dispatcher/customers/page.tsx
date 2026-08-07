@@ -35,7 +35,7 @@ export default function CustomersPage() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="portal-content">
         <Card>
           <div className="p-5 border-b border-brand-ice/60">
             <div className="relative max-w-md">

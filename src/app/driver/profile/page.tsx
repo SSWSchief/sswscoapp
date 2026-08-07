@@ -21,13 +21,14 @@ const items: { icon: IconName; label: string; action: "profile" | "password" | "
 ];
 
 export default function DriverProfilePage() {
-  const { currentUser: driver } = useOperations();
+  const { currentUser: driver, trucks } = useOperations();
   const { settings } = useExpandedOperations();
   const { dark, toggle } = useDriverTheme();
   const confirm = useConfirm();
   const { toast } = useToast();
   const router = useRouter();
   const supportEmail = settings?.email ?? "dispatch@ssware.com";
+  const assignedTruck = trucks.find((truck) => truck.assignedDriverId === driver?.id);
 
   const emailSupport = (subject: string, body: string) => {
     window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -71,7 +72,7 @@ export default function DriverProfilePage() {
 
   return (
     <>
-      <MobileHeader title="Profile" menu />
+      <MobileHeader title="Profile" />
 
       <div className="flex-1 overflow-y-auto bg-surface dark:bg-gray-950">
         <div className="bg-white dark:bg-gray-900 p-6 flex items-center gap-4 border-b border-brand-ice/60 dark:border-white/10">
@@ -81,6 +82,10 @@ export default function DriverProfilePage() {
               {driver?.fullName ?? "Employee"}
             </div>
             <div className="text-sm text-brand-steel dark:text-gray-400">Driver</div>
+            <div className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-brand-charcoal dark:text-gray-200">
+              <Icon name="truck" width={16} height={16} />
+              {assignedTruck ? `Assigned truck: ${assignedTruck.number}` : "No truck assigned"}
+            </div>
           </div>
         </div>
 

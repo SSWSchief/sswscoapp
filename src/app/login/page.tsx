@@ -48,7 +48,11 @@ export default function LoginPage() {
       return;
     }
     const requested = new URLSearchParams(window.location.search).get("next");
-    const fallback = profile?.access_role === "driver" ? "/driver/jobs" : "/dispatcher/dashboard";
+    const fallback = profile?.access_role === "driver"
+      ? "/driver/jobs"
+      : profile?.access_role === "admin"
+      ? "/management"
+      : "/dispatcher/dashboard";
     router.replace(safeInternalPath(requested) ?? fallback);
     router.refresh();
   };

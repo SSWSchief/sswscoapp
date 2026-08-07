@@ -13,6 +13,8 @@ import { LogoFull } from "@/components/ui/Logo";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { cn } from "@/lib/utils";
 import { effectivePermissions } from "@/lib/permissions";
+import { DispatcherAccount } from "./DispatcherAccount";
+import { DispatcherBottomNav } from "./DispatcherBottomNav";
 
 export function DispatcherShell({ children }: { children: React.ReactNode }) {
   const [drawer, setDrawer] = React.useState(false);
@@ -54,7 +56,10 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
     >
       <div className="app-fixed-height flex overflow-hidden bg-surface text-brand-charcoal">
         <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+          <DispatcherBottomNav />
+        </div>
       </div>
 
       {/* Mobile drawer */}
@@ -104,6 +109,9 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
                 </div>
               ))}
             </nav>
+            <div className="border-t border-white/10 p-3 text-brand-ice">
+              <DispatcherAccount onSignedOut={() => setDrawer(false)} />
+            </div>
           </div>
         </div>
       )}

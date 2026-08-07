@@ -19,7 +19,7 @@ export default function DriverJobsPage() {
 
   return (
     <>
-      <MobileHeader title="My Jobs" menu />
+      <MobileHeader title="My Jobs" />
 
       <div className="shrink-0 flex border-b border-brand-ice/70 bg-white dark:bg-gray-900 dark:border-white/10">
         <button onClick={()=>setWindow("today")} aria-pressed={window==="today"} className={`flex-1 py-3 font-heading text-sm font-medium uppercase tracking-wide ${window==="today"?"text-brand-blue border-b-2 border-brand-blue":"text-brand-steel dark:text-gray-500"}`}>
@@ -96,7 +96,7 @@ export default function DriverJobsPage() {
                   className="flex items-center justify-center gap-1.5 h-12 border-t border-brand-ice/50 dark:border-white/10 text-sm font-medium text-brand-blue active:bg-brand-mist dark:active:bg-white/5"
                 >
                   <Icon name="info" width={16} height={16} />
-                  View Details
+                  Open Job
                 </Link>
               </div>
             );

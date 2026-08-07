@@ -38,7 +38,7 @@ export default function DashboardPage() {
   return (
     <>
       <Topbar
-        title="Dashboard"
+        title="Operations Overview"
         action={
           <Button onClick={() => setCreateOpen(true)}>
             <Icon name="plus" width={18} height={18} />

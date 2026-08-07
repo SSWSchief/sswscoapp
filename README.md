@@ -34,6 +34,7 @@ npm audit
 - Live Supabase data is the only production data source. Seed fixtures are isolated to development/tests and are never a runtime fallback.
 - When connectivity or session state is unhealthy, loaded records remain visible in memory but all mutations fail closed. Private records are never persisted offline.
 - The service worker caches only public shell/static assets; authenticated routes, APIs, Supabase responses, photos, and writes are network-only.
+- The Management Overview is an MFA-protected administrator dashboard whose drill-downs enter the same permission-enforced operations workspace. It is not a separate read-only management role; introducing one requires an explicit screen, action, and data-access policy.
 - Driver time events support clock-out after clock-in and zero or more complete break pairs in `America/Los_Angeles`; impossible sequences are rejected. Totals are exact and have no payroll, overtime, rounding, or automatic deductions.
 - Driver completion requires a private-bucket photo. Dispatcher completion without a photo requires an audited reason.
 

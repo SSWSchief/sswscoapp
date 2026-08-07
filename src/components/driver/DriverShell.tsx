@@ -3,14 +3,15 @@
 import * as React from "react";
 import { BottomNav } from "./BottomNav";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LogoFull } from "@/components/ui/Logo";
-import { Icon, type IconName } from "@/components/ui/Icon";
+import { Icon } from "@/components/ui/Icon";
 import { DriverNotificationsPanel } from "./DriverNotificationsPanel";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { DriverShellContext } from "./driver-context";
 import { effectivePermissions } from "@/lib/permissions";
-import type { PermissionKey } from "@/lib/types";
+import { driverSecondaryNav } from "@/components/navigation/routes";
+import { createClient } from "@/lib/supabase/client";
 export { useDriverTheme } from "./driver-context";
 
 const STORAGE_KEY = "ssws-driver-theme";
@@ -25,8 +26,9 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const { notificationsFor, currentUser } = useOperations();
-  const visibleMenu=currentUser?driverMenu.filter(item=>effectivePermissions(currentUser)[item.permission]):[];
+  const visibleMenu=currentUser?driverSecondaryNav.filter(item=>effectivePermissions(currentUser)[item.permission]):[];
   const unreadCount = currentUser ? notificationsFor(currentUser.id).filter((item) => !item.acknowledgedAt).length : 0;
 
   React.useEffect(() => {
@@ -40,6 +42,13 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, []);
+
+  const signOut = async () => {
+    await createClient().auth.signOut();
+    setMenuOpen(false);
+    router.replace("/login");
+    router.refresh();
+  };
 
   return (
     <DriverShellContext.Provider value={{ dark, toggle, openMenu: () => setMenuOpen(true), openNotifications: () => setNotificationsOpen(true), unreadCount }}>
@@ -59,14 +68,32 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
                   <LogoFull className="scale-110 origin-left" />
                   <button onClick={() => setMenuOpen(false)} className="text-brand-steel" aria-label="Close menu"><Icon name="close" /></button>
                 </div>
-                <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+                <nav className="flex-1 overflow-y-auto p-3 space-y-1" aria-label="More navigation">
                   {visibleMenu.map((item) => (
                     <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className={`flex items-center gap-3 rounded px-3 py-3 text-sm font-semibold ${pathname.startsWith(item.href) ? "bg-brand-blue text-white" : "text-brand-charcoal dark:text-gray-100"}`}>
                       <Icon name={item.icon} /> {item.label}
                     </Link>
                   ))}
                 </nav>
-                <div className="border-t border-brand-ice p-4 text-xs text-brand-steel dark:border-white/10">SSWSCO Overwatch · Live operations</div>
+                <div className="space-y-2 border-t border-brand-ice p-3 dark:border-white/10">
+                  <button
+                    type="button"
+                    onClick={toggle}
+                    className="flex min-h-11 w-full items-center gap-3 rounded px-3 text-sm font-semibold text-brand-charcoal dark:text-gray-100"
+                  >
+                    <Icon name="settings" />
+                    <span className="flex-1 text-left">Night Mode</span>
+                    <span className="text-xs text-brand-steel">{dark ? "On" : "Off"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void signOut()}
+                    className="flex min-h-11 w-full items-center gap-3 rounded px-3 text-sm font-semibold text-red-600"
+                  >
+                    <Icon name="logout" /> Log Out
+                  </button>
+                  <div className="px-3 pb-1 text-xs text-brand-steel">{currentUser?.fullName} · Driver</div>
+                </div>
               </aside>
             </div>
           )}
@@ -76,12 +103,3 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
     </DriverShellContext.Provider>
   );
 }
-
-const driverMenu: { href: string; label: string; icon: IconName;permission:PermissionKey }[] = [
-  { href: "/driver/jobs", label: "Home / My Jobs", icon: "dashboard",permission:"driver_jobs" },
-  { href: "/driver/pre-trip", label: "Electronic Pre-Trip", icon: "clipboard",permission:"pre_trip" },
-  { href: "/driver/time-clock", label: "Time Clock", icon: "clock",permission:"time_clock" },
-  { href: "/driver/messages", label: "Messages", icon: "messages",permission:"messages" },
-  { href: "/driver/sops", label: "SOPs", icon: "jobs",permission:"sops" },
-  { href: "/driver/profile", label: "Profile", icon: "user",permission:"profile" },
-];

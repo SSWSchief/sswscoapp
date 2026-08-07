@@ -30,7 +30,7 @@ export default function TrucksPage() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="portal-content">
         <Card>
           <Table className="hidden lg:block">
             <THead>

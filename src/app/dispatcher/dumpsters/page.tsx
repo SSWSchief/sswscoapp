@@ -29,7 +29,7 @@ export default function DumpstersPage() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="portal-content">
         <Card>
           <Table className="hidden md:block">
             <THead>

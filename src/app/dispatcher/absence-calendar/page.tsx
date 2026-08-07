@@ -13,7 +13,7 @@ export default function AbsenceCalendarPage() {
   return (
     <>
       <Topbar title="Absence Calendar" />
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+      <div className="portal-content space-y-5">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {drivers.map((driver) => (
             <Card key={driver.id} className="p-4">
