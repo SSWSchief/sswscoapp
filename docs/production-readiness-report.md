@@ -35,7 +35,7 @@ The hardening migration adds:
 
 - ESLint: passed with zero warnings.
 - TypeScript strict check: passed.
-- Vitest: 37 tests passed in 9 files. Critical-scope coverage is 98.87% statements, 93.18% branches, 94.73% functions, and 98.87% lines.
+- Vitest: 42 tests passed in 9 files. Critical-scope coverage is 98.92% statements, 93.45% branches, 95.23% functions, and 98.92% lines.
 - Dead-code analysis: passed with no unexplained findings.
 - Next.js 15.5.23 production build: passed, including 31 generated pages, middleware, and health/export/maintenance endpoints.
 - Dependency audit: zero known vulnerabilities.
