@@ -10,6 +10,7 @@ import { useExpandedOperations } from "@/components/system/ExpandedOperationsPro
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useToast } from "@/components/system/ToastProvider";
 import { effectivePermissions, permissionLabels } from "@/lib/permissions";
+import { isOwnerProfile } from "@/lib/owners";
 import { cn } from "@/lib/utils";
 import type { CompanySettings } from "@/lib/types";
 
@@ -50,6 +51,7 @@ export default function Page() {
   const [form, setForm] = React.useState(defaults);
   const [errors, setErrors] = React.useState<Partial<Record<keyof CompanySettings, string>>>({});
   const [busy, setBusy] = React.useState<"settings" | "sop" | "checklist" | null>(null);
+  const [resettingUserId, setResettingUserId] = React.useState<string | null>(null);
   const [sop, setSop] = React.useState({ title: "", category: "Procedure", body: "", required: true });
   const [checklist, setChecklist] = React.useState({ title: "Daily Truck Pre-Trip", items: "" });
 
@@ -107,6 +109,14 @@ export default function Page() {
     setBusy(null);
     toast(result.ok ? "Checklist published." : result.error.message, { tone: result.ok ? "success" : "error" });
     if (result.ok) setChecklist(current => ({ ...current, items: "" }));
+  };
+
+  const sendPasswordReset = async (userId: string, name: string) => {
+    setResettingUserId(userId);
+    const response = await fetch(`/api/admin/employees/${userId}/invite`, { method: "POST" });
+    const body = await response.json() as { error?: string };
+    setResettingUserId(null);
+    toast(response.ok ? `Password reset sent to ${name}.` : body.error ?? "Password reset could not be sent.", { tone: response.ok ? "success" : "error" });
   };
 
   const administrators = users.filter(user => user.accessRole === "admin" && user.status === "active");
@@ -222,7 +232,10 @@ export default function Page() {
                         <div className="font-semibold text-brand-charcoal">{admin.fullName}</div>
                         <div className="text-sm text-brand-steel">{admin.email}</div>
                       </div>
-                      <span className="rounded bg-brand-mist px-2 py-1 text-xs font-semibold uppercase text-brand-steel">Admin</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded bg-brand-mist px-2 py-1 text-xs font-semibold uppercase text-brand-steel">{isOwnerProfile(admin) ? "Owner" : "Admin"}</span>
+                        <Button size="sm" variant="secondary" disabled={resettingUserId === admin.id || !canMutate} onClick={() => void sendPasswordReset(admin.id, admin.fullName)}>{resettingUserId === admin.id ? "Sending..." : "Send Reset"}</Button>
+                      </div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {Object.entries(effectivePermissions(admin)).filter(([, enabled]) => enabled).slice(0, 6).map(([key]) => (
