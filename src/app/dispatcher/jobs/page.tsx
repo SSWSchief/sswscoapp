@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import * as React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Topbar } from "@/components/dispatcher/Topbar";
 import { CreateJobModal } from "@/components/dispatcher/CreateJobModal";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +15,7 @@ import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { cn, formatTime, jobStatusLabel } from "@/lib/utils";
 import type { JobStatus } from "@/lib/types";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { jobsForPacificDay } from "@/lib/job-dates";
 
 const filters: { label: string; value: JobStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -24,18 +26,34 @@ const filters: { label: string; value: JobStatus | "all" }[] = [
 ];
 
 type SortKey = "time" | "customer" | "status";
+type StatusFilter = JobStatus | "all" | "active";
 
 export default function JobsPage() {
-  const [createOpen, setCreateOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<JobStatus | "all">("all");
-  const [sort, setSort] = useState<SortKey>("time");
-  const { jobs: allJobs, customers, dumpsters, trucks, users } = useOperations();
+  return (
+    <React.Suspense fallback={<JobsPageShell />}>
+      <JobsPageContent />
+    </React.Suspense>
+  );
+}
 
-  const jobs = useMemo(() => {
+function JobsPageContent() {
+  const searchParams = useSearchParams();
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const initialStatus = searchParams.get("status") === "active" ? "active" : filters.some((item) => item.value === searchParams.get("status")) ? searchParams.get("status") as JobStatus : "all";
+  const [filter, setFilter] = React.useState<StatusFilter>(initialStatus);
+  const [sort, setSort] = React.useState<SortKey>("time");
+  const { jobs: allJobs, customers, dumpsters, trucks, users } = useOperations();
+  const todayOnly = searchParams.get("window") === "today" || searchParams.get("queue") === "unassigned";
+  const unassignedOnly = searchParams.get("queue") === "unassigned";
+
+  const jobs = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = allJobs.filter((j) => {
-      if (filter !== "all" && j.status !== filter) return false;
+    const source = todayOnly ? jobsForPacificDay(allJobs) : allJobs;
+    let list = source.filter((j) => {
+      if (filter === "active" && !["en_route", "arrived"].includes(j.status)) return false;
+      if (filter !== "all" && filter !== "active" && j.status !== filter) return false;
+      if (unassignedOnly && j.assignedDriverId) return false;
       if (!q) return true;
       const customer = customers.find((item) => item.id === j.customerId);
       return `${j.reference} ${customer?.name ?? ""} ${j.address}`
@@ -50,7 +68,7 @@ export default function JobsPage() {
       return ca.localeCompare(cb);
     });
     return list;
-  }, [allJobs, customers, query, filter, sort]);
+  }, [allJobs, customers, query, filter, sort, todayOnly, unassignedOnly]);
 
   return (
     <>
@@ -96,6 +114,17 @@ export default function JobsPage() {
                   {f.label}
                 </button>
               ))}
+              <button
+                onClick={() => setFilter("active")}
+                className={cn(
+                  "min-h-11 px-3 rounded font-heading text-sm font-medium uppercase tracking-wide transition-colors",
+                  filter === "active"
+                    ? "bg-brand-blue text-white"
+                    : "text-brand-steel border border-brand-ice hover:bg-brand-mist"
+                )}
+              >
+                Active
+              </button>
               <div className="ml-auto flex items-center gap-2 text-sm text-brand-steel">
                 <label htmlFor="sort">Sort</label>
                 <select
@@ -239,6 +268,17 @@ export default function JobsPage() {
       </div>
 
       <CreateJobModal open={createOpen} onClose={() => setCreateOpen(false)} />
+    </>
+  );
+}
+
+function JobsPageShell() {
+  return (
+    <>
+      <Topbar title="Jobs" />
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <Card className="p-6 text-sm text-brand-steel">Loading jobs…</Card>
+      </div>
     </>
   );
 }

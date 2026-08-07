@@ -6,23 +6,54 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useDriverTheme } from "@/components/driver/driver-context";
 import { useConfirm } from "@/components/system/ConfirmProvider";
+import { useToast } from "@/components/system/ToastProvider";
 import { InstallAppCard } from "@/components/system/InstallAppCard";
+import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { createClient } from "@/lib/supabase/client";
 
 // Screen 18 — Profile (driver).
-const items: { icon: IconName; label: string }[] = [
-  { icon: "user", label: "Edit Profile" },
-  { icon: "settings", label: "Change Password" },
-  { icon: "bell", label: "Notification Settings" },
-  { icon: "info", label: "Help & Support" },
+const items: { icon: IconName; label: string; action: "profile" | "password" | "notifications" | "support" }[] = [
+  { icon: "user", label: "Edit Profile", action: "profile" },
+  { icon: "settings", label: "Change Password", action: "password" },
+  { icon: "bell", label: "Notification Settings", action: "notifications" },
+  { icon: "info", label: "Help & Support", action: "support" },
 ];
 
 export default function DriverProfilePage() {
   const { currentUser: driver } = useOperations();
+  const { settings } = useExpandedOperations();
   const { dark, toggle } = useDriverTheme();
   const confirm = useConfirm();
+  const { toast } = useToast();
   const router = useRouter();
+  const supportEmail = settings?.email ?? "dispatch@ssware.com";
+
+  const emailSupport = (subject: string, body: string) => {
+    window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const runProfileAction = (action: (typeof items)[number]["action"]) => {
+    if (action === "password") {
+      router.push("/reset-password");
+      return;
+    }
+    if (action === "notifications") {
+      toast("Use the bell icon at the top of the app to review alerts. Browser notification permissions are managed in your device settings.", { tone: "info", duration: 6500 });
+      return;
+    }
+    if (action === "profile") {
+      emailSupport(
+        "Driver profile update request",
+        `Please update my SSWSCO Overwatch profile.\n\nName: ${driver?.fullName ?? ""}\nEmployee ID: ${driver?.employeeId ?? ""}\nPhone/email changes requested:\n`
+      );
+      return;
+    }
+    emailSupport(
+      "SSWSCO Overwatch support request",
+      `I need help with SSWSCO Overwatch.\n\nName: ${driver?.fullName ?? ""}\nEmployee ID: ${driver?.employeeId ?? ""}\nIssue:\n`
+    );
+  };
 
   const logout = async () => {
     const ok = await confirm({
@@ -89,6 +120,8 @@ export default function DriverProfilePage() {
           {items.map((it) => (
             <button
               key={it.label}
+              type="button"
+              onClick={() => runProfileAction(it.action)}
               className="w-full flex items-center gap-3 px-5 py-4 active:bg-brand-mist dark:active:bg-white/5"
             >
               <Icon

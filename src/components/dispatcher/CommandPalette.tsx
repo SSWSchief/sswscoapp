@@ -25,6 +25,11 @@ function buildIndex(jobs:Job[],customers:Customer[],trucks:Truck[],dumpsters:Dum
     { id: "nav-dump", label: "Dumpsters", sub: "Go to", icon: "dumpster", href: "/dispatcher/dumpsters", keywords: "assets" },
     { id: "nav-emp", label: "Employees", sub: "Go to", icon: "employees", href: "/dispatcher/employees", keywords: "drivers staff" },
     { id: "nav-map", label: "Map", sub: "Go to", icon: "map", href: "/dispatcher/map", keywords: "" },
+    { id: "nav-invoices", label: "Invoices", sub: "Go to", icon: "reports", href: "/dispatcher/invoices", keywords: "billing receivables" },
+    { id: "nav-reports", label: "Reports", sub: "Go to", icon: "reports", href: "/dispatcher/reports", keywords: "exports csv management" },
+    { id: "nav-time", label: "Time Clock", sub: "Go to", icon: "clock", href: "/dispatcher/time-clock", keywords: "pto attendance requests" },
+    { id: "nav-messages", label: "Messages", sub: "Go to", icon: "messages", href: "/dispatcher/messages", keywords: "chat announcements direct" },
+    { id: "nav-settings", label: "Settings", sub: "Go to", icon: "settings", href: "/dispatcher/settings", keywords: "company roles sop pretrip" },
   ];
   const jobItems: Item[] = jobs.map((j) => {
     const c = customers.find((x) => x.id === j.customerId);

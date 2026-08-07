@@ -1,3 +1,114 @@
-"use client";import Link from "next/link";import {LogoFull} from "@/components/ui/Logo";import {Card,CardHeader} from "@/components/ui/Card";import {useOperations} from "@/components/system/OperationsProvider";import {useExpandedOperations} from "@/components/system/ExpandedOperationsProvider";import {jobsForPacificDay} from "@/lib/job-dates";
-export default function Page(){const {jobs,trucks,dumpsters,timeRequests,users}=useOperations();const {invoices,pretripSubmissions}=useExpandedOperations();const today=jobsForPacificDay(jobs);const receivables=invoices.filter(i=>!["paid","closed","void"].includes(i.status)).reduce((n,i)=>n+i.amountCents,0);return <main className="app-viewport-height safe-area-all bg-brand-mist"><div className="mx-auto max-w-6xl space-y-6"><div className="flex flex-wrap items-center justify-between gap-4"><LogoFull/><div><h1 className="font-heading text-2xl font-bold uppercase">Management Portal</h1><p className="text-sm text-brand-steel">Administrator oversight · live operational data</p></div></div><div className="grid grid-cols-2 gap-4 lg:grid-cols-4"><Metric label="Jobs Today" value={today.length}/><Metric label="Active Jobs" value={today.filter(j=>["en_route","arrived"].includes(j.status)).length}/><Metric label="Receivables" value={new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(receivables/100)}/><Metric label="Available Assets" value={trucks.filter(t=>t.status==="in_use"&&!t.currentJobId).length+dumpsters.filter(d=>d.status==="in_yard").length}/></div><div className="grid gap-5 lg:grid-cols-2"><Card><CardHeader title="Exceptions"/><div className="divide-y divide-brand-ice">{[["Unassigned jobs",today.filter(j=>!j.assignedDriverId).length],["Pending time requests",timeRequests.filter(r=>r.status==="pending").length],["Failed pre-trips",pretripSubmissions.filter(s=>s.hasFailures).length],["Inactive employees",users.filter(u=>u.status==="inactive").length]].map(([label,value])=><div key={String(label)} className="flex justify-between p-4"><span>{label}</span><strong>{value}</strong></div>)}</div></Card><Card><CardHeader title="Management Links"/><div className="grid grid-cols-2 gap-3 p-4">{[["Operations","/dispatcher/dashboard"],["Invoices","/dispatcher/invoices"],["Reports","/dispatcher/reports"],["Settings","/dispatcher/settings"]].map(([label,href])=><Link key={href} href={href} className="flex min-h-14 items-center justify-center rounded border border-brand-blue font-semibold text-brand-blue">{label}</Link>)}</div></Card></div></div></main>}
-function Metric({label,value}:{label:string;value:React.ReactNode}){return <Card className="p-5"><div className="font-heading text-3xl font-bold">{value}</div><div className="text-sm uppercase text-brand-steel">{label}</div></Card>}
+"use client";
+
+import Link from "next/link";
+import { LogoFull } from "@/components/ui/Logo";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { useOperations } from "@/components/system/OperationsProvider";
+import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
+import { jobsForPacificDay } from "@/lib/job-dates";
+
+const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
+export default function Page() {
+  const { jobs, trucks, dumpsters, timeRequests, users } = useOperations();
+  const { invoices, pretripSubmissions } = useExpandedOperations();
+  const today = jobsForPacificDay(jobs);
+  const receivables = invoices
+    .filter((invoice) => !["paid", "closed", "void"].includes(invoice.status))
+    .reduce((total, invoice) => total + invoice.amountCents, 0);
+  const activeJobs = today.filter((job) => ["en_route", "arrived"].includes(job.status));
+  const availableAssets =
+    trucks.filter((truck) => truck.status === "in_use" && !truck.currentJobId).length +
+    dumpsters.filter((dumpster) => dumpster.status === "in_yard").length;
+
+  const metrics = [
+    { label: "Jobs Today", value: today.length, href: "/dispatcher/jobs?window=today" },
+    { label: "Active Jobs", value: activeJobs.length, href: "/dispatcher/jobs?status=active" },
+    { label: "Receivables", value: currency.format(receivables / 100), href: "/dispatcher/invoices" },
+    { label: "Available Assets", value: availableAssets, href: "/dispatcher/map" },
+  ];
+  const exceptions = [
+    { label: "Unassigned jobs", value: today.filter((job) => !job.assignedDriverId).length, href: "/dispatcher/jobs?queue=unassigned" },
+    { label: "Pending time requests", value: timeRequests.filter((request) => request.status === "pending").length, href: "/dispatcher/time-clock" },
+    { label: "Failed pre-trips", value: pretripSubmissions.filter((submission) => submission.hasFailures).length, href: "/dispatcher/reports" },
+    { label: "Inactive employees", value: users.filter((user) => user.status === "inactive").length, href: "/dispatcher/employees" },
+  ];
+
+  return (
+    <main className="app-viewport-height safe-area-all bg-brand-mist">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <LogoFull />
+          <div>
+            <h1 className="font-heading text-2xl font-bold uppercase">Management Portal</h1>
+            <p className="text-sm text-brand-steel">Administrator oversight · live operational data</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {metrics.map((metric) => (
+            <MetricLink key={metric.label} {...metric} />
+          ))}
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Card>
+            <CardHeader title="Exceptions" />
+            <div className="divide-y divide-brand-ice">
+              {exceptions.map((exception) => (
+                <ExceptionLink key={exception.label} {...exception} />
+              ))}
+            </div>
+          </Card>
+          <Card>
+            <CardHeader title="Management Links" />
+            <div className="grid grid-cols-2 gap-3 p-4">
+              {[
+                ["Operations", "/dispatcher/dashboard"],
+                ["Invoices", "/dispatcher/invoices"],
+                ["Reports", "/dispatcher/reports"],
+                ["Settings", "/dispatcher/settings"],
+              ].map(([label, href]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="flex min-h-14 items-center justify-center rounded border border-brand-blue font-semibold text-brand-blue transition-colors hover:bg-brand-blue hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function MetricLink({ label, value, href }: { label: string; value: React.ReactNode; href: string }) {
+  return (
+    <Link
+      href={href}
+      aria-label={`Open ${label}`}
+      className="block rounded-card focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
+    >
+      <Card className="p-5 transition-colors hover:border-brand-blue hover:bg-white">
+        <div className="font-heading text-3xl font-bold">{value}</div>
+        <div className="text-sm uppercase text-brand-steel">{label}</div>
+        <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-brand-blue">View details →</div>
+      </Card>
+    </Link>
+  );
+}
+
+function ExceptionLink({ label, value, href }: { label: string; value: React.ReactNode; href: string }) {
+  return (
+    <Link
+      href={href}
+      className="flex min-h-14 justify-between p-4 transition-colors hover:bg-brand-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-blue"
+    >
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </Link>
+  );
+}
