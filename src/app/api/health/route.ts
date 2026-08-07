@@ -27,7 +27,7 @@ export async function GET(request: Request) {
           latencyMs: Date.now() - databaseStartedAt,
         },
       },
-      release: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? "local",
+      release: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) || "local",
     };
     logRequest("info", "health_check_complete", {
       requestId: requestIdValue,
