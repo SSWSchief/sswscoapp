@@ -11,23 +11,25 @@ import { useToast } from "@/components/system/ToastProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { formatTime } from "@/lib/utils";
 import type { Job } from "@/lib/types";
+import { jobsForPacificDay } from "@/lib/job-dates";
 
 /** Live operational jobs with transactional driver assignment. */
 export function TodaysJobs() {
   const { toast } = useToast();
   const { jobs, users, customers, trucks, assignDriver: persistAssignment } = useOperations();
-  const drivers = users.filter((user) => user.role === "driver");
+  const todaysJobs = React.useMemo(() => jobsForPacificDay(jobs), [jobs]);
+  const drivers = users.filter((user) => user.accessRole === "driver" && user.status === "active");
 
   // A driver is "busy" if they already own an active job.
   const busyDriverIds = React.useMemo(() => {
     const s = new Set<string>();
-    jobs.forEach((j) => {
+    todaysJobs.forEach((j) => {
       if ((j.status === "en_route" || j.status === "arrived") && j.assignedDriverId) {
         s.add(j.assignedDriverId);
       }
     });
     return s;
-  }, [jobs]);
+  }, [todaysJobs]);
 
   const assignDriver = async (jobId: string, driverId: string) => {
     const driver = drivers.find((d) => d.id === driverId);
@@ -60,7 +62,7 @@ export function TodaysJobs() {
         }
       />
 
-      {jobs.length === 0 ? (
+      {todaysJobs.length === 0 ? (
         <EmptyState
           icon="jobs"
           title="No jobs scheduled today"
@@ -79,7 +81,7 @@ export function TodaysJobs() {
                 <TH className="text-right pr-5">Status</TH>
               </THead>
               <TBody>
-                {jobs.map((job) => {
+                {todaysJobs.map((job) => {
                   const customer = customers.find((item) => item.id === job.customerId);
                   const truck = job.assignedTruckId ? trucks.find((item) => item.id === job.assignedTruckId) : null;
                   return (
@@ -120,7 +122,7 @@ export function TodaysJobs() {
 
           {/* Mobile: cards instead of a horizontally scrolling table */}
           <ul className="md:hidden divide-y divide-gray-100">
-            {jobs.map((job) => {
+            {todaysJobs.map((job) => {
               const customer = customers.find((item) => item.id === job.customerId);
               return (
                 <li key={job.id} className="p-4">

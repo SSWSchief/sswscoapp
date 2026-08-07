@@ -29,6 +29,8 @@ next-env.d.ts
 /coverage/
 /playwright-report/
 /test-results/
+/imports/*
+!/imports/README.md
 
 # Local/iCloud conflict copies; canonical source files do not contain numeric suffixes.
 **/* 2.ts

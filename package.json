@@ -2,7 +2,7 @@
   "name": "sswsco-ops-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "Silver State Waste Solutions — Supabase-backed Phase 1 operations pilot.",
+  "description": "Silver State Waste Solutions — production operations platform.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,7 +13,9 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
-    "db:lint": "supabase db lint --linked --level warning"
+    "db:lint": "supabase db lint --linked --level warning",
+    "import:validate": "node scripts/import-operations.mjs",
+    "staging:bootstrap": "node scripts/bootstrap-staging-e2e.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

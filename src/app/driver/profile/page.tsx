@@ -120,7 +120,7 @@ export default function DriverProfilePage() {
         </div>
 
         <p className="text-center text-xs text-brand-steel py-6">
-          SSWSCO Overwatch · Phase 1 Pilot
+          SSWSCO Overwatch · Production Operations
         </p>
       </div>
     </>

@@ -33,7 +33,7 @@ export function EmployeeModal({ open, onClose }: { open: boolean; onClose: () =>
       <FormField label="Full Name" required><Input value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} /></FormField>
       <FormField label="Email" required><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></FormField>
       <FormField label="Phone"><Input type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></FormField>
-      <FormField label="Operational Role"><Select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as UserRole })}><option value="driver">Driver</option><option value="dispatcher">Dispatcher</option><option value="office">Office</option><option value="management">Management</option></Select></FormField>
+      <FormField label="Operational Role"><Select value={form.role} onChange={e => {const role=e.target.value as UserRole;setForm({ ...form, role, accessRole:role==="driver"?"driver":role==="management"?"admin":"dispatcher" });}}><option value="driver">Driver</option><option value="dispatcher">Dispatcher</option><option value="office">Office</option><option value="management">Management</option></Select></FormField>
       <FormField label="Access Role"><Select value={form.accessRole} onChange={e => setForm({ ...form, accessRole: e.target.value as AccessRole })}><option value="driver">Driver</option><option value="dispatcher">Dispatcher</option><option value="admin">Administrator</option></Select></FormField>
       <p className="text-xs text-brand-steel">Submitting invokes the secure server endpoint and sends the configured Supabase invitation email.</p>
     </div>

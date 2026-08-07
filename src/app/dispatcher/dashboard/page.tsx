@@ -11,15 +11,17 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Icon } from "@/components/ui/Icon";
 import { RelativeTime } from "@/components/ui/RelativeTime";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { jobsForPacificDay } from "@/lib/job-dates";
 
 export default function DashboardPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const { jobs, activities, users, trucks, dumpsters } = useOperations();
+  const todaysJobs = jobsForPacificDay(jobs);
   const stats = {
-    enRoute: jobs.filter(job => job.status === "en_route").length,
-    arrived: jobs.filter(job => job.status === "arrived").length,
-    completed: jobs.filter(job => job.status === "complete").length,
-    pending: jobs.filter(job => job.status === "pending").length,
+    enRoute: todaysJobs.filter(job => job.status === "en_route").length,
+    arrived: todaysJobs.filter(job => job.status === "arrived").length,
+    completed: todaysJobs.filter(job => job.status === "complete").length,
+    pending: todaysJobs.filter(job => job.status === "pending").length,
     driversOnDuty: users.filter(user => user.role === "driver" && user.status === "active").length,
     trucksInUse: trucks.filter(truck => truck.status === "in_use").length,
     dumpstersOut: dumpsters.filter(dumpster => dumpster.status === "out").length,

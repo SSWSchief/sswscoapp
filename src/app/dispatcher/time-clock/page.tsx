@@ -14,7 +14,7 @@ import { useToast } from "@/components/system/ToastProvider";
 export default function TimeClockPage() {
   const { users, timeEntries, timeRequests: requests, reviewTimeRequest, canMutate } = useOperations();
   const {toast}=useToast();
-  const drivers = users.filter((user) => user.role === "driver");
+  const drivers = users.filter((user) => user.accessRole === "driver");
 
   const rows = drivers.map(driver=>{const summary=summarizeTime(driver.id,timeEntries);const hours=Math.floor(summary.workedSeconds/3600);const minutes=Math.floor(summary.workedSeconds%3600/60);return {driver,clockIn:summary.clockIn?formatPacificTime(summary.clockIn):"—",breaks:summary.breaks.map(item=>`${formatPacificTime(item.start)} – ${item.end?formatPacificTime(item.end):"Now"}`).join(", ")||"—",clockOut:summary.clockOut?formatPacificTime(summary.clockOut):"—",hours:`${hours}:${String(minutes).padStart(2,"0")}`,active:summary.phase!=="out"};});
   const decide=async(id:string,decision:"approved"|"denied")=>{const result=await reviewTimeRequest(id,decision);toast(result.ok?`Request ${decision}`:result.error.message,{tone:result.ok?"success":"error"});};

@@ -9,6 +9,8 @@ import { Icon, type IconName } from "@/components/ui/Icon";
 import { DriverNotificationsPanel } from "./DriverNotificationsPanel";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { DriverShellContext } from "./driver-context";
+import { effectivePermissions } from "@/lib/permissions";
+import type { PermissionKey } from "@/lib/types";
 export { useDriverTheme } from "./driver-context";
 
 const STORAGE_KEY = "ssws-driver-theme";
@@ -24,6 +26,7 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const pathname = usePathname();
   const { notificationsFor, currentUser } = useOperations();
+  const visibleMenu=currentUser?driverMenu.filter(item=>effectivePermissions(currentUser)[item.permission]):[];
   const unreadCount = currentUser ? notificationsFor(currentUser.id).filter((item) => !item.acknowledgedAt).length : 0;
 
   React.useEffect(() => {
@@ -57,7 +60,7 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
                   <button onClick={() => setMenuOpen(false)} className="text-brand-steel" aria-label="Close menu"><Icon name="close" /></button>
                 </div>
                 <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-                  {driverMenu.map((item) => (
+                  {visibleMenu.map((item) => (
                     <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className={`flex items-center gap-3 rounded px-3 py-3 text-sm font-semibold ${pathname.startsWith(item.href) ? "bg-brand-blue text-white" : "text-brand-charcoal dark:text-gray-100"}`}>
                       <Icon name={item.icon} /> {item.label}
                     </Link>
@@ -74,11 +77,11 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-const driverMenu: { href: string; label: string; icon: IconName }[] = [
-  { href: "/driver/jobs", label: "Home / My Jobs", icon: "dashboard" },
-  { href: "/driver/pre-trip", label: "Electronic Pre-Trip", icon: "clipboard" },
-  { href: "/driver/time-clock", label: "Time Clock", icon: "clock" },
-  { href: "/driver/messages", label: "Messages", icon: "messages" },
-  { href: "/driver/sops", label: "SOPs", icon: "jobs" },
-  { href: "/driver/profile", label: "Profile", icon: "user" },
+const driverMenu: { href: string; label: string; icon: IconName;permission:PermissionKey }[] = [
+  { href: "/driver/jobs", label: "Home / My Jobs", icon: "dashboard",permission:"driver_jobs" },
+  { href: "/driver/pre-trip", label: "Electronic Pre-Trip", icon: "clipboard",permission:"pre_trip" },
+  { href: "/driver/time-clock", label: "Time Clock", icon: "clock",permission:"time_clock" },
+  { href: "/driver/messages", label: "Messages", icon: "messages",permission:"messages" },
+  { href: "/driver/sops", label: "SOPs", icon: "jobs",permission:"sops" },
+  { href: "/driver/profile", label: "Profile", icon: "user",permission:"profile" },
 ];

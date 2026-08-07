@@ -25,6 +25,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
-        with: { version: latest }
+        with: { version: 2.111.0 }
       - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
-      - run: supabase db lint --local --level warning
+      - name: Rebuild schema from zero
+        run: |
+          mkdir -p migration-evidence
+          supabase db reset 2>&1 | tee migration-evidence/reset.log
+          supabase migration list --local 2>&1 | tee migration-evidence/migrations.log
+      - name: Lint database
+        run: supabase db lint --local --level warning 2>&1 | tee migration-evidence/lint.log
+      - name: Run schema and behavioral pgTAP
+        run: supabase test db 2>&1 | tee migration-evidence/pgtap.log
+      - name: Capture generated database types
+        run: supabase gen types typescript --local > migration-evidence/database.types.generated.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: migration-evidence
+          path: migration-evidence/

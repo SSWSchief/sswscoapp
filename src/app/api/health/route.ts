@@ -1,0 +1,3 @@
+import {NextResponse} from "next/server";import {createAdminClient} from "@/lib/supabase/admin";import {log} from "@/lib/logger";
+export const dynamic="force-dynamic";
+export async function GET(){const started=Date.now();try{const result=await createAdminClient().from("company_settings").select("id",{head:true,count:"exact"}).limit(1);if(result.error)throw result.error;return NextResponse.json({status:"ok",database:"reachable",latencyMs:Date.now()-started},{headers:{"cache-control":"no-store"}});}catch(error){log("error","health_check_failed",{message:error instanceof Error?error.message:"unknown"});return NextResponse.json({status:"unavailable"},{status:503,headers:{"cache-control":"no-store"}});}}

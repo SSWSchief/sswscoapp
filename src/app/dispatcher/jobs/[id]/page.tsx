@@ -15,6 +15,7 @@ import type { JobEvent } from "@/lib/types";
 import { CreateJobModal } from "@/components/dispatcher/CreateJobModal";
 import { useToast } from "@/components/system/ToastProvider";
 import { useConfirm } from "@/components/system/ConfirmProvider";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 
 // Screen 4 — Job Details (dispatcher view).
 export default function JobDetailsPage({
@@ -24,7 +25,7 @@ export default function JobDetailsPage({
 }) {
   const { id } = React.use(params);
   const { jobs, activities: allActivities, customers, dumpsters, jobNotes, trucks, users, hydrated, completeJobAsDispatcher, cancelJob, uploadJobPhotos, canMutate } = useOperations();
-  const [editOpen,setEditOpen]=React.useState(false);const [busy,setBusy]=React.useState(false);const fileInput=React.useRef<HTMLInputElement>(null);const {toast}=useToast();const confirm=useConfirm();
+  const [editOpen,setEditOpen]=React.useState(false);const [reasonMode,setReasonMode]=React.useState<"cancel"|"complete"|null>(null);const [busy,setBusy]=React.useState(false);const fileInput=React.useRef<HTMLInputElement>(null);const {toast}=useToast();const confirm=useConfirm();
   const job = jobs.find((item) => item.id === id || item.reference === id || item.reference === `#${id}`);
   if (!hydrated) return <div className="flex-1 bg-surface" />;
   if (!job) notFound();
@@ -37,8 +38,8 @@ export default function JobDetailsPage({
     : null;
   const notes = jobNotes.filter((item) => item.jobId === job.id);
   const activities = allActivities.filter((activity) => activity.jobId === job.id);
-  const complete=async()=>{if(busy)return;let reason:string|undefined;if(!job.photos.length){reason=window.prompt("No completion photo exists. Enter the dispatcher override reason:")?.trim();if(!reason)return;}const ok=await confirm({title:`Complete ${job.reference}?`,message:"This records completion in the permanent audit history.",confirmLabel:"Complete Job"});if(!ok)return;setBusy(true);const result=await completeJobAsDispatcher(job.id,reason);setBusy(false);toast(result.ok?"Job completed":result.error.message,{tone:result.ok?"success":"error"});};
-  const cancel=async()=>{if(busy)return;const reason=window.prompt("Enter the cancellation reason:")?.trim();if(!reason)return;setBusy(true);const result=await cancelJob(job.id,reason);setBusy(false);toast(result.ok?"Job cancelled":result.error.message,{tone:result.ok?"success":"error"});};
+  const complete=async(reason?:string)=>{if(busy)return;const ok=await confirm({title:`Complete ${job.reference}?`,message:"This records completion in the permanent audit history.",confirmLabel:"Complete Job"});if(!ok)return;setBusy(true);const result=await completeJobAsDispatcher(job.id,reason);setBusy(false);toast(result.ok?"Job completed":result.error.message,{tone:result.ok?"success":"error"});if(result.ok)setReasonMode(null);};
+  const cancel=async(reason:string)=>{if(busy)return;setBusy(true);const result=await cancelJob(job.id,reason);setBusy(false);toast(result.ok?"Job cancelled":result.error.message,{tone:result.ok?"success":"error"});if(result.ok)setReasonMode(null);};
   const addPhotos=async(event:React.ChangeEvent<HTMLInputElement>)=>{const files=Array.from(event.target.files??[]);if(!files.length)return;setBusy(true);const result=await uploadJobPhotos(job.id,files);setBusy(false);toast(result.ok?`${files.length} photo${files.length===1?"":"s"} uploaded`:result.error.message,{tone:result.ok?"success":"error"});event.target.value="";};
 
   return (
@@ -51,8 +52,8 @@ export default function JobDetailsPage({
               <Icon name="edit" width={16} height={16} />
               <span className="hidden lg:inline">Edit Job</span>
             </Button>
-            {job.status!=="complete"&&job.status!=="cancelled"&&<Button disabled={!canMutate||busy} variant="danger" onClick={()=>void cancel()}>Cancel</Button>}
-            {job.status==="arrived"&&<Button disabled={!canMutate||busy} onClick={()=>void complete()} aria-label="Mark job complete"><Icon name="check" width={16} height={16} /><span className="hidden lg:inline">Mark Complete</span></Button>}
+            {job.status!=="complete"&&job.status!=="cancelled"&&<Button disabled={!canMutate||busy} variant="danger" onClick={()=>setReasonMode("cancel")}>Cancel</Button>}
+            {job.status==="arrived"&&<Button disabled={!canMutate||busy} onClick={()=>job.photos.length?void complete():setReasonMode("complete")} aria-label="Mark job complete"><Icon name="check" width={16} height={16} /><span className="hidden lg:inline">Mark Complete</span></Button>}
           </div>
         }
       />
@@ -199,6 +200,8 @@ export default function JobDetailsPage({
         </div>
       </div>
       <CreateJobModal open={editOpen} onClose={()=>setEditOpen(false)} job={job}/>
+      <ReasonDialog open={reasonMode==="cancel"} onClose={()=>setReasonMode(null)} onSubmit={cancel} busy={busy} title={`Cancel ${job.reference}`} label="Cancellation reason" confirmLabel="Cancel Job" />
+      <ReasonDialog open={reasonMode==="complete"} onClose={()=>setReasonMode(null)} onSubmit={reason=>complete(reason)} busy={busy} title={`Complete ${job.reference} without a photo`} label="Dispatcher override reason" confirmLabel="Complete Job" />
     </>
   );
 }

@@ -257,47 +257,19 @@ export interface AbsenceEvent {
   note: string;
 }
 
-export type MessageKind = "message" | "announcement";
-
-export interface CompanyMessage {
-  id: string;
-  kind: MessageKind;
-  title: string;
-  body: string;
-  createdAt: string;
+export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "closed" | "void";
+export interface InvoiceRecord {
+  id: string; invoiceNumber: string; customerId: string; jobId: string | null;
+  amountCents: number; status: InvoiceStatus; dueDate: string; notes: string;
+  sentAt: string | null; paidAt: string | null; closedAt: string | null; createdAt: string;
 }
 
-export interface MessageThread {
-  id: string;
-  channel: "Dispatch" | "Drivers" | "Customer Support" | "Management";
-  title: string;
-  participants: string[];
-  updatedAt: string;
-  messages: CompanyMessage[];
-}
+export interface MessageChannel { id: string; name: string; kind: "channel" | "direct" | "announcement"; createdAt: string }
+export interface TeamMessage { id: string; channelId: string; senderId: string; body: string; createdAt: string; read: boolean }
 
-export interface Invoice {
-  id: string;
-  invoiceNumber: string;
-  customerId: string;
-  jobId: string | null;
-  amount: number;
-  status: "draft" | "sent" | "viewed" | "paid" | "overdue" | "closed";
-  customerGroup: "Big GC" | "Commercial" | "Residential";
-  paymentUrl: string;
-  reminderCadence: "none" | "weekly" | "biweekly" | "monthly";
-  sentAt: string | null;
-  dueAt: string;
-  closedAt: string | null;
-  methodSource: "manual_link" | "processor_placeholder";
-}
+export interface PretripTemplateItem { id: string; label: string; description?: string }
+export interface PretripTemplate { id: string; title: string; version: number; isPublished: boolean; items: PretripTemplateItem[] }
+export interface PretripSubmission { id: string; templateId: string; driverId: string; truckId: string; mileage: number; signature: string; results: Record<string, "pass" | "fail">; hasFailures: boolean; submittedAt: string }
 
-export interface SopItem {
-  id: string;
-  category: "Procedure" | "Safety Review";
-  title: string;
-  summary: string;
-  requiredForDrivers: boolean;
-  acknowledgedBy: string[];
-  updatedAt: string;
-}
+export interface SopDocument { id: string; title: string; category: string; version: number; body: string; isPublished: boolean; requiredForDrivers: boolean; createdAt: string; acknowledged: boolean }
+export interface CompanySettings { companyName: string; address: string; phone: string; email: string; timeZone: string; dateFormat: string; messageRetentionDays: number; invoicePrefix: string }

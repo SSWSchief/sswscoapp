@@ -8,21 +8,24 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { formatTime } from "@/lib/utils";
 import { PlatformMapLink } from "@/components/ui/PlatformMapLink";
+import { driverJobsForWindow, type DriverJobWindow } from "@/lib/job-dates";
+import { useState } from "react";
 
 // Screen 5 — Driver Dashboard (My Jobs).
 export default function DriverJobsPage() {
   const { jobs: allJobs, currentUser, customers, trucks, dumpsters } = useOperations();
-  const jobs = allJobs.filter((job) => job.assignedDriverId === currentUser?.id);
+  const [window,setWindow]=useState<DriverJobWindow>("today");
+  const jobs = driverJobsForWindow(allJobs,currentUser?.id??"",window);
 
   return (
     <>
       <MobileHeader title="My Jobs" menu />
 
       <div className="shrink-0 flex border-b border-brand-ice/70 bg-white dark:bg-gray-900 dark:border-white/10">
-        <button className="flex-1 py-3 font-heading text-sm font-medium uppercase tracking-wide text-brand-blue border-b-2 border-brand-blue">
+        <button onClick={()=>setWindow("today")} aria-pressed={window==="today"} className={`flex-1 py-3 font-heading text-sm font-medium uppercase tracking-wide ${window==="today"?"text-brand-blue border-b-2 border-brand-blue":"text-brand-steel dark:text-gray-500"}`}>
           Today
         </button>
-        <button className="flex-1 py-3 font-heading text-sm font-medium uppercase tracking-wide text-brand-steel dark:text-gray-500">
+        <button onClick={()=>setWindow("upcoming")} aria-pressed={window==="upcoming"} className={`flex-1 py-3 font-heading text-sm font-medium uppercase tracking-wide ${window==="upcoming"?"text-brand-blue border-b-2 border-brand-blue":"text-brand-steel dark:text-gray-500"}`}>
           Upcoming
         </button>
       </div>
@@ -32,7 +35,7 @@ export default function DriverJobsPage() {
           <EmptyState
             icon="check"
             title="You're all caught up"
-            message="No jobs assigned for today."
+            message={window==="today"?"No jobs assigned for today.":"No upcoming jobs assigned."}
           />
         ) : (
           jobs.map((job) => {

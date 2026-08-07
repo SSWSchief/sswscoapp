@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/utils";
 
 export default function AbsenceCalendarPage() {
   const { users, absenceEvents: absences, timeRequests: requests } = useOperations();
-  const drivers = users.filter((user) => user.role === "driver");
+  const drivers = users.filter((user) => user.accessRole === "driver");
 
   return (
     <>

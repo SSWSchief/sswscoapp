@@ -1,8 +1,8 @@
-# SSWSCO Overwatch — Phase 1 Pilot
+# SSWSCO Overwatch — Production Operations
 
-Supabase-backed internal operations platform for Silver State Waste Solutions. The Phase 1 pilot covers authentication, dispatch/jobs, customers, trucks, dumpsters, employees and permissions, private job photos and notes, realtime alerts, strict time events, corrections, and absences.
+Supabase-backed internal operations platform for Silver State Waste Solutions. The production scope covers authentication, dispatch/jobs, customers, assets, employees and permissions, private job photos and notes, realtime alerts, flexible audited time events, corrections, absences, invoice records, reports/exports, locations/AirTags, management oversight, internal messaging, pre-trip inspections, SOP acknowledgements, and company settings.
 
-Future modules remain visible as noninteractive **Coming Soon** pages: invoices/payments, reports/analytics, maps/live GPS, management partner portal, messages, electronic pre-trip inspections, SOP library, and company settings.
+Payment processing, payroll, route optimization, customer portals, live GPS, fleet-maintenance automation, and AI dispatch remain explicitly outside this release.
 
 ## Stack
 
@@ -34,7 +34,7 @@ npm audit
 - Live Supabase data is the only production data source. Seed fixtures are isolated to development/tests and are never a runtime fallback.
 - When connectivity or session state is unhealthy, loaded records remain visible in memory but all mutations fail closed. Private records are never persisted offline.
 - The service worker caches only public shell/static assets; authenticated routes, APIs, Supabase responses, photos, and writes are network-only.
-- Driver time events follow the server-enforced sequence `clock_in → break_start → break_end → clock_out` in `America/Los_Angeles`. Totals are exact and have no payroll, overtime, rounding, or automatic deductions.
+- Driver time events support clock-out after clock-in and zero or more complete break pairs in `America/Los_Angeles`; impossible sequences are rejected. Totals are exact and have no payroll, overtime, rounding, or automatic deductions.
 - Driver completion requires a private-bucket photo. Dispatcher completion without a photo requires an audited reason.
 
 ## Mobile acceptance
@@ -44,3 +44,4 @@ The application includes safe-area, dynamic viewport, touch target, camera input
 ## Production handoff
 
 See `docs/production-readiness-report.md` and `docs/manual-launch-checklist.md` for implementation status, verification evidence, limitations, and client-controlled launch steps.
+The exact blank-database, linked-staging, and authenticated acceptance sequence is documented in `docs/staging-verification.md`.

@@ -6,11 +6,11 @@ be exposed through a `NEXT_PUBLIC_` variable.
 
 The ordered files in `supabase/migrations/` are the database source of truth. They include:
 
-- Phase 1 operations tables and indexes
+- production operations and expanded-module tables and indexes
 - employee/Auth account linking by email
 - role-aware Row Level Security
 - audited driver status and dry-run functions
-- Realtime tables for jobs, alerts, field evidence, time, and assets
+- Realtime tables for jobs, alerts, field evidence, time, assets, messages, inspections, SOPs, invoices, and settings
 - a private `job-photos` bucket with signed-URL access
 
 To connect a remote project:

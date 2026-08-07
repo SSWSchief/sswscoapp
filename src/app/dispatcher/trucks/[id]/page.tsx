@@ -53,7 +53,7 @@ export default function TruckDetailsPage({ params }: { params: Promise<{ id: str
               <Detail label="Next PM Mileage" value={`${truck.nextPmMileage.toLocaleString()} mi`} />
             </dl>
             <div className="mx-5 mb-5 rounded border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-              Mileage is maintained manually during Phase 1. Electronic pre-trip inspections are outside the pilot scope.
+              Mileage is maintained manually and can be captured with each electronic pre-trip inspection.
             </div>
           </Card>
 

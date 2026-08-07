@@ -28,7 +28,7 @@ export default function Home() {
             />
           </div>
           <p className="text-sm text-brand-steel mt-1">
-            Manage Phase 1 dispatch, jobs, customers, assets, employees, and time review.
+            Manage dispatch, jobs, customers, assets, employees, invoices, reports, and time review.
           </p>
         </Link>
 
@@ -49,7 +49,7 @@ export default function Home() {
             />
           </div>
           <p className="text-sm text-brand-steel mt-1">
-            Mobile work queue, job actions, photos, notes, and time clock.
+            Mobile work queue, job actions, photos, time clock, messages, inspections, and SOPs.
           </p>
         </Link>
 
@@ -70,14 +70,14 @@ export default function Home() {
             />
           </div>
           <p className="text-sm text-brand-steel mt-1">
-            Management partner portal is visible as a future-phase preview.
+            Administrator-only operational, receivables, attendance, asset, and exception oversight.
           </p>
         </Link>
       </div>
 
       <p className="text-xs text-brand-steel mt-10 max-w-md text-center">
-        Phase 1 pilot environment. Sign in with an authorized employee account;
-        unavailable modules are clearly marked Coming Soon.
+        Secure employee operations. Access is limited by active account, role,
+        permission, and administrator multi-factor verification.
       </p>
     </main>
   );

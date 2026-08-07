@@ -28,6 +28,15 @@ export interface NotificationRow extends Record<string, unknown> { id:string; re
 export interface TimeEntryRow extends Record<string, unknown> { id:string; user_id:string; entry_type:TimeEntryType; occurred_at:string; created_at:string }
 export interface TimeRequestRow extends Record<string, unknown> { id:string; user_id:string; kind:"edit_time"|"pto"; status:"pending"|"approved"|"denied"; requested_for:string; hours:number; reason:string; target_entry_id:string|null; requested_entry_type:TimeEntryType|null; requested_at:string|null; reviewed_by_id:string|null; reviewed_at:string|null; created_at:string; updated_at:string }
 export interface AbsenceRow extends Record<string, unknown> { id:string; user_id:string; event_date:string; absence_type:"pto"|"sick"|"unavailable"; status:"pending"|"approved"; note:string; created_at:string }
+export interface InvoiceRow extends Record<string, unknown> { id:string; invoice_number:string; customer_id:string; job_id:string|null; amount_cents:number; status:"draft"|"sent"|"paid"|"overdue"|"closed"|"void"; due_date:string; notes:string; sent_at:string|null; paid_at:string|null; closed_at:string|null; created_by_id:string|null; created_at:string; updated_at:string }
+export interface MessageChannelRow extends Record<string, unknown> { id:string; name:string; kind:"channel"|"direct"|"announcement"; created_by_id:string|null; created_at:string }
+export interface MessageRow extends Record<string, unknown> { id:string; channel_id:string; sender_id:string; body:string; created_at:string }
+export interface MessageReadRow extends Record<string, unknown> { message_id:string; user_id:string; read_at:string }
+export interface PretripTemplateRow extends Record<string, unknown> { id:string; title:string; version:number; is_published:boolean; items:Json; created_by_id:string|null; created_at:string }
+export interface PretripSubmissionRow extends Record<string, unknown> { id:string; template_id:string; driver_id:string; truck_id:string; mileage:number; signature:string; results:Json; has_failures:boolean; submitted_at:string }
+export interface SopDocumentRow extends Record<string, unknown> { id:string; title:string; category:string; version:number; body:string; is_published:boolean; required_for_drivers:boolean; created_by_id:string|null; created_at:string }
+export interface SopAcknowledgementRow extends Record<string, unknown> { sop_id:string; user_id:string; acknowledged_at:string }
+export interface CompanySettingsRow extends Record<string, unknown> { id:boolean; company_name:string; address:string; phone:string; email:string; time_zone:string; date_format:string; message_retention_days:number; invoice_prefix:string; updated_at:string }
 export interface CorrectionRow extends Record<string, unknown> { id:string; request_id:string; original_entry_id:string|null; user_id:string; replacement_type:TimeEntryType; replacement_at:string; reason:string; approved_by_id:string; created_at:string }
 export interface AuditRow extends Record<string, unknown> { id:number; actor_id:string|null; entity_table:string; entity_id:string; action:string; old_values:Json|null; new_values:Json|null; reason:string|null; created_at:string }
 
@@ -38,6 +47,10 @@ export interface Database {
       jobs: Table<JobRow>; job_events: Table<JobEventRow>; job_photos: Table<JobPhotoRow>; job_notes: Table<JobNoteRow>;
       job_activities: Table<JobActivityRow>; notifications: Table<NotificationRow>; time_entries: Table<TimeEntryRow>;
       time_requests: Table<TimeRequestRow>; absence_events: Table<AbsenceRow>; time_entry_corrections: Table<CorrectionRow>; audit_log: Table<AuditRow>;
+      invoices: Table<InvoiceRow>; message_channels: Table<MessageChannelRow>; message_channel_members: Table<Record<string, unknown> & {channel_id:string;user_id:string}>;
+      messages: Table<MessageRow>; message_reads: Table<MessageReadRow>; pretrip_templates: Table<PretripTemplateRow>;
+      pretrip_submissions: Table<PretripSubmissionRow>; sop_documents: Table<SopDocumentRow>; sop_acknowledgements: Table<SopAcknowledgementRow>;
+      company_settings: Table<CompanySettingsRow>; export_audit: Table<Record<string, unknown>>; import_runs: Table<Record<string, unknown>>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -47,7 +60,7 @@ export interface Database {
       cancel_job: { Args: { target_job_id:string; cancel_reason:string }; Returns: JobRow };
       update_assigned_job_status: { Args: { target_job_id:string; next_status:JobStatus }; Returns: undefined };
       complete_job_as_dispatch: { Args: { target_job_id:string; override_reason?:string|null }; Returns: JobRow };
-      log_assigned_job_dry_run: { Args: { target_job_id:string }; Returns: undefined };
+      log_assigned_job_dry_run: { Args: { target_job_id:string; dry_run_reason:string }; Returns: JobRow };
       record_time_event: { Args: { next_type:TimeEntryType }; Returns: TimeEntryRow };
       review_time_request: { Args: { request_id:string; decision:string }; Returns: TimeRequestRow };
       audit_admin_action: { Args: { target_user_id:string; admin_action:string }; Returns: undefined };
@@ -55,6 +68,11 @@ export interface Database {
       current_app_user_id: { Args: Record<PropertyKey, never>; Returns:string|null };
       current_access_role: { Args: Record<PropertyKey, never>; Returns:AccessRole|null };
       is_staff: { Args: Record<PropertyKey, never>; Returns:boolean };
+      apply_operations_import: { Args: { payload:Json; source_name:string; source_hash:string }; Returns:Json };
+      run_scheduled_maintenance: { Args: Record<PropertyKey, never>; Returns:Json };
+      list_message_recipients: { Args: Record<PropertyKey, never>; Returns:{id:string;full_name:string}[] };
+      list_message_channels: { Args: Record<PropertyKey, never>; Returns:{id:string;name:string;kind:"channel"|"direct"|"announcement";created_at:string}[] };
+      create_direct_message_channel: { Args:{other_user_id:string}; Returns:string };
     };
     Enums: { access_role:AccessRole; user_role:UserRole; employee_status:EmployeeStatus; job_status:JobStatus; time_entry_type:TimeEntryType };
     CompositeTypes: Record<string, never>;

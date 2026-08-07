@@ -13,10 +13,11 @@ Complete these steps in a staging-first sequence. Record the owner, date, eviden
 ## 2. Staging project
 
 - Create a separate Supabase staging project in the approved region.
-- Apply migrations `202608060001` through `202608060006` in order.
+- Apply migrations `202608060001` through `202608060008` in order.
 - Run `supabase db lint --linked --level warning` and the pgTAP suite in `supabase/tests/rls.sql`.
+- Retain the `migration-evidence` and `staging-database-evidence` workflow artifacts for the approved commit.
 - Confirm the `job-photos` bucket is private, 10 MB-limited, and restricted to the approved image MIME types.
-- Confirm Realtime publication contains only the intended Phase 1 tables.
+- Confirm Realtime publication contains only the intended production tables listed in migration `202608060008`.
 
 ## 3. Authentication and email
 
@@ -24,6 +25,7 @@ Complete these steps in a staging-first sequence. Record the owner, date, eviden
 - Set staging and production Site URLs plus exact redirect allowlists for `/auth/callback` and `/reset-password`.
 - Approve password length/complexity, email confirmation, invitation expiry, session duration, CAPTCHA, and Auth rate limits.
 - Verify invitation, resend/reset, expired-link, and deactivated-user behavior in staging.
+- Enroll every administrator in TOTP MFA and verify that AAL1 sessions cannot access administrator routes, APIs, or database policies.
 
 ## 4. Hosting and operations
 
@@ -41,9 +43,9 @@ Complete these steps in a staging-first sequence. Record the owner, date, eviden
 
 ## 6. Identities and role acceptance
 
-- Provide approved administrator, dispatcher, and driver staging identities.
-- Use the completed employee workflow to send only approved invitations.
-- Set `E2E_DISPATCHER_EMAIL` and `E2E_DISPATCHER_PASSWORD` in a protected test environment and run authenticated Playwright journeys.
+- Protect the GitHub `staging` environment with required reviewers and configure the secrets listed in `docs/staging-verification.md`.
+- Run the staging-only bootstrap to create fresh reserved acceptance identities; do not reuse employee or production accounts.
+- Run authenticated Playwright journeys with no identity-based skips.
 - Validate anonymous, inactive, driver, dispatcher, and admin RLS access; verify cross-driver job/photo/note isolation.
 - Confirm at least two administrators retain access after role-change tests.
 

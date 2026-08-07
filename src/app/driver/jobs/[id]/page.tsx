@@ -10,6 +10,7 @@ import { useConfirm } from "@/components/system/ConfirmProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import type { JobStatus } from "@/lib/types";
 import { PlatformMapLink } from "@/components/ui/PlatformMapLink";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 
 // Screen 6 — Driver Job Details. Interactive: photos gate completion, notes can
 // be added, and Complete requires confirmation (no accidental taps in the cab).
@@ -36,6 +37,7 @@ export default function DriverJobDetailsPage({
   const [optimisticNotes, setOptimisticNotes] = React.useState<string[]>([]);
   const [composing, setComposing] = React.useState(false);
   const [draft, setDraft] = React.useState("");
+  const [dryRunOpen,setDryRunOpen]=React.useState(false);
 
   React.useEffect(() => () => objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)), []);
   React.useEffect(() => {
@@ -65,10 +67,12 @@ export default function DriverJobDetailsPage({
     return result.ok;
   };
 
-  const markDryRun = () => {
+  const markDryRun = async (reason:string) => {
     if (!currentUser || busy || !canMutate) return;
     setBusy(true);
-    void logDryRun(job.id).then((result) => toast(result.ok ? "Dry run logged and dispatch notified" : result.error.message, { tone: result.ok ? "info" : "error" })).finally(() => setBusy(false));
+    const result=await logDryRun(job.id,reason);setBusy(false);
+    toast(result.ok ? "Job cancelled as a dry run and dispatch notified" : result.error.message, { tone: result.ok ? "info" : "error" });
+    if(result.ok){setDryRunOpen(false);router.push("/driver/jobs");}
   };
 
   const addPhotos = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -306,7 +310,7 @@ export default function DriverJobDetailsPage({
               </button>
             </div>
             <button
-              onClick={markDryRun}
+              onClick={()=>setDryRunOpen(true)}
               disabled={busy || !canMutate}
               className="w-full h-12 rounded border border-amber-300 text-amber-700 font-heading font-semibold uppercase tracking-wide text-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
@@ -329,6 +333,7 @@ export default function DriverJobDetailsPage({
           </div>
         )}
       </div>
+      <ReasonDialog open={dryRunOpen} onClose={()=>setDryRunOpen(false)} onSubmit={markDryRun} busy={busy} title="Record dry run" label="What prevented service?" confirmLabel="Cancel as Dry Run" />
     </>
   );
 }
