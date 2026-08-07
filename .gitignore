@@ -36,3 +36,5 @@ next-env.d.ts
 **/* 2.ts
 **/* 2.tsx
 **/* 3.tsx
+.vercel
+.env*
