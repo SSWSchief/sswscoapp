@@ -1,5 +1,5 @@
 begin;
-select plan(30);
+select plan(31);
 
 create function pg_temp.capture_sqlstate(command text) returns text language plpgsql as $$
 begin
@@ -54,12 +54,16 @@ insert into public.jobs(id,reference,customer_id,address,service_type,dumpster_s
   ('rls-driver-job','#RLS-DRIVER','rls-customer-a','1 Test Way','Delivery','20 Yard','rls-driver',now(),'pending'),
   ('rls-other-job','#RLS-OTHER','rls-customer-b','2 Test Way','Delivery','20 Yard','rls-other',now(),'pending');
 
-update public.users
-set role='driver',
-    access_role='driver',
-    status='inactive',
-    permission_overrides='{"settings":false}'::jsonb
-where lower(email)='amarshall@sswsco.com';
+select is(
+  pg_temp.capture_sqlstate($$update public.users
+    set role='driver',
+        access_role='driver',
+        status='inactive',
+        permission_overrides='{"settings":false}'::jsonb
+    where lower(email)='amarshall@sswsco.com'$$),
+  'P0001',
+  'protected administrator access changes are rejected atomically'
+);
 
 select is((select access_role from public.users where lower(email)='amarshall@sswsco.com'),'admin'::public.access_role,'Austin owner profile retains administrator access');
 select is((select role from public.users where lower(email)='tehronporter@gmail.com'),'management'::public.user_role,'Tehron owner profile is a management profile');
