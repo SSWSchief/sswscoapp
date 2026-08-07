@@ -5,7 +5,6 @@ import {
   requestId,
 } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/admin-auth";
-import { isOwnerEmail } from "@/lib/owners";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { employeePatchSchema, jsonBodySizeAllowed } from "@/lib/validation";
 
@@ -81,7 +80,22 @@ export async function PATCH(
     .maybeSingle();
   if (!existing.data)
     return fail("employee_not_found", "Employee not found.", 404);
-  if (isOwnerEmail(existing.data.email)) {
+  const protectedAdministrator = await admin
+    .from("protected_administrators")
+    .select("user_id,expires_at")
+    .eq("user_id", id)
+    .maybeSingle();
+  if (protectedAdministrator.error)
+    return fail(
+      "administrator_protection_unavailable",
+      "Administrator protections could not be verified.",
+      503,
+    );
+  const protectionIsActive =
+    protectedAdministrator.data &&
+    (!protectedAdministrator.data.expires_at ||
+      Date.parse(protectedAdministrator.data.expires_at) > Date.now());
+  if (protectionIsActive) {
     const ownerAccessChange =
       (input.accessRole && input.accessRole !== "admin") ||
       input.status === "inactive" ||
@@ -91,8 +105,8 @@ export async function PATCH(
       );
     if (ownerAccessChange)
       return fail(
-        "owner_protected",
-        "Owner profiles must retain active full administrator access.",
+        "administrator_protected",
+        "Protected administrators must retain active full administrator access.",
         400,
       );
   }

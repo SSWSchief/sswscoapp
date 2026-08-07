@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(30);
 
 create function pg_temp.capture_sqlstate(command text) returns text language plpgsql as $$
 begin
@@ -74,9 +74,35 @@ select is((public.save_company_settings('RLS Company','100 Test Way','555-0100',
 select is(pg_temp.execute_row_count($$update public.company_settings set company_name='Direct Hack' where id=true$$),0::bigint,'direct settings table update is denied even for an administrator session');
 select is((public.publish_sop_document('RLS Safety SOP','Safety','Use wheel chocks before inspection.',true)).version,1,'admin publishes SOP versions through RPC');
 select is((public.publish_pretrip_template('RLS Pretrip',array['Tires','Lights'])).version,1,'admin publishes pre-trip templates through RPC');
+select results_eq(
+  $$select user_id from public.list_protected_administrator_ids() order by user_id$$,
+  $$values ('owner-austin-marshall'::text),('owner-tehron-porter'::text)$$,
+  'administrator sees the service-managed protected administrator IDs'
+);
+select is(public.provision_training_dataset()->>'status','active','administrator provisions the controlled training dataset');
+select is((select count(*) from (
+  select id from public.customers where id='training-v1-customer'
+  union all select id from public.trucks where id='training-v1-truck'
+  union all select id from public.dumpsters where id='training-v1-dumpster'
+  union all select id from public.jobs where id='training-v1-job'
+  union all select id from public.invoices where id='training-v1-invoice'
+) records),5::bigint,'training provisioning creates exactly the five registered records');
+select is((select assigned_driver_id is null and assigned_truck_id='training-v1-truck' and assigned_dumpster_id='training-v1-dumpster' from public.jobs where id='training-v1-job'),true,'training job is linked to assets without a fake driver');
+select is((public.provision_training_dataset()->>'idempotent')::boolean,true,'training provisioning is idempotent');
+select is(public.remove_training_dataset('training-v1')->>'status','removed','administrator removes the controlled training dataset');
+select is((select count(*) from (
+  select id from public.customers where id='training-v1-customer'
+  union all select id from public.trucks where id='training-v1-truck'
+  union all select id from public.dumpsters where id='training-v1-dumpster'
+  union all select id from public.jobs where id='training-v1-job'
+  union all select id from public.invoices where id='training-v1-invoice'
+) records),0::bigint,'training removal deletes only the registered records');
+select is((public.remove_training_dataset('training-v1')->>'idempotent')::boolean,true,'training removal is idempotent');
+select is(pg_temp.capture_sqlstate($$select public.remove_training_dataset('wrong-dataset')$$),'P0001','training removal rejects an unknown dataset key');
 
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000002","role":"authenticated","aal":"aal1"}',true);
 select is(public.has_permission('customers'),true,'dispatcher receives default customer permission');
+select is(pg_temp.capture_sqlstate($$select public.provision_training_dataset()$$),'P0001','non-administrator cannot provision training data');
 
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000003","role":"authenticated","aal":"aal1"}',true);
 select is(public.has_permission('customers'),false,'reduced dispatcher override is authoritative');

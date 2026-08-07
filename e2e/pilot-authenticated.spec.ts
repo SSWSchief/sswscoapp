@@ -1,4 +1,26 @@
 import { expect, test, type Page } from "@playwright/test";
+import { acceptanceEnvironmentAvailable } from "./environment";
+
+const hasAdmin = acceptanceEnvironmentAvailable([
+  "E2E_ADMIN_EMAIL",
+  "E2E_ADMIN_PASSWORD",
+]);
+const hasDispatcher = acceptanceEnvironmentAvailable([
+  "E2E_DISPATCHER_EMAIL",
+  "E2E_DISPATCHER_PASSWORD",
+]);
+const hasDriver = acceptanceEnvironmentAvailable([
+  "E2E_DRIVER_EMAIL",
+  "E2E_DRIVER_PASSWORD",
+]);
+const hasInactive = acceptanceEnvironmentAvailable([
+  "E2E_INACTIVE_EMAIL",
+  "E2E_INACTIVE_PASSWORD",
+]);
+const hasReduced = acceptanceEnvironmentAvailable([
+  "E2E_REDUCED_EMAIL",
+  "E2E_REDUCED_PASSWORD",
+]);
 
 async function signIn(page: Page, email: string, password: string) {
   await page.goto("/login");
@@ -12,7 +34,7 @@ test.describe("authenticated production journeys", () => {
     page,
   }) => {
     test.skip(
-      !process.env.E2E_ADMIN_EMAIL || !process.env.E2E_ADMIN_PASSWORD,
+      !hasAdmin,
       "Requires approved staging admin identity",
     );
     await signIn(
@@ -34,10 +56,21 @@ test.describe("authenticated production journeys", () => {
     }
     await page.goto("/management");
     await expect(page.getByText("Management Portal")).toBeVisible();
+    await page.goto("/dispatcher/settings");
+    await page.getByRole("tab", { name: "Training Data" }).click();
+    const create = page.getByRole("button", { name: "Create Training Data" });
+    if (await create.isVisible()) await create.click();
+    await expect(page.getByText("Training dataset is active.")).toBeVisible();
+    await page.getByRole("button", { name: "Remove Training Data" }).click();
+    await page
+      .getByLabel(/Type DELETE TRAINING DATA/)
+      .fill("DELETE TRAINING DATA");
+    await page.getByRole("button", { name: "Remove All Five Records" }).click();
+    await expect(page.getByText("No training dataset is active.")).toBeVisible();
   });
   test("dispatcher reaches live daily operations", async ({ page }) => {
     test.skip(
-      !process.env.E2E_DISPATCHER_EMAIL || !process.env.E2E_DISPATCHER_PASSWORD,
+      !hasDispatcher,
       "Requires approved staging dispatcher identity",
     );
     await signIn(
@@ -56,7 +89,7 @@ test.describe("authenticated production journeys", () => {
     page,
   }) => {
     test.skip(
-      !process.env.E2E_DRIVER_EMAIL || !process.env.E2E_DRIVER_PASSWORD,
+      !hasDriver,
       "Requires approved staging driver identity",
     );
     await signIn(
@@ -78,7 +111,7 @@ test.describe("authenticated production journeys", () => {
   });
   test("inactive employee is rejected", async ({ page }) => {
     test.skip(
-      !process.env.E2E_INACTIVE_EMAIL || !process.env.E2E_INACTIVE_PASSWORD,
+      !hasInactive,
       "Requires approved inactive staging identity",
     );
     await signIn(
@@ -91,7 +124,7 @@ test.describe("authenticated production journeys", () => {
   });
   test("reduced dispatcher cannot open revoked modules", async ({ page }) => {
     test.skip(
-      !process.env.E2E_REDUCED_EMAIL || !process.env.E2E_REDUCED_PASSWORD,
+      !hasReduced,
       "Requires approved reduced-permission identity",
     );
     await signIn(

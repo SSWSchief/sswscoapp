@@ -1,17 +1,23 @@
 import { expect, test } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { acceptanceEnvironmentAvailable } from "./environment";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-const available = Boolean(
-  url &&
-    key &&
-    process.env.E2E_ADMIN_EMAIL &&
-    process.env.E2E_DISPATCHER_EMAIL &&
-    process.env.E2E_DRIVER_EMAIL &&
-    process.env.E2E_INACTIVE_EMAIL &&
-    process.env.E2E_REDUCED_EMAIL,
-);
+const available = acceptanceEnvironmentAvailable([
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  "E2E_ADMIN_EMAIL",
+  "E2E_ADMIN_PASSWORD",
+  "E2E_DISPATCHER_EMAIL",
+  "E2E_DISPATCHER_PASSWORD",
+  "E2E_DRIVER_EMAIL",
+  "E2E_DRIVER_PASSWORD",
+  "E2E_INACTIVE_EMAIL",
+  "E2E_INACTIVE_PASSWORD",
+  "E2E_REDUCED_EMAIL",
+  "E2E_REDUCED_PASSWORD",
+]);
 const client = () =>
   createClient(url!, key!, {
     auth: { persistSession: false, autoRefreshToken: false },

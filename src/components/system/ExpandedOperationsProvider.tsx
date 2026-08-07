@@ -20,6 +20,8 @@ import type {
   PretripTemplate,
   SopDocument,
   TeamMessage,
+  TrainingDataset,
+  TrainingDatasetMutation,
 } from "@/lib/types";
 import type {
   CompanySettingsRow,
@@ -58,6 +60,7 @@ type State = {
   pretripSubmissions: PretripSubmission[];
   sops: SopDocument[];
   settings: CompanySettings | null;
+  trainingDataset: TrainingDataset;
 };
 type Value = State & {
   loading: boolean;
@@ -91,6 +94,12 @@ type Value = State & {
     title: string;
     items: string[];
   }) => Promise<MutationResult<void>>;
+  provisionTrainingDataset: () => Promise<
+    MutationResult<TrainingDatasetMutation>
+  >;
+  removeTrainingDataset: (
+    datasetKey: "training-v1",
+  ) => Promise<MutationResult<TrainingDatasetMutation>>;
 };
 const Context = React.createContext<Value | null>(null);
 const initial: State = {
@@ -102,6 +111,11 @@ const initial: State = {
   pretripSubmissions: [],
   sops: [],
   settings: null,
+  trainingDataset: {
+    datasetKey: "training-v1",
+    status: "not_provisioned",
+    recordIds: {},
+  },
 };
 const fail = (e: unknown): MutationResult<never> => ({
   ok: false,
@@ -225,14 +239,20 @@ export function ExpandedOperationsProvider({
           );
         }
         if (domains.has("settings")) {
-          const result = await db
-            .from("company_settings")
-            .select("*")
-            .maybeSingle();
-          if (result.error) throw result.error;
-          patch.settings = result.data
-            ? mapCompanySettings(result.data as CompanySettingsRow)
+          const [settingsResult, trainingResult] = await Promise.all([
+            db.from("company_settings").select("*").maybeSingle(),
+            currentUser.accessRole === "admin"
+              ? db.rpc("get_training_dataset_status")
+              : Promise.resolve({ data: null, error: null }),
+          ]);
+          if (settingsResult.error || trainingResult.error)
+            throw settingsResult.error ?? trainingResult.error;
+          patch.settings = settingsResult.data
+            ? mapCompanySettings(settingsResult.data as CompanySettingsRow)
             : null;
+          if (trainingResult.data)
+            patch.trainingDataset =
+              trainingResult.data as unknown as TrainingDataset;
         }
         setData((previous) => ({ ...previous, ...patch }));
         log("info", "expanded_operations_refresh_complete", {
@@ -286,6 +306,24 @@ export function ExpandedOperationsProvider({
         return { ok: true, data: undefined } as MutationResult<void>;
       } catch (e) {
         return fail(e);
+      }
+    },
+    [canMutate, refresh],
+  );
+  const runWithData = React.useCallback(
+    async <T,>(work: () => PromiseLike<{ data: unknown; error: unknown }>) => {
+      if (!canMutate)
+        return fail({
+          message:
+            "Changes are disabled until the live connection is restored.",
+        });
+      try {
+        const result = await work();
+        if (result.error) throw result.error;
+        await refresh(new Set(["settings"]));
+        return { ok: true, data: result.data as T } as MutationResult<T>;
+      } catch (error) {
+        return fail(error);
       }
     },
     [canMutate, refresh],
@@ -424,8 +462,18 @@ export function ExpandedOperationsProvider({
             }),
           "compliance",
         ),
+      provisionTrainingDataset: () =>
+        runWithData<TrainingDatasetMutation>(() =>
+          createClient().rpc("provision_training_dataset"),
+        ),
+      removeTrainingDataset: (datasetKey) =>
+        runWithData<TrainingDatasetMutation>(() =>
+          createClient().rpc("remove_training_dataset", {
+            requested_dataset_key: datasetKey,
+          }),
+        ),
     }),
-    [loading, data, refresh, run, currentUser, canMutate],
+    [loading, data, refresh, run, runWithData, currentUser, canMutate],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

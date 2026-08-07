@@ -6,11 +6,14 @@
 4. Configure exact Site/redirect URLs, custom SMTP with SPF/DKIM/DMARC, a 12-character minimum password, refresh-token rotation, short administrator sessions, Auth rate limits, and invitation/reset templates. Disable public signup. Administrator MFA is deliberately disabled; record that accepted risk and reapprove it at each release.
 5. Configure the private `job-photos` bucket, retention, Storage backup, database PITR, redacted Vercel runtime logs, Supabase database/Auth/Storage alerts, and the scheduled GitHub check against `/api/health`.
 6. Confirm the maintenance scheduler for `/api/cron/maintenance`. The repository uses a once-daily Vercel cron so preview deployments pass on Hobby accounts; production dispatch alerts require either an approved Vercel plan that supports the 15-minute cadence or an approved external scheduler that sends `Authorization: Bearer $CRON_SECRET` to the same endpoint.
-7. Put sanitized staging import files under ignored `imports/`. Run the default dry-run validator, review duplicates/errors/counts, apply to staging with the explicit `--apply` flag, and reconcile record counts and samples.
+7. Put sanitized staging import files under ignored `imports/`. Run the default dry-run validator, review duplicates/errors/counts and the SHA-256 source hash, then apply with explicit `--apply`, `--environment`, `--project-ref`, and `--approved-hash` values. Production additionally requires `--confirm-production` with the exact project ref. Reconcile record counts and samples. The launch plan uses manual client entry, so do not run an import unless the client later approves one.
 8. Complete physical-device, accessibility, offline/reconnect, camera, realtime, performance, and business UAT. Record every item listed in the traceability matrix.
 9. Freeze source data. Back up production, apply the proven migration set, run the same import by source hash, reconcile, deploy the approved SHA, and execute role-specific smoke tests.
 10. Keep the previous Vercel deployment available. The rollback owner decides within the recorded window whether to promote the prior deployment. Database rollback uses point-in-time recovery or a verified pre-migration backup in a replacement project; never reverse a migration in place.
 11. Go live only after named business, security/privacy, and technical owners approve the evidence bundle.
+12. After the exact production commit is healthy, an administrator may provision
+    `training-v1` from Settings. Remove it only through the same Settings panel;
+    never delete production records with a prefix or wildcard query.
 
 Raw client data, secrets, backup archives, and SMTP credentials must never be committed.
 

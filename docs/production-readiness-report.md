@@ -5,7 +5,7 @@ Scope: three-layer production-readiness implementation and local verification
 
 ## Outcome
 
-The repository now implements the production operations scope across core dispatch and the expanded modules. Runtime data is Supabase-only and fails closed; public/auth routes do not initialize operational providers; operational reads and Realtime refreshes are domain-scoped; routes and permissions share one registry; sensitive APIs use validated, bounded payloads and structured request-ID errors; and the additive release-hardening migration adds indexes, application rate limiting, and concurrency-safe maintenance.
+The repository now implements the production operations scope across core dispatch and the expanded modules. Runtime data is Supabase-only and fails closed; public/auth routes do not initialize operational providers; operational reads and Realtime refreshes are domain-scoped; routes and permissions share one registry; sensitive APIs use validated, bounded payloads and structured request-ID errors; and additive release migrations add indexes, application rate limiting, concurrency-safe maintenance, service-managed protected administrators, and a controlled removable training dataset.
 
 This repository is code-complete for staging promotion. It is not approved for production go-live until the external release gates below have recorded evidence and named client approval. No migration was applied to a connected project, client data imported, identity invited, hosting environment deployed, or production setting changed during this implementation pass.
 
@@ -23,7 +23,7 @@ This repository is code-complete for staging promotion. It is not approved for p
 
 ## Database source of truth
 
-Migrations `202608060001` through `202608070001` remain the established baseline. Migration `202608070002_release_hardening.sql` is additive and must first be applied and tested in the separate staging Supabase project. It has not been applied remotely by this pass.
+Migrations `202608060001` through `202608070001` remain the established baseline. Migrations `202608070002_release_hardening.sql` and `202608070003_client_launch_closeout.sql` are additive and must first be applied and tested in the separate staging Supabase project. They have not been applied remotely by this pass.
 
 The hardening migration adds:
 
@@ -35,7 +35,7 @@ The hardening migration adds:
 
 - ESLint: passed with zero warnings.
 - TypeScript strict check: passed.
-- Vitest: 42 tests passed in 9 files. Critical-scope coverage is 98.92% statements, 93.45% branches, 95.23% functions, and 98.92% lines.
+- Vitest: 53 tests passed in 13 files. Expanded testable-surface coverage is 97.78% statements/lines, 89.15% branches, and 98.59% functions. Four additional CLI contract tests cover import schema, duplicates, hashing, and target guards.
 - Dead-code analysis: passed with no unexplained findings.
 - Next.js 15.5.23 production build: passed, including 31 generated pages, middleware, and health/export/maintenance endpoints.
 - Dependency audit: zero known vulnerabilities.

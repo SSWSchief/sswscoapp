@@ -5,10 +5,13 @@ Complete these steps in a staging-first sequence. Record the owner, date, eviden
 ## 1. Credentials and ownership
 
 - Rotate the database password and server secret that were shared during development.
+- The workbook `ssw app data sheet and api.xlsx` contains credentials only. It is
+  not an import source; rotate every credential it contains, verify the new
+  values in all environments, then securely remove every copy.
 - Update `.env.local`, staging hosting variables, and production hosting variables; never expose the server secret with `NEXT_PUBLIC_`.
 - Remove old values from shared documents/chat history where organizational policy permits.
 - Grant the development account least-privilege Supabase organization/project access.
-- Maintain at least two organization owners. Organization-provider MFA remains recommended even though application administrator MFA is disabled under the accepted application policy.
+- Maintain at least two client-controlled organization/application administrators in addition to the approved indefinite support administrator. Organization-provider MFA remains recommended even though application administrator MFA is disabled under the accepted application policy.
 
 ## 2. Staging project
 
@@ -49,12 +52,17 @@ Complete these steps in a staging-first sequence. Record the owner, date, eviden
 - Run authenticated Playwright journeys with no identity-based skips.
 - Validate anonymous, inactive, driver, dispatcher, and admin RLS access; verify cross-driver job/photo/note isolation.
 - Confirm at least two administrators retain access after role-change tests.
+- Verify protected administrators are sourced from the service-managed registry,
+  not client-side email matching, and cannot be downgraded or deactivated.
 
 ## 7. Client data
 
 - Supply validated import files for customers, trucks, dumpsters, assignments, mileage, PTO reference values, and active jobs.
 - Agree on unique identifiers, required fields, phone/address formats, timezone handling, and duplicate resolution.
 - Rehearse import into staging, reconcile counts and samples, obtain written approval, then schedule production import.
+- If the client is entering records manually, do not run a production import.
+  Provision only `training-v1` from Settings, verify its five linked records,
+  rehearse exact cleanup, and leave all safety content as client-approved data.
 
 ## 8. Policy approval
 

@@ -10,10 +10,11 @@ import { useExpandedOperations } from "@/components/system/ExpandedOperationsPro
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useToast } from "@/components/system/ToastProvider";
 import { effectivePermissions, permissionLabels } from "@/lib/permissions";
-import { isOwnerProfile } from "@/lib/owners";
+import { isProtectedAdministrator } from "@/lib/owners";
 import { cn } from "@/lib/utils";
 import { apiErrorMessage } from "@/lib/client-api";
 import type { CompanySettings } from "@/lib/types";
+import { TrainingDataPanel } from "@/components/dispatcher/TrainingDataPanel";
 
 const defaults: CompanySettings = {
   companyName: "Silver State Waste Solutions",
@@ -25,7 +26,14 @@ const defaults: CompanySettings = {
   messageRetentionDays: 365,
   invoicePrefix: "INV",
 };
-const tabs = ["company", "defaults", "checklist", "sops", "users"] as const;
+const tabs = [
+  "company",
+  "defaults",
+  "checklist",
+  "sops",
+  "users",
+  "training",
+] as const;
 type Tab = (typeof tabs)[number];
 const tabLabels: Record<Tab, string> = {
   company: "Company",
@@ -33,6 +41,7 @@ const tabLabels: Record<Tab, string> = {
   checklist: "Driver Checklist",
   sops: "SOP Library",
   users: "Users & Roles",
+  training: "Training Data",
 };
 
 function validateSettings(settings: CompanySettings) {
@@ -65,8 +74,14 @@ export default function Page() {
     sops,
     pretripTemplates,
   } = useExpandedOperations();
-  const { currentUser, canMutate, connectionState, connectionMessage, users } =
-    useOperations();
+  const {
+    currentUser,
+    canMutate,
+    connectionState,
+    connectionMessage,
+    users,
+    protectedAdministratorIds,
+  } = useOperations();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = React.useState<Tab>("company");
   const [form, setForm] = React.useState(defaults);
@@ -524,7 +539,12 @@ export default function Page() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded bg-brand-mist px-2 py-1 text-xs font-semibold uppercase text-brand-steel">
-                          {isOwnerProfile(admin) ? "Owner" : "Admin"}
+                          {isProtectedAdministrator(
+                            admin,
+                            protectedAdministratorIds,
+                          )
+                            ? "Protected Admin"
+                            : "Admin"}
                         </span>
                         <Button
                           size="sm"
@@ -567,6 +587,7 @@ export default function Page() {
               </div>
             </section>
           )}
+          {activeTab === "training" && <TrainingDataPanel />}
         </Card>
       </div>
     </>

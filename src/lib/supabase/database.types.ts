@@ -272,6 +272,22 @@ export interface CompanySettingsRow extends Record<string, unknown> {
   invoice_prefix: string;
   updated_at: string;
 }
+export interface ProtectedAdministratorRow extends Record<string, unknown> {
+  user_id: string;
+  reason: string;
+  expires_at: string | null;
+  created_at: string;
+}
+export interface TrainingDatasetRow extends Record<string, unknown> {
+  dataset_key: "training-v1";
+  status: "active" | "removed";
+  record_ids: Json;
+  created_by_id: string | null;
+  created_at: string;
+  removed_by_id: string | null;
+  removed_at: string | null;
+  updated_at: string;
+}
 export interface CorrectionRow extends Record<string, unknown> {
   id: string;
   request_id: string;
@@ -338,6 +354,8 @@ export interface Database {
           attempts: number;
         }
       >;
+      protected_administrators: Table<ProtectedAdministratorRow>;
+      training_datasets: Table<TrainingDatasetRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -455,6 +473,22 @@ export interface Database {
       customer_active_job_counts: {
         Args: Record<PropertyKey, never>;
         Returns: Array<{ customer_id: string; active_jobs: number }>;
+      };
+      list_protected_administrator_ids: {
+        Args: Record<PropertyKey, never>;
+        Returns: Array<{ user_id: string }>;
+      };
+      get_training_dataset_status: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      provision_training_dataset: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      remove_training_dataset: {
+        Args: { requested_dataset_key: string };
+        Returns: Json;
       };
       save_company_settings: {
         Args: {

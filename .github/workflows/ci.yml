@@ -19,6 +19,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:coverage
+      - run: npm run test:scripts
       - run: npm run dead-code
       - run: npm run build
       - run: npm audit --audit-level=high

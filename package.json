@@ -11,14 +11,15 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:scripts": "node --test scripts/*.test.mjs",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "dead-code": "knip",
-    "check": "npm run lint && npm run typecheck && npm run test:coverage && npm run dead-code && npm run build",
+    "check": "npm run lint && npm run typecheck && npm run test:coverage && npm run test:scripts && npm run dead-code && npm run build",
     "db:lint": "supabase db lint --linked --level warning",
     "import:validate": "node scripts/import-operations.mjs",
     "staging:bootstrap": "node scripts/bootstrap-staging-e2e.mjs",
-    "owners:bootstrap": "node scripts/bootstrap-owner-access.mjs"
+    "admin:invite": "node scripts/invite-administrator.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

@@ -18,6 +18,8 @@ Every release row must have UI, data-boundary authorization, audit behavior, and
 | Pre-trip inspections       | Driver, staff reviewer | pre-trip form                    | versioned templates, own submission, failure trigger                         | pre-trip RLS/E2E                       |
 | SOP publication/ack        | Admin, Driver          | settings and SOP library         | versioned publication and own acknowledgement                                | SOP RLS/E2E                            |
 | Company settings           | Admin                  | settings                         | admin-only update + audit                                                    | settings RLS/admin E2E                 |
+| Controlled training data   | Admin                  | Settings → Training Data         | exact registry + transactional provision/removal RPCs + audit                | pgTAP, component, authenticated E2E    |
+| Protected administrators   | Admin/service role     | employees and access screens     | service-managed registry + immutable access trigger                          | pgTAP and admin E2E                     |
 | Operational import         | Admin/service role     | CLI                              | transactional `apply_operations_import`, source hash idempotency             | dry-run validation + staging rehearsal |
 | Health and deployment      | Operations owner       | `/api/health`                    | server-only database probe                                                   | Vercel checks and smoke test           |
 

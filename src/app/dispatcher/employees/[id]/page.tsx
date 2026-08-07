@@ -16,7 +16,7 @@ import {
   permissionKeys,
   permissionLabels,
 } from "@/lib/permissions";
-import { isOwnerProfile } from "@/lib/owners";
+import { isProtectedAdministrator } from "@/lib/owners";
 import type { AccessRole } from "@/lib/types";
 import { useToast } from "@/components/system/ToastProvider";
 import { apiErrorMessage } from "@/lib/client-api";
@@ -36,6 +36,7 @@ export default function EmployeeAccessPage({
     setUserAccessRole,
     setPermissionOverride,
     resetPermissionOverrides,
+    protectedAdministratorIds,
   } = useOperations();
   const { toast } = useToast();
   const [pending, setPending] = React.useState(false);
@@ -43,7 +44,7 @@ export default function EmployeeAccessPage({
   if (!hydrated) return <div className="flex-1 bg-surface" />;
   if (!employee) return notFound();
   const effective = effectivePermissions(employee);
-  const owner = isOwnerProfile(employee);
+  const owner = isProtectedAdministrator(employee, protectedAdministratorIds);
   const visible = permissionKeys.filter((key) => effective[key]);
   const hidden = permissionKeys.filter((key) => !effective[key]);
 
@@ -75,7 +76,7 @@ export default function EmployeeAccessPage({
               </p>
               {owner && (
                 <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-brand-blue">
-                  Owner · full administrator access
+                  Protected administrator · full administrator access
                 </p>
               )}
             </div>
@@ -130,7 +131,9 @@ export default function EmployeeAccessPage({
                   }}
                 >
                   Reset to{" "}
-                  {owner ? "Owner" : accessRoleLabel[employee.accessRole]}
+                  {owner
+                    ? "Protected Admin"
+                    : accessRoleLabel[employee.accessRole]}
                 </Button>
               }
             />
@@ -232,8 +235,8 @@ export default function EmployeeAccessPage({
                   </Button>
                   {owner ? (
                     <p className="rounded bg-brand-mist p-3 text-xs text-brand-steel">
-                      Owner profiles cannot be deactivated or downgraded from
-                      the app.
+                      Protected administrators cannot be deactivated or
+                      downgraded from the app.
                     </p>
                   ) : (
                     <Button

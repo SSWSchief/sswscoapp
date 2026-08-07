@@ -5,11 +5,13 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 2 : 0,
+  forbidOnly: Boolean(process.env.CI),
   timeout: 60_000,
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: "http://127.0.0.1:3000",
     trace: "on-first-retry",
+    screenshot: "only-on-failure",
     navigationTimeout: 30_000,
   },
   webServer: {
@@ -20,6 +22,7 @@ export default defineConfig({
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "tablet", use: { ...devices["iPad (gen 7)"] } },
     { name: "mobile-safari", use: { ...devices["iPhone 13"] } },
   ],
 });

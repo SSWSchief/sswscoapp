@@ -12,11 +12,12 @@ import { Input } from "@/components/ui/Field";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { accessRoleLabel } from "@/lib/permissions";
-import { isOwnerProfile } from "@/lib/owners";
+import { isProtectedAdministrator } from "@/lib/owners";
 import { EmployeeModal } from "@/components/dispatcher/EmployeeModal";
 
 export default function EmployeesPage() {
-  const { users, currentUser, canMutate } = useOperations();
+  const { users, currentUser, canMutate, protectedAdministratorIds } =
+    useOperations();
   const [query, setQuery] = React.useState("");
   const [open, setOpen] = React.useState(false);
   const employees = users.filter((employee) =>
@@ -87,8 +88,11 @@ export default function EmployeesPage() {
                     </div>
                   </TD>
                   <TD>
-                    {isOwnerProfile(employee)
-                      ? "Owner"
+                    {isProtectedAdministrator(
+                      employee,
+                      protectedAdministratorIds,
+                    )
+                      ? "Protected Admin"
                       : accessRoleLabel[employee.accessRole]}
                   </TD>
                   <TD>{employee.phone}</TD>
@@ -139,8 +143,11 @@ export default function EmployeesPage() {
                 </div>
                 <div className="mt-2 flex items-center justify-between border-t border-brand-ice/50 pt-2">
                   <span className="text-sm text-brand-steel">
-                    {isOwnerProfile(employee)
-                      ? "Owner"
+                    {isProtectedAdministrator(
+                      employee,
+                      protectedAdministratorIds,
+                    )
+                      ? "Protected Admin"
                       : accessRoleLabel[employee.accessRole]}
                   </span>
                   <Link

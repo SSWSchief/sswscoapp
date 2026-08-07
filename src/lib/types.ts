@@ -335,3 +335,27 @@ export interface CompanySettings {
   messageRetentionDays: number;
   invoicePrefix: string;
 }
+
+export type TrainingDatasetStatus = "not_provisioned" | "active" | "removed";
+
+export interface TrainingDataset {
+  datasetKey: "training-v1";
+  status: TrainingDatasetStatus;
+  recordIds: Partial<{
+    customerId: string;
+    truckId: string;
+    dumpsterId: string;
+    jobId: string;
+    invoiceId: string;
+  }>;
+  createdAt?: string;
+  removedAt?: string;
+}
+
+export interface TrainingDatasetMutation {
+  datasetKey: "training-v1";
+  status: "active" | "removed";
+  idempotent: boolean;
+  createdCounts?: Record<string, number>;
+  deletedCounts?: Record<string, number>;
+}

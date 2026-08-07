@@ -83,6 +83,7 @@ interface State {
   timeEntryCorrections: TimeEntryCorrection[];
   timeRequests: TimeRequest[];
   absenceEvents: AbsenceEvent[];
+  protectedAdministratorIds: string[];
 }
 const emptyState: State = {
   jobs: [],
@@ -97,6 +98,7 @@ const emptyState: State = {
   timeEntryCorrections: [],
   timeRequests: [],
   absenceEvents: [],
+  protectedAdministratorIds: [],
 };
 interface CreateJobInput {
   customerId: string;
@@ -287,7 +289,7 @@ export function OperationsProvider({
         const patch: Partial<State> = {};
         let users: User[] = [profile];
         if (domains.has("people")) {
-          const [result, detail] = await Promise.all([
+          const [result, detail, protectedAdministrators] = await Promise.all([
             db
               .from("users")
               .select("*")
@@ -302,14 +304,19 @@ export function OperationsProvider({
                   .is("deleted_at", null)
                   .maybeSingle()
               : Promise.resolve({ data: null, error: null }),
+            db.rpc("list_protected_administrator_ids"),
           ]);
-          if (result.error || detail.error) throw result.error ?? detail.error;
+          if (result.error || detail.error || protectedAdministrators.error)
+            throw result.error ?? detail.error ?? protectedAdministrators.error;
           const rows = result.data as UserRow[];
           const detailRow = detail.data as UserRow | null;
           if (detailRow && !rows.some((row) => row.id === detailRow.id))
             rows.push(detailRow);
           users = rows.map(mapUser);
           patch.users = users;
+          patch.protectedAdministratorIds = (
+            (protectedAdministrators.data ?? []) as { user_id: string }[]
+          ).map((row) => row.user_id);
         }
         let jobs: Job[] = [];
         if (domains.has("jobs")) {
