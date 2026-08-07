@@ -3,6 +3,10 @@ import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/system/AppProviders";
 
+// A nonce-based CSP requires request-time rendering so Next.js can attach the
+// middleware nonce to every framework and application script.
+export const dynamic = "force-dynamic";
+
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",

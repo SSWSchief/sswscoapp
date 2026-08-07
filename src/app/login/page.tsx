@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [error, setError] = React.useState("");
   const [message, setMessage] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
 
   const signIn = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -98,8 +99,9 @@ export default function LoginPage() {
 
         <form className="space-y-4" onSubmit={signIn}>
           <div>
-            <Label>Email</Label>
+            <Label htmlFor="login-email">Email</Label>
             <Input
+              id="login-email"
               name="email"
               type="email"
               required
@@ -112,22 +114,26 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <Label>Password</Label>
+            <Label htmlFor="login-password">Password</Label>
             <div className="relative">
               <Input
+                id="login-password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 autoComplete="current-password"
                 enterKeyHint="go"
                 placeholder="Enter your password"
               />
-              <Icon
-                name="eye"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-steel"
-                width={18}
-                height={18}
-              />
+              <button
+                type="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword((visible) => !visible)}
+                className="absolute right-0 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded text-brand-steel hover:text-brand-blue"
+              >
+                <Icon name="eye" width={18} height={18} />
+              </button>
             </div>
           </div>
           {error && (

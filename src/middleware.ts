@@ -59,14 +59,19 @@ function contentSecurityPolicy(nonce: string, supabaseUrl: string) {
 export async function middleware(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://*.supabase.co";
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://*.supabase.co";
   const csp = contentSecurityPolicy(nonce, supabaseUrl);
+  requestHeaders.set("x-nonce", nonce);
+  // Next.js reads the request CSP to attach the nonce to framework scripts.
+  requestHeaders.set("Content-Security-Policy", csp);
   const secured = <T extends NextResponse>(result: T): T => {
     result.headers.set("Content-Security-Policy", csp);
     return result;
   };
-  let response = secured(NextResponse.next({ request: { headers: requestHeaders } }));
+  let response = secured(
+    NextResponse.next({ request: { headers: requestHeaders } }),
+  );
   const isProtected = protectedPrefixes.some((prefix) =>
     request.nextUrl.pathname.startsWith(prefix),
   );
@@ -77,7 +82,11 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key)
     return isProtected
-      ? secured(new NextResponse("Authentication is not configured.", { status: 503 }))
+      ? secured(
+          new NextResponse("Authentication is not configured.", {
+            status: 503,
+          }),
+        )
       : response;
 
   const supabase = createServerClient<Database>(url, key, {
@@ -87,7 +96,9 @@ export async function middleware(request: NextRequest) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value),
         );
-        response = secured(NextResponse.next({ request: { headers: requestHeaders } }));
+        response = secured(
+          NextResponse.next({ request: { headers: requestHeaders } }),
+        );
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
         );
@@ -184,7 +195,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|icons|brand|favicon.ico|sw.js).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|icons|brand|favicon.ico|sw.js).*)"],
 };
