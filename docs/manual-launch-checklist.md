@@ -25,7 +25,9 @@ Complete these steps in a staging-first sequence. Record the owner, date, eviden
 ## 3. Authentication and email
 
 - Configure custom SMTP and validate SPF, DKIM, and DMARC for the approved sender domain.
-- Set staging and production Site URLs plus exact redirect allowlists for `/auth/callback` and `/reset-password`.
+- Set staging and production Site URLs plus exact redirect allowlists for `/auth/confirm`, `/auth/callback`, and `/reset-password`.
+- **The Site URL must be the public application domain.** On August 10, 2026 production's Site URL pointed at a Vercel SSO-protected preview domain, so every invitation link landed employees on a Vercel login page. Supabase also silently discards a `redirectTo` that is not on the allowlist and substitutes the Site URL, which hides the misconfiguration. Verify by generating a link with `auth.admin.generateLink` and confirming `redirect_to` matches what was requested.
+- **Point the Invitation and Reset Password email templates at `/auth/confirm`**, using `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/reset-password`. Administrator-generated links are not PKCE and return their tokens in the URL hash fragment, which never reaches a server route; `/auth/confirm` redeems them with `verifyOtp`. The default `{{ .ConfirmationURL }}` template cannot work with server-side session handling.
 - Approve password length/complexity, email confirmation, invitation expiry, session duration, CAPTCHA, and Auth rate limits.
 - Verify invitation, resend/reset, expired-link, and deactivated-user behavior in staging.
 - Verify the approved password-only administrator policy: strong passwords, short sessions, Auth/application rate limits, immutable owners, active-profile enforcement, and audit records for administrator actions. Record MFA as an accepted residual risk.
