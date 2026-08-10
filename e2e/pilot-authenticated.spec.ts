@@ -33,6 +33,17 @@ async function signIn(page: Page, email: string, password: string) {
   await submit.click();
 }
 
+/**
+ * Assert the current page by its Topbar heading. The sidebar is `hidden md:flex`,
+ * so plain text locators resolve to hidden desktop nav links on the tablet and
+ * mobile projects; the `h1` is the one identity every viewport renders.
+ */
+function expectPage(page: Page, title: string) {
+  return expect(
+    page.getByRole("heading", { level: 1, name: title }),
+  ).toBeVisible();
+}
+
 test.describe("authenticated production journeys", () => {
   test("administrator reaches every activated office module", async ({
     page,
@@ -52,12 +63,10 @@ test.describe("authenticated production journeys", () => {
       ["/dispatcher/settings", "Settings"],
     ]) {
       await page.goto(path);
-      await expect(
-        page.getByText(heading, { exact: false }).first(),
-      ).toBeVisible();
+      await expectPage(page, heading);
     }
     await page.goto("/management");
-    await expect(page.getByText("Management Portal")).toBeVisible();
+    await expectPage(page, "Management Overview");
     await page.goto("/dispatcher/settings");
     await page.getByRole("tab", { name: "Training Data" }).click();
     const create = page.getByRole("button", { name: "Create Training Data" });
@@ -84,9 +93,9 @@ test.describe("authenticated production journeys", () => {
       page.getByRole("link", { name: /view all jobs/i }),
     ).toBeVisible();
     await page.goto("/dispatcher/jobs");
-    await expect(page.getByText("Jobs", { exact: true }).first()).toBeVisible();
+    await expectPage(page, "Jobs");
     await page.goto("/dispatcher/messages");
-    await expect(page.getByText("Channels")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Channels" })).toBeVisible();
   });
   test("driver reaches field, time, messages, pre-trip, and SOP workflows", async ({
     page,

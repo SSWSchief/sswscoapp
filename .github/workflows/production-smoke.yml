@@ -22,7 +22,14 @@ jobs:
             --header 'Accept: application/json' "$HEALTH_URL")"
           node -e '
             const payload = JSON.parse(process.argv[1]);
-            if (!payload.data || payload.data.status !== "ok" || payload.data.database?.status !== "ok") {
+            const data = payload.data;
+            if (!data || data.status !== "ok") {
               throw new Error("Production health response is not healthy");
+            }
+            if (data.dependencies?.database?.status !== "reachable") {
+              throw new Error("Production database dependency is not reachable");
+            }
+            if (!data.release || data.release === "local") {
+              throw new Error("Production health response reports no release SHA");
             }
           ' "$response"
