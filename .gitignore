@@ -38,3 +38,6 @@ next-env.d.ts
 **/* 3.tsx
 .vercel
 .env*
+
+# local editor/agent tooling
+.claude/
