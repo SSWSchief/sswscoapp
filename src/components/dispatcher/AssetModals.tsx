@@ -8,18 +8,261 @@ import { useToast } from "@/components/system/ToastProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import type { Dumpster, DumpsterStatus, Truck, TruckStatus } from "@/lib/types";
 
-export function AddTruckModal({ open, onClose, truck }: { open: boolean; onClose: () => void; truck?: Truck }) {
-  const { toast } = useToast(); const { users, saveTruck, canMutate } = useOperations(); const [saving, setSaving] = React.useState(false);
-  const [form, setForm] = React.useState({ number: "", type: "Roll-off Truck", status: "in_use" as TruckStatus, licensePlate: "", assignedDriverId: "", notes: "" });
-  React.useEffect(() => { if (open) setForm({ number: truck?.number ?? "", type: truck?.type ?? "Roll-off Truck", status: truck?.status ?? "in_use", licensePlate: truck?.licensePlate ?? "", assignedDriverId: truck?.assignedDriverId ?? "", notes: truck?.notes ?? "" }); }, [open, truck]);
-  const save = async () => { if (!form.number.trim()) { toast("Truck number is required.", { tone: "error" }); return; } setSaving(true); const r = await saveTruck({ ...form, assignedDriverId: form.assignedDriverId || null }, truck?.id); setSaving(false); toast(r.ok ? "Truck saved" : r.error.message, { tone: r.ok ? "success" : "error" }); if (r.ok) onClose(); };
-  return <Modal open={open} onClose={onClose} title={truck ? "Edit Truck" : "Add Truck"} widthClass="max-w-md" footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={() => void save()} disabled={saving || !canMutate}>{saving ? "Saving…" : "Save Truck"}</Button></>}><div className="space-y-4"><FormField label="Truck Number" required><Input value={form.number} onChange={e => setForm({ ...form, number: e.target.value })} placeholder="T-06" /></FormField><FormField label="Type"><Select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}><option>Roll-off Truck</option><option>Front Loader</option><option>Rear Loader</option></Select></FormField><FormField label="Status"><Select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as TruckStatus })}><option value="in_use">In Use</option><option value="in_shop">In Shop</option><option value="down">Down</option></Select></FormField><FormField label="License Plate"><Input value={form.licensePlate} onChange={e => setForm({ ...form, licensePlate: e.target.value })} /></FormField><FormField label="Driver"><Select value={form.assignedDriverId} onChange={e => setForm({ ...form, assignedDriverId: e.target.value })}><option value="">Unassigned</option>{users.filter(u => u.role === "driver").map(d => <option value={d.id} key={d.id}>{d.fullName}</option>)}</Select></FormField><FormField label="Notes"><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></FormField></div></Modal>;
+export function AddTruckModal({
+  open,
+  onClose,
+  truck,
+}: {
+  open: boolean;
+  onClose: () => void;
+  truck?: Truck;
+}) {
+  const { toast } = useToast();
+  const { users, saveTruck, canMutate } = useOperations();
+  const [saving, setSaving] = React.useState(false);
+  const [form, setForm] = React.useState({
+    number: "",
+    type: "Roll-off Truck",
+    status: "in_use" as TruckStatus,
+    licensePlate: "",
+    assignedDriverId: "",
+    notes: "",
+  });
+  React.useEffect(() => {
+    if (open)
+      setForm({
+        number: truck?.number ?? "",
+        type: truck?.type ?? "Roll-off Truck",
+        status: truck?.status ?? "in_use",
+        licensePlate: truck?.licensePlate ?? "",
+        assignedDriverId: truck?.assignedDriverId ?? "",
+        notes: truck?.notes ?? "",
+      });
+  }, [open, truck]);
+  const save = async () => {
+    if (!form.number.trim()) {
+      toast("Truck number is required.", { tone: "error" });
+      return;
+    }
+    setSaving(true);
+    const r = await saveTruck(
+      { ...form, assignedDriverId: form.assignedDriverId || null },
+      truck?.id,
+    );
+    setSaving(false);
+    toast(r.ok ? "Truck saved" : r.error.message, {
+      tone: r.ok ? "success" : "error",
+    });
+    if (r.ok) onClose();
+  };
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={truck ? "Edit Truck" : "Add Truck"}
+      widthClass="max-w-md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={() => void save()} disabled={saving || !canMutate}>
+            {saving ? "Saving…" : "Save Truck"}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <FormField label="Truck Number" required>
+          <Input
+            value={form.number}
+            onChange={(e) => setForm({ ...form, number: e.target.value })}
+            placeholder="T-06"
+          />
+        </FormField>
+        <FormField label="Type">
+          <Select
+            value={form.type}
+            onChange={(e) => setForm({ ...form, type: e.target.value })}
+          >
+            <option>Roll-off Truck</option>
+            <option>Front Loader</option>
+            <option>Rear Loader</option>
+          </Select>
+        </FormField>
+        <FormField label="Status">
+          <Select
+            value={form.status}
+            onChange={(e) =>
+              setForm({ ...form, status: e.target.value as TruckStatus })
+            }
+          >
+            <option value="in_use">In Use</option>
+            <option value="in_shop">In Shop</option>
+            <option value="down">Down</option>
+          </Select>
+        </FormField>
+        <FormField label="License Plate">
+          <Input
+            value={form.licensePlate}
+            onChange={(e) => setForm({ ...form, licensePlate: e.target.value })}
+          />
+        </FormField>
+        <FormField label="Driver">
+          <Select
+            value={form.assignedDriverId}
+            onChange={(e) =>
+              setForm({ ...form, assignedDriverId: e.target.value })
+            }
+          >
+            <option value="">Unassigned</option>
+            {users
+              .filter((u) => u.role === "driver")
+              .map((d) => (
+                <option value={d.id} key={d.id}>
+                  {d.fullName}
+                </option>
+              ))}
+          </Select>
+        </FormField>
+        <FormField label="Notes">
+          <Textarea
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          />
+        </FormField>
+      </div>
+    </Modal>
+  );
 }
 
-export function AddDumpsterModal({ open, onClose, dumpster }: { open: boolean; onClose: () => void; dumpster?: Dumpster }) {
-  const { toast } = useToast(); const { saveDumpster, canMutate } = useOperations(); const [saving, setSaving] = React.useState(false);
-  const [form, setForm] = React.useState({ code: "", size: "30 Yard" as Dumpster["size"], status: "in_yard" as DumpsterStatus, type: "Roll-off", airTagId: "", currentLocation: "Yard", notes: "" });
-  React.useEffect(() => { if (open) setForm({ code: dumpster?.code ?? "", size: dumpster?.size ?? "30 Yard", status: dumpster?.status ?? "in_yard", type: dumpster?.type ?? "Roll-off", airTagId: dumpster?.airTagId ?? "", currentLocation: dumpster?.currentLocation ?? "Yard", notes: dumpster?.notes ?? "" }); }, [open, dumpster]);
-  const save = async () => { if (!form.code.trim()) { toast("Dumpster ID is required.", { tone: "error" }); return; } setSaving(true); const r = await saveDumpster({ ...form, airTagId: form.airTagId || null }, dumpster?.id); setSaving(false); toast(r.ok ? "Dumpster saved" : r.error.message, { tone: r.ok ? "success" : "error" }); if (r.ok) onClose(); };
-  return <Modal open={open} onClose={onClose} title={dumpster ? "Edit Dumpster" : "Add Dumpster"} widthClass="max-w-md" footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={() => void save()} disabled={saving || !canMutate}>{saving ? "Saving…" : "Save Dumpster"}</Button></>}><div className="space-y-4"><FormField label="Dumpster ID" required><Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} /></FormField><FormField label="Size" required><Select value={form.size} onChange={e => setForm({ ...form, size: e.target.value as Dumpster["size"] })}>{["10 Yard", "20 Yard", "30 Yard", "40 Yard"].map(v => <option key={v}>{v}</option>)}</Select></FormField><FormField label="Status"><Select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as DumpsterStatus })}><option value="out">Out</option><option value="in_yard">In Yard</option><option value="in_shop">In Shop</option></Select></FormField><FormField label="Type"><Select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}><option>Roll-off</option><option>Front Load</option></Select></FormField><FormField label="AirTag ID"><Input value={form.airTagId} onChange={e => setForm({ ...form, airTagId: e.target.value })} /></FormField><FormField label="Current Location"><Input value={form.currentLocation} onChange={e => setForm({ ...form, currentLocation: e.target.value })} /></FormField><FormField label="Notes"><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></FormField></div></Modal>;
+export function AddDumpsterModal({
+  open,
+  onClose,
+  dumpster,
+}: {
+  open: boolean;
+  onClose: () => void;
+  dumpster?: Dumpster;
+}) {
+  const { toast } = useToast();
+  const { saveDumpster, canMutate } = useOperations();
+  const [saving, setSaving] = React.useState(false);
+  const [form, setForm] = React.useState({
+    code: "",
+    size: "30 Yard" as Dumpster["size"],
+    status: "in_yard" as DumpsterStatus,
+    type: "Roll-off",
+    airTagId: "",
+    currentLocation: "Yard",
+    notes: "",
+  });
+  React.useEffect(() => {
+    if (open)
+      setForm({
+        code: dumpster?.code ?? "",
+        size: dumpster?.size ?? "30 Yard",
+        status: dumpster?.status ?? "in_yard",
+        type: dumpster?.type ?? "Roll-off",
+        airTagId: dumpster?.airTagId ?? "",
+        currentLocation: dumpster?.currentLocation ?? "Yard",
+        notes: dumpster?.notes ?? "",
+      });
+  }, [open, dumpster]);
+  const save = async () => {
+    if (!form.code.trim()) {
+      toast("Dumpster ID is required.", { tone: "error" });
+      return;
+    }
+    setSaving(true);
+    const r = await saveDumpster(
+      { ...form, airTagId: form.airTagId || null },
+      dumpster?.id,
+    );
+    setSaving(false);
+    toast(r.ok ? "Dumpster saved" : r.error.message, {
+      tone: r.ok ? "success" : "error",
+    });
+    if (r.ok) onClose();
+  };
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={dumpster ? "Edit Dumpster" : "Add Dumpster"}
+      widthClass="max-w-md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={() => void save()} disabled={saving || !canMutate}>
+            {saving ? "Saving…" : "Save Dumpster"}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <FormField label="Dumpster ID" required>
+          <Input
+            value={form.code}
+            onChange={(e) => setForm({ ...form, code: e.target.value })}
+          />
+        </FormField>
+        <FormField label="Size" required>
+          <Select
+            value={form.size}
+            onChange={(e) =>
+              setForm({ ...form, size: e.target.value as Dumpster["size"] })
+            }
+          >
+            {["10 Yard", "20 Yard", "30 Yard", "40 Yard"].map((v) => (
+              <option key={v}>{v}</option>
+            ))}
+          </Select>
+        </FormField>
+        <FormField label="Status">
+          <Select
+            value={form.status}
+            onChange={(e) =>
+              setForm({ ...form, status: e.target.value as DumpsterStatus })
+            }
+          >
+            <option value="out">Out</option>
+            <option value="in_yard">In Yard</option>
+            <option value="in_shop">In Shop</option>
+          </Select>
+        </FormField>
+        <FormField label="Type">
+          <Select
+            value={form.type}
+            onChange={(e) => setForm({ ...form, type: e.target.value })}
+          >
+            <option>Roll-off</option>
+            <option>Front Load</option>
+          </Select>
+        </FormField>
+        <FormField label="AirTag ID">
+          <Input
+            value={form.airTagId}
+            onChange={(e) => setForm({ ...form, airTagId: e.target.value })}
+          />
+        </FormField>
+        <FormField label="Current Location">
+          <Input
+            value={form.currentLocation}
+            onChange={(e) =>
+              setForm({ ...form, currentLocation: e.target.value })
+            }
+          />
+        </FormField>
+        <FormField label="Notes">
+          <Textarea
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          />
+        </FormField>
+      </div>
+    </Modal>
+  );
 }

@@ -1,11 +1,13 @@
 begin;
-select plan(25);
+select plan(33);
 select has_table('public','audit_log','immutable audit log exists');
 select has_table('public','invoices','invoice records exist');
 select has_table('public','messages','team messages exist');
 select has_table('public','pretrip_submissions','pre-trip submissions exist');
 select has_table('public','sop_documents','versioned SOPs exist');
 select has_table('public','company_settings','company settings exist');
+select has_table('public','protected_administrators','protected administrator registry exists');
+select has_table('public','training_datasets','controlled training dataset registry exists');
 select has_function('public','record_time_event',array['time_entry_type'],'audited time RPC exists');
 select has_function('public','create_job','transactional job RPC exists');
 select has_function('public','log_assigned_job_dry_run',array['text','text'],'dry-run cancellation RPC exists');
@@ -16,6 +18,10 @@ select has_function('public','publish_pretrip_template',array['text','text[]'],'
 select has_function('public','list_message_recipients',array[]::text[],'safe message directory RPC exists');
 select has_function('public','list_message_channels',array[]::text[],'scoped message channel RPC exists');
 select has_function('public','create_direct_message_channel',array['text'],'direct-message creation RPC exists');
+select has_function('public','list_protected_administrator_ids',array[]::text[],'protected administrator directory RPC exists');
+select has_function('public','get_training_dataset_status',array[]::text[],'training status RPC exists');
+select has_function('public','provision_training_dataset',array[]::text[],'training provision RPC exists');
+select has_function('public','remove_training_dataset',array['text'],'training removal RPC exists');
 select policies_are('public','jobs',array['jobs_scoped_read'],'job clients cannot write directly');
 select policies_are('public','time_entries',array['time_entries_scoped_read'],'time clients cannot insert directly');
 select policies_are('public','customers',array['customers_permission_delete','customers_permission_insert','customers_permission_update','customers_read'],'customer writes are permission scoped');
@@ -25,5 +31,7 @@ select policies_are('public','invoices',array['invoices_read','invoices_write'],
 select policies_are('public','audit_log',array['audit_admin_read'],'audit history has no client writes');
 select policies_are('public','company_settings',array['settings_read'],'settings writes are RPC only');
 select policies_are('public','import_runs',array['imports_admin'],'import history is admin only');
+select policies_are('public','protected_administrators',array[]::text[],'protected administrator registry has no client table access');
+select policies_are('public','training_datasets',array[]::text[],'training registry has no client table access');
 select * from finish();
 rollback;

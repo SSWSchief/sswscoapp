@@ -1,5 +1,76 @@
-import {describe,expect,it} from "vitest";import {applyTimeCorrections,formatHoursDuration,summarizeTime} from "./time-clock";import type {TimeEntry,TimeEntryCorrection} from "./types";
-const entry=(id:string,type:TimeEntry["type"],at:string):TimeEntry=>({id,userId:"u1",type,at});
-describe("summarizeTime",()=>{it("totals active time and excludes breaks",()=>{const rows=[entry("1","clock_in","2026-08-06T15:00:00Z"),entry("2","break_start","2026-08-06T17:00:00Z"),entry("3","break_end","2026-08-06T17:30:00Z"),entry("4","clock_out","2026-08-06T20:00:00Z")];const result=summarizeTime("u1",rows,new Date("2026-08-06T21:00:00Z"));expect(result.phase).toBe("out");expect(result.workedSeconds).toBe(4.5*3600);expect(result.expected).toBe("clock_in");});it("reports the next strict event",()=>{const result=summarizeTime("u1",[entry("1","clock_in","2026-08-06T15:00:00Z")],new Date("2026-08-06T16:00:00Z"));expect(result.phase).toBe("in");expect(result.expected).toBe("break_start");});});
-describe("applyTimeCorrections",()=>{it("projects approved corrections without mutating source entries",()=>{const rows=[entry("1","clock_in","2026-08-06T15:00:00Z"),entry("2","clock_out","2026-08-06T20:00:00Z")];const corrections:TimeEntryCorrection[]=[{id:"c1",requestId:"r1",originalEntryId:"2",userId:"u1",replacementType:"clock_out",replacementAt:"2026-08-06T21:00:00Z"}];const projected=applyTimeCorrections(rows,corrections);expect(rows[1].at).toBe("2026-08-06T20:00:00Z");expect(projected.map(row=>row.id)).toEqual(["1","correction:c1"]);expect(summarizeTime("u1",projected,new Date("2026-08-06T22:00:00Z")).workedSeconds).toBe(6*3600);});});
-describe("formatHoursDuration",()=>{it("renders decimal hours as readable hours and minutes",()=>{expect(formatHoursDuration(2.76)).toBe("2h 46m");expect(formatHoursDuration(34.5)).toBe("34h 30m");expect(formatHoursDuration(0.5)).toBe("30m");expect(formatHoursDuration(0)).toBe("0h");});});
+import { describe, expect, it } from "vitest";
+import {
+  applyTimeCorrections,
+  formatPacificTime,
+  formatHoursDuration,
+  pacificDate,
+  summarizeTime,
+} from "./time-clock";
+import type { TimeEntry, TimeEntryCorrection } from "./types";
+const entry = (id: string, type: TimeEntry["type"], at: string): TimeEntry => ({
+  id,
+  userId: "u1",
+  type,
+  at,
+});
+describe("summarizeTime", () => {
+  it("totals active time and excludes breaks", () => {
+    const rows = [
+      entry("1", "clock_in", "2026-08-06T15:00:00Z"),
+      entry("2", "break_start", "2026-08-06T17:00:00Z"),
+      entry("3", "break_end", "2026-08-06T17:30:00Z"),
+      entry("4", "clock_out", "2026-08-06T20:00:00Z"),
+    ];
+    const result = summarizeTime("u1", rows, new Date("2026-08-06T21:00:00Z"));
+    expect(result.phase).toBe("out");
+    expect(result.workedSeconds).toBe(4.5 * 3600);
+    expect(result.expected).toBe("clock_in");
+  });
+  it("reports the next strict event", () => {
+    const result = summarizeTime(
+      "u1",
+      [entry("1", "clock_in", "2026-08-06T15:00:00Z")],
+      new Date("2026-08-06T16:00:00Z"),
+    );
+    expect(result.phase).toBe("in");
+    expect(result.expected).toBe("break_start");
+  });
+});
+describe("applyTimeCorrections", () => {
+  it("projects approved corrections without mutating source entries", () => {
+    const rows = [
+      entry("1", "clock_in", "2026-08-06T15:00:00Z"),
+      entry("2", "clock_out", "2026-08-06T20:00:00Z"),
+    ];
+    const corrections: TimeEntryCorrection[] = [
+      {
+        id: "c1",
+        requestId: "r1",
+        originalEntryId: "2",
+        userId: "u1",
+        replacementType: "clock_out",
+        replacementAt: "2026-08-06T21:00:00Z",
+      },
+    ];
+    const projected = applyTimeCorrections(rows, corrections);
+    expect(rows[1].at).toBe("2026-08-06T20:00:00Z");
+    expect(projected.map((row) => row.id)).toEqual(["1", "correction:c1"]);
+    expect(
+      summarizeTime("u1", projected, new Date("2026-08-06T22:00:00Z"))
+        .workedSeconds,
+    ).toBe(6 * 3600);
+  });
+});
+describe("formatHoursDuration", () => {
+  it("renders decimal hours as readable hours and minutes", () => {
+    expect(formatHoursDuration(2.76)).toBe("2h 46m");
+    expect(formatHoursDuration(34.5)).toBe("34h 30m");
+    expect(formatHoursDuration(0.5)).toBe("30m");
+    expect(formatHoursDuration(0)).toBe("0h");
+  });
+
+  it("formats dates and times in the operating timezone", () => {
+    expect(pacificDate("2026-08-07T06:30:00Z")).toBe("2026-08-06");
+    expect(formatPacificTime("2026-08-07T06:30:00Z")).toBe("11:30 PM");
+  });
+});

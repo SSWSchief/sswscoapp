@@ -24,12 +24,14 @@ export const permissionLabels: Record<PermissionKey, string> = {
 export const permissionKeys = Object.keys(permissionLabels) as PermissionKey[];
 
 const enabled = (...keys: PermissionKey[]) =>
-  Object.fromEntries(permissionKeys.map((key) => [key, keys.includes(key)])) as Record<
-    PermissionKey,
-    boolean
-  >;
+  Object.fromEntries(
+    permissionKeys.map((key) => [key, keys.includes(key)]),
+  ) as Record<PermissionKey, boolean>;
 
-export const rolePermissions: Record<AccessRole, Record<PermissionKey, boolean>> = {
+const rolePermissions: Record<
+  AccessRole,
+  Record<PermissionKey, boolean>
+> = {
   admin: enabled(...permissionKeys),
   dispatcher: enabled(
     "dashboard",
@@ -41,12 +43,21 @@ export const rolePermissions: Record<AccessRole, Record<PermissionKey, boolean>>
     "absence",
     "messages",
     "map",
-    "reports"
+    "reports",
   ),
-  driver: enabled("driver_jobs", "time_clock", "messages", "pre_trip", "sops", "profile"),
+  driver: enabled(
+    "driver_jobs",
+    "time_clock",
+    "messages",
+    "pre_trip",
+    "sops",
+    "profile",
+  ),
 };
 
-export function effectivePermissions(user: User): Record<PermissionKey, boolean> {
+export function effectivePermissions(
+  user: User,
+): Record<PermissionKey, boolean> {
   return {
     ...rolePermissions[user.accessRole],
     ...user.permissionOverrides,

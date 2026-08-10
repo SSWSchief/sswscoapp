@@ -43,7 +43,11 @@ export function Textarea({
 }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
-      className={cn(baseControl, "h-auto py-2 min-h-[80px] resize-none", className)}
+      className={cn(
+        baseControl,
+        "h-auto py-2 min-h-[80px] resize-none",
+        className,
+      )}
       {...props}
     />
   );
@@ -57,7 +61,11 @@ export function Select({
   return (
     <div className="relative">
       <select
-          className={cn(baseControl, "appearance-none pr-9 text-brand-charcoal", className)}
+        className={cn(
+          baseControl,
+          "appearance-none pr-9 text-brand-charcoal",
+          className,
+        )}
         {...props}
       >
         {children}
@@ -98,7 +106,7 @@ export function FormField({
       "aria-required": required || undefined,
       "aria-invalid": error ? true : undefined,
       "aria-describedby": hint || error ? `${id}-desc` : undefined,
-    }
+    },
   );
 
   return (
@@ -113,7 +121,7 @@ export function FormField({
           role={error ? "alert" : undefined}
           className={cn(
             "text-xs mt-1",
-            error ? "text-red-600" : "text-brand-steel"
+            error ? "text-red-600" : "text-brand-steel",
           )}
         >
           {error ?? hint}

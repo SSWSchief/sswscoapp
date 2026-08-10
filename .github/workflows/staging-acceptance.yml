@@ -13,17 +13,19 @@ jobs:
       STAGING_PROJECT_REF: ${{ secrets.STAGING_PROJECT_REF }}
       PRODUCTION_PROJECT_REF: ${{ secrets.PRODUCTION_PROJECT_REF }}
       STAGING_ACCEPTANCE: "true"
+      E2E_REQUIRED: "true"
+      PLAYWRIGHT_BASE_URL: https://sswscoapp-staging.vercel.app
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: Bootstrap isolated staging identities and fixtures
         run: npm run staging:bootstrap
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
-        if: failure()
+      - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: staging-playwright-evidence
           path: |

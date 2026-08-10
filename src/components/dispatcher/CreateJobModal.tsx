@@ -48,21 +48,55 @@ export function CreateJobModal({
   job?: Job;
 }) {
   const { toast } = useToast();
-  const { createJob, updateJob, customers, dumpsters, trucks, users, canMutate } = useOperations();
-  const drivers = users.filter((user) => user.accessRole === "driver" && user.status === "active");
+  const {
+    createJob,
+    updateJob,
+    customers,
+    dumpsters,
+    trucks,
+    users,
+    canMutate,
+  } = useOperations();
+  const drivers = users.filter(
+    (user) => user.accessRole === "driver" && user.status === "active",
+  );
   const [form, setForm] = React.useState<Form>(empty);
-  const [errors, setErrors] = React.useState<Partial<Record<keyof Form, string>>>({});
-  const [saving,setSaving]=React.useState(false);
+  const [errors, setErrors] = React.useState<
+    Partial<Record<keyof Form, string>>
+  >({});
+  const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (open) {
-      setForm(job?{customer:job.customerId,address:job.address,serviceType:job.serviceType,dumpsterSize:job.dumpsterSize,driver:job.assignedDriverId??"",truck:job.assignedTruckId??"",dumpster:job.assignedDumpsterId??"",scheduledFor:new Date(new Date(job.scheduledFor).getTime()-new Date(job.scheduledFor).getTimezoneOffset()*60000).toISOString().slice(0,16),trafficInstructions:job.trafficInstructions??"",notes:job.notes}:empty);
+      setForm(
+        job
+          ? {
+              customer: job.customerId,
+              address: job.address,
+              serviceType: job.serviceType,
+              dumpsterSize: job.dumpsterSize,
+              driver: job.assignedDriverId ?? "",
+              truck: job.assignedTruckId ?? "",
+              dumpster: job.assignedDumpsterId ?? "",
+              scheduledFor: new Date(
+                new Date(job.scheduledFor).getTime() -
+                  new Date(job.scheduledFor).getTimezoneOffset() * 60000,
+              )
+                .toISOString()
+                .slice(0, 16),
+              trafficInstructions: job.trafficInstructions ?? "",
+              notes: job.notes,
+            }
+          : empty,
+      );
       setErrors({});
     }
   }, [job, open]);
 
-  const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }));
+  const set =
+    (k: keyof Form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const validate = (): boolean => {
     const next: Partial<Record<keyof Form, string>> = {};
@@ -77,7 +111,7 @@ export function CreateJobModal({
 
   const save = async () => {
     if (!validate()) return;
-    if(saving||!canMutate)return;
+    if (saving || !canMutate) return;
     setSaving(true);
     const customer = customers.find((item) => item.id === form.customer);
     const input = {
@@ -95,27 +129,41 @@ export function CreateJobModal({
     };
     if (job) {
       const result = await updateJob(job.id, input);
-      if (!result.ok) { setSaving(false);toast(result.error.message, { tone: "error" }); return; }
+      if (!result.ok) {
+        setSaving(false);
+        toast(result.error.message, { tone: "error" });
+        return;
+      }
       toast(`${job.reference} updated`, { tone: "success" });
     } else {
       const result = await createJob(input);
-      if (!result.ok) { setSaving(false);toast(result.error.message, { tone: "error" }); return; }
-      toast(`${result.data.reference} created${form.driver ? " and driver notified" : " in the unassigned queue"}`, { tone: "success" });
+      if (!result.ok) {
+        setSaving(false);
+        toast(result.error.message, { tone: "error" });
+        return;
+      }
+      toast(
+        `${result.data.reference} created${form.driver ? " and driver notified" : " in the unassigned queue"}`,
+        { tone: "success" },
+      );
     }
-    setSaving(false);onClose();
+    setSaving(false);
+    onClose();
   };
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={job?`Edit ${job.reference}`:"Create New Job"}
+      title={job ? `Edit ${job.reference}` : "Create New Job"}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button disabled={saving||!canMutate} onClick={save}>{saving?"Saving…":"Save Job"}</Button>
+          <Button disabled={saving || !canMutate} onClick={save}>
+            {saving ? "Saving…" : "Save Job"}
+          </Button>
         </>
       }
     >
@@ -192,7 +240,11 @@ export function CreateJobModal({
                 <option>Service Call</option>
               </Select>
             </FormField>
-            <FormField label="Dumpster Size" required error={errors.dumpsterSize}>
+            <FormField
+              label="Dumpster Size"
+              required
+              error={errors.dumpsterSize}
+            >
               <Select value={form.dumpsterSize} onChange={set("dumpsterSize")}>
                 <option value="" disabled>
                   Select size
@@ -208,7 +260,11 @@ export function CreateJobModal({
 
         <Section title="Schedule & Assignment">
           <div className="grid gap-5 sm:grid-cols-2">
-            <FormField label="Scheduled Date" required error={errors.scheduledFor}>
+            <FormField
+              label="Scheduled Date"
+              required
+              error={errors.scheduledFor}
+            >
               <Input
                 type="datetime-local"
                 autoComplete="off"
@@ -216,11 +272,12 @@ export function CreateJobModal({
                 onChange={set("scheduledFor")}
               />
             </FormField>
-            <FormField label="Assign Driver" hint="Optional; unassigned jobs remain in the dispatch queue.">
+            <FormField
+              label="Assign Driver"
+              hint="Optional; unassigned jobs remain in the dispatch queue."
+            >
               <Select value={form.driver} onChange={set("driver")}>
-                <option value="">
-                  Unassigned
-                </option>
+                <option value="">Unassigned</option>
                 {drivers.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.fullName}
@@ -228,28 +285,49 @@ export function CreateJobModal({
                 ))}
               </Select>
             </FormField>
-            <FormField label="Assign Truck" hint="Trucks in the shop can't be assigned.">
+            <FormField
+              label="Assign Truck"
+              hint="Trucks in the shop can't be assigned."
+            >
               <Select value={form.truck} onChange={set("truck")}>
-                <option value="">
-                  No truck
-                </option>
+                <option value="">No truck</option>
                 {trucks.map((t) => (
-                  <option key={t.id} value={t.id} disabled={t.status !== "in_use" || Boolean(t.currentJobId && t.currentJobId !== job?.id)}>
+                  <option
+                    key={t.id}
+                    value={t.id}
+                    disabled={
+                      t.status !== "in_use" ||
+                      Boolean(t.currentJobId && t.currentJobId !== job?.id)
+                    }
+                  >
                     {t.number}
-                    {t.status !== "in_use" ? ` (${truckStatusLabel[t.status]})` : t.currentJobId && t.currentJobId !== job?.id ? " (Active job)" : ""}
+                    {t.status !== "in_use"
+                      ? ` (${truckStatusLabel[t.status]})`
+                      : t.currentJobId && t.currentJobId !== job?.id
+                        ? " (Active job)"
+                        : ""}
                   </option>
                 ))}
               </Select>
             </FormField>
             <FormField label="Assign Dumpster">
               <Select value={form.dumpster} onChange={set("dumpster")}>
-                <option value="">
-                  No dumpster
-                </option>
+                <option value="">No dumpster</option>
                 {dumpsters.map((d) => (
-                  <option key={d.id} value={d.id} disabled={d.status === "in_shop" || Boolean(d.currentJobId && d.currentJobId !== job?.id)}>
+                  <option
+                    key={d.id}
+                    value={d.id}
+                    disabled={
+                      d.status === "in_shop" ||
+                      Boolean(d.currentJobId && d.currentJobId !== job?.id)
+                    }
+                  >
                     {d.code} · {d.size}
-                    {d.status === "in_shop" ? " (In Shop)" : d.currentJobId && d.currentJobId !== job?.id ? " (Active job)" : ""}
+                    {d.status === "in_shop"
+                      ? " (In Shop)"
+                      : d.currentJobId && d.currentJobId !== job?.id
+                        ? " (Active job)"
+                        : ""}
                   </option>
                 ))}
               </Select>
@@ -261,7 +339,12 @@ export function CreateJobModal({
           <FormField label="Notes">
             <Textarea
               value={form.notes}
-              onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  notes: event.target.value,
+                }))
+              }
               placeholder="Add notes or special instructions..."
             />
           </FormField>

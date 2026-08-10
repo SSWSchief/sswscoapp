@@ -72,7 +72,9 @@ export function TeamMessages() {
           >
             <option value="">New direct message…</option>
             {messageRecipients.map((item) => (
-              <option key={item.id} value={item.id}>{item.fullName}</option>
+              <option key={item.id} value={item.id}>
+                {item.fullName}
+              </option>
             ))}
           </Select>
           <Button
@@ -87,7 +89,10 @@ export function TeamMessages() {
         <div className="divide-y divide-brand-ice">
           {channels.map((item) => {
             const unread = messages.filter(
-              (message) => message.channelId === item.id && !message.read && message.senderId !== currentUser?.id
+              (message) =>
+                message.channelId === item.id &&
+                !message.read &&
+                message.senderId !== currentUser?.id,
             ).length;
             return (
               <button
@@ -123,7 +128,8 @@ export function TeamMessages() {
             >
               <div className="text-xs font-semibold">
                 {users.find((user) => user.id === message.senderId)?.fullName ??
-                  messageRecipients.find((user) => user.id === message.senderId)?.fullName ??
+                  messageRecipients.find((user) => user.id === message.senderId)
+                    ?.fullName ??
                   "Employee"}
               </div>
               <p className="whitespace-pre-wrap text-sm">{message.body}</p>
@@ -133,11 +139,14 @@ export function TeamMessages() {
             </div>
           ))}
           {!rows.length && (
-            <p className="text-sm text-brand-steel">No messages in this channel.</p>
+            <p className="text-sm text-brand-steel">
+              No messages in this channel.
+            </p>
           )}
         </div>
 
-        {channel?.kind !== "announcement" || currentUser?.accessRole === "admin" ? (
+        {channel?.kind !== "announcement" ||
+        currentUser?.accessRole === "admin" ? (
           <div className="border-t border-brand-ice p-3">
             <Textarea
               aria-label="Message"

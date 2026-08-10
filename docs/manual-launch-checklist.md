@@ -5,16 +5,19 @@ Complete these steps in a staging-first sequence. Record the owner, date, eviden
 ## 1. Credentials and ownership
 
 - Rotate the database password and server secret that were shared during development.
+- The workbook `ssw app data sheet and api.xlsx` contains credentials only. It is
+  not an import source; rotate every credential it contains, verify the new
+  values in all environments, then securely remove every copy.
 - Update `.env.local`, staging hosting variables, and production hosting variables; never expose the server secret with `NEXT_PUBLIC_`.
 - Remove old values from shared documents/chat history where organizational policy permits.
 - Grant the development account least-privilege Supabase organization/project access.
-- Maintain at least two organization owners and require MFA for every privileged account.
+- Maintain at least two client-controlled organization/application administrators in addition to the approved indefinite support administrator. Organization-provider MFA remains recommended even though application administrator MFA is disabled under the accepted application policy.
 
 ## 2. Staging project
 
 - Create a separate Supabase staging project in the approved region.
-- Apply migrations `202608060001` through `202608060008` in order.
-- Run `supabase db lint --linked --level warning` and the pgTAP suite in `supabase/tests/rls.sql`.
+- Apply every committed migration in order, including the release-hardening migration, from the exact release SHA.
+- Run `supabase db lint --linked --level warning`, every pgTAP suite in `supabase/tests/`, and generated database-contract verification.
 - Retain the `migration-evidence` and `staging-database-evidence` workflow artifacts for the approved commit.
 - Confirm the `job-photos` bucket is private, 10 MB-limited, and restricted to the approved image MIME types.
 - Confirm Realtime publication contains only the intended production tables listed in migration `202608060008`.
@@ -25,14 +28,14 @@ Complete these steps in a staging-first sequence. Record the owner, date, eviden
 - Set staging and production Site URLs plus exact redirect allowlists for `/auth/callback` and `/reset-password`.
 - Approve password length/complexity, email confirmation, invitation expiry, session duration, CAPTCHA, and Auth rate limits.
 - Verify invitation, resend/reset, expired-link, and deactivated-user behavior in staging.
-- Enroll every administrator in TOTP MFA and verify that AAL1 sessions cannot access administrator routes, APIs, or database policies.
+- Verify the approved password-only administrator policy: strong passwords, short sessions, Auth/application rate limits, immutable owners, active-profile enforcement, and audit records for administrator actions. Record MFA as an accepted residual risk.
 
 ## 4. Hosting and operations
 
 - Create Vercel production and preview environments with separate staging/production Supabase variables.
 - Enable protected previews, assign deployment/rollback owners, and configure the custom domain.
 - Approve the production maintenance scheduler: upgrade Vercel for the 15-minute cron cadence or configure an approved external scheduler against `/api/cron/maintenance` with `CRON_SECRET`.
-- Add uptime monitoring, application error monitoring, alert destinations, log retention, and a documented rollback drill.
+- Enable redacted runtime logs with approved retention, assign the GitHub production-smoke alert owner, and complete the documented rollback drill. Third-party monitoring is intentionally out of scope.
 - Run `npm run check`, `npm run test:e2e`, and `npm audit --audit-level=high` in CI for the release commit.
 
 ## 5. Backups and retention
@@ -49,12 +52,17 @@ Complete these steps in a staging-first sequence. Record the owner, date, eviden
 - Run authenticated Playwright journeys with no identity-based skips.
 - Validate anonymous, inactive, driver, dispatcher, and admin RLS access; verify cross-driver job/photo/note isolation.
 - Confirm at least two administrators retain access after role-change tests.
+- Verify protected administrators are sourced from the service-managed registry,
+  not client-side email matching, and cannot be downgraded or deactivated.
 
 ## 7. Client data
 
 - Supply validated import files for customers, trucks, dumpsters, assignments, mileage, PTO reference values, and active jobs.
 - Agree on unique identifiers, required fields, phone/address formats, timezone handling, and duplicate resolution.
 - Rehearse import into staging, reconcile counts and samples, obtain written approval, then schedule production import.
+- If the client is entering records manually, do not run a production import.
+  Provision only `training-v1` from Settings, verify its five linked records,
+  rehearse exact cleanup, and leave all safety content as client-approved data.
 
 ## 8. Policy approval
 

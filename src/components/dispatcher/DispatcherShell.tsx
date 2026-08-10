@@ -7,7 +7,7 @@ import { Sidebar } from "./Sidebar";
 import { CommandPalette } from "./CommandPalette";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { DispatcherUIContext } from "./shell-context";
-import { dispatcherNavSections } from "./nav";
+import { staffNavSections } from "@/components/navigation/routes";
 import { Icon } from "@/components/ui/Icon";
 import { LogoFull } from "@/components/ui/Logo";
 import { useOperations } from "@/components/system/OperationsProvider";
@@ -23,11 +23,16 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { notificationsFor, currentUser } = useOperations();
   const permissions = currentUser ? effectivePermissions(currentUser) : null;
-  const visibleSections = dispatcherNavSections
-    .map(section => ({ ...section, items: permissions ? section.items.filter(item => permissions[item.permission]) : section.items }))
-    .filter(section => section.items.length > 0);
+  const visibleSections = staffNavSections
+    .map((section) => ({
+      ...section,
+      items: permissions
+        ? section.items.filter((item) => permissions[item.permission])
+        : section.items,
+    }))
+    .filter((section) => section.items.length > 0);
   const unreadCount = notificationsFor(currentUser?.id ?? "").filter(
-    (notification) => !notification.acknowledgedAt
+    (notification) => !notification.acknowledgedAt,
   ).length;
 
   // Global ⌘K / Ctrl+K to open the command palette.
@@ -57,7 +62,9 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
       <div className="app-fixed-height flex overflow-hidden bg-surface text-brand-charcoal">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {children}
+          </div>
           <DispatcherBottomNav />
         </div>
       </div>
@@ -98,7 +105,7 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
                           "flex items-center gap-3 rounded px-3 py-2.5 font-heading text-sm font-medium uppercase tracking-wide",
                           active
                             ? "bg-brand-blue text-white"
-                            : "text-brand-ice hover:bg-white/10 hover:text-white"
+                            : "text-brand-ice hover:bg-white/10 hover:text-white",
                         )}
                       >
                         <Icon name={item.icon} width={18} height={18} />

@@ -13,37 +13,35 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       STAGING_PROJECT_REF: ${{ secrets.STAGING_PROJECT_REF }}
-      STAGING_DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
+      STAGING_DB_URL: ${{ secrets.STAGING_DB_URL }}
       PRODUCTION_PROJECT_REF: ${{ secrets.PRODUCTION_PROJECT_REF }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: supabase/setup-cli@v1
         with: { version: 2.111.0 }
       - name: Refuse production target
         run: |
           test -n "$STAGING_PROJECT_REF"
-          test -n "$STAGING_DB_PASSWORD"
+          test -n "$STAGING_DB_URL"
           test -n "$PRODUCTION_PROJECT_REF"
           test "$STAGING_PROJECT_REF" != "$PRODUCTION_PROJECT_REF"
-      - name: Link approved staging project
-        run: supabase link --project-ref "$STAGING_PROJECT_REF" --password "$STAGING_DB_PASSWORD"
+          node -e 'const url = new URL(process.env.STAGING_DB_URL); const ref = process.env.STAGING_PROJECT_REF; const matchesProject = url.hostname.includes(ref) || url.username.endsWith(`.${ref}`); if (!url.hostname.endsWith(".supabase.com") || !matchesProject) process.exit(1)'
       - name: Capture migration status and dry run
         run: |
           mkdir -p migration-evidence
-          supabase migration list 2>&1 | tee migration-evidence/migrations-before.log
-          supabase db push --dry-run 2>&1 | tee migration-evidence/push-dry-run.log
+          supabase migration list --db-url "$STAGING_DB_URL" 2>&1 | tee migration-evidence/migrations-before.log
+          supabase db push --db-url "$STAGING_DB_URL" --include-all --dry-run --yes 2>&1 | tee migration-evidence/push-dry-run.log
       - name: Apply migrations to staging
         if: ${{ inputs.apply_migrations }}
-        run: supabase db push 2>&1 | tee migration-evidence/push.log
+        run: supabase db push --db-url "$STAGING_DB_URL" --include-all --yes 2>&1 | tee migration-evidence/push.log
       - name: Verify applied staging schema
         if: ${{ inputs.apply_migrations }}
         run: |
-          supabase migration list 2>&1 | tee migration-evidence/migrations-after.log
-          supabase db lint --linked --level warning 2>&1 | tee migration-evidence/lint-linked.log
-          supabase test db --linked 2>&1 | tee migration-evidence/pgtap-linked.log
-      - uses: actions/upload-artifact@v4
+          supabase migration list --db-url "$STAGING_DB_URL" 2>&1 | tee migration-evidence/migrations-after.log
+          supabase db lint --db-url "$STAGING_DB_URL" --level warning --fail-on error 2>&1 | tee migration-evidence/lint-linked.log
+          supabase test db --db-url "$STAGING_DB_URL" 2>&1 | tee migration-evidence/pgtap-linked.log
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: staging-database-evidence

@@ -9,8 +9,8 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-card bg-white border border-brand-ice/60 shadow-card",
-        className
+        "rounded-card bg-white border border-brand-ice/60 shadow-card dark:border-white/10 dark:bg-gray-900",
+        className,
       )}
       {...props}
     >
@@ -31,11 +31,11 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center justify-between gap-3 px-4 py-4 border-b border-brand-ice/50 sm:px-5",
-        className
+        "flex flex-wrap items-center justify-between gap-3 border-b border-brand-ice/50 px-4 py-4 dark:border-white/10 sm:px-5",
+        className,
       )}
     >
-      <h2 className="min-w-0 font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
+      <h2 className="min-w-0 font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal dark:text-white">
         {title}
       </h2>
       {action}

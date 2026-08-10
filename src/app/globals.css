@@ -3,8 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
+  --font-sans:
+    var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --focus-ring: #619bd0;
+  --surface-page: #f4f7fa;
+  --surface-raised: #ffffff;
+  --border-subtle: rgba(177, 199, 218, 0.65);
+  --shadow-raised:
+    0 1px 2px rgba(5, 47, 102, 0.08), 0 12px 32px rgba(30, 35, 40, 0.06);
 }
 
 html,
@@ -17,11 +24,21 @@ body {
 }
 
 body {
-  background: #f4f7fa;
+  background: var(--surface-page);
   color: #1e2328;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior-y: none;
+}
+
+::selection {
+  background: #d9e8f5;
+  color: #052f66;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--focus-ring) 70%, transparent);
+  outline-offset: 2px;
 }
 
 button,
@@ -122,6 +139,10 @@ a {
     padding-right: max(0.875rem, env(safe-area-inset-right, 0px));
     padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
     padding-left: max(0.875rem, env(safe-area-inset-left, 0px));
+    width: 100%;
+    max-width: 100rem;
+    margin-inline: auto;
+    scrollbar-gutter: stable;
   }
 
   .portal-stack {
@@ -146,6 +167,28 @@ a {
     padding: 1rem;
   }
 
+  .portal-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 1rem;
+  }
+
+  .driver-content {
+    flex: 1 1 0%;
+    overflow-y: auto;
+    background: var(--surface-page);
+    padding: 1rem;
+    scrollbar-gutter: stable;
+  }
+
+  .content-visibility-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 72px;
+  }
+
   @media (min-width: 390px) {
     .portal-metric-grid,
     .portal-action-grid {
@@ -163,6 +206,10 @@ a {
 
     .portal-stack {
       gap: 1.25rem;
+    }
+
+    .driver-content {
+      padding: 1.5rem;
     }
   }
 

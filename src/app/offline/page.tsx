@@ -10,11 +10,17 @@ export default function OfflinePage() {
         <span className="mx-auto mt-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-800">
           <Icon name="info" width={28} height={28} />
         </span>
-        <h1 className="mt-4 font-heading text-2xl font-bold uppercase tracking-wide text-brand-charcoal">You&apos;re Offline</h1>
+        <h1 className="mt-4 font-heading text-2xl font-bold uppercase tracking-wide text-brand-charcoal">
+          You&apos;re Offline
+        </h1>
         <p className="mt-2 text-sm leading-6 text-brand-steel">
-          Reconnect before submitting operational changes. Offline write syncing will be enabled after the secure backend is connected.
+          Reconnect before submitting operational changes. Offline write syncing
+          will be enabled after the secure backend is connected.
         </p>
-        <Link href="/" className="mt-6 flex min-h-11 items-center justify-center rounded bg-brand-blue px-4 font-heading text-sm font-semibold uppercase tracking-wide text-white">
+        <Link
+          href="/"
+          className="mt-6 flex min-h-11 items-center justify-center rounded bg-brand-blue px-4 font-heading text-sm font-semibold uppercase tracking-wide text-white"
+        >
           Try Again
         </Link>
       </div>

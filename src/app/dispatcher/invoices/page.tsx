@@ -45,7 +45,7 @@ export default function InvoicesPage() {
         error instanceof Error
           ? error.message
           : "Invoice export could not be downloaded.",
-        { tone: "error" }
+        { tone: "error" },
       );
     } finally {
       setExporting(false);
@@ -71,10 +71,17 @@ export default function InvoicesPage() {
       />
       <div className="portal-content portal-stack">
         <div className="portal-action-grid">
-          <Metric label="Receivables" value={currency.format(receivables / 100)} />
+          <Metric
+            label="Receivables"
+            value={currency.format(receivables / 100)}
+          />
           <Metric
             label="Open Invoices"
-            value={invoices.filter((invoice) => !["closed", "void"].includes(invoice.status)).length}
+            value={
+              invoices.filter(
+                (invoice) => !["closed", "void"].includes(invoice.status),
+              ).length
+            }
           />
         </div>
 
@@ -103,9 +110,15 @@ export default function InvoicesPage() {
               {invoices.map((invoice) => (
                 <TR key={invoice.id}>
                   <TD className="font-semibold">{invoice.invoiceNumber}</TD>
-                  <TD>{customers.find((customer) => customer.id === invoice.customerId)?.name ?? "—"}</TD>
+                  <TD>
+                    {customers.find(
+                      (customer) => customer.id === invoice.customerId,
+                    )?.name ?? "—"}
+                  </TD>
                   <TD>{currency.format(invoice.amountCents / 100)}</TD>
-                  <TD><InvoiceStatus invoice={invoice} /></TD>
+                  <TD>
+                    <InvoiceStatus invoice={invoice} />
+                  </TD>
                   <TD>{formatDate(invoice.dueDate)}</TD>
                   <TD>
                     <button
@@ -129,14 +142,22 @@ export default function InvoicesPage() {
                       {invoice.invoiceNumber}
                     </h2>
                     <p className="mt-1 break-words text-sm text-brand-steel">
-                      {customers.find((customer) => customer.id === invoice.customerId)?.name ?? "Unknown customer"}
+                      {customers.find(
+                        (customer) => customer.id === invoice.customerId,
+                      )?.name ?? "Unknown customer"}
                     </p>
                   </div>
                   <InvoiceStatus invoice={invoice} />
                 </div>
                 <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                  <InvoiceValue label="Amount" value={currency.format(invoice.amountCents / 100)} />
-                  <InvoiceValue label="Due" value={formatDate(invoice.dueDate)} />
+                  <InvoiceValue
+                    label="Amount"
+                    value={currency.format(invoice.amountCents / 100)}
+                  />
+                  <InvoiceValue
+                    label="Due"
+                    value={formatDate(invoice.dueDate)}
+                  />
                 </dl>
                 <Button
                   className="mt-4 w-full"
@@ -154,7 +175,11 @@ export default function InvoicesPage() {
           )}
         </Card>
       </div>
-      <InvoiceModal open={open} onClose={() => setOpen(false)} invoice={editing} />
+      <InvoiceModal
+        open={open}
+        onClose={() => setOpen(false)}
+        invoice={editing}
+      />
     </>
   );
 }
@@ -162,13 +187,25 @@ export default function InvoicesPage() {
 function InvoiceStatus({ invoice }: { invoice: InvoiceRecord }) {
   return (
     <Badge
-      tone={invoice.status === "overdue" ? "amber" : ["paid", "closed"].includes(invoice.status) ? "green" : "blue"}
+      tone={
+        invoice.status === "overdue"
+          ? "amber"
+          : ["paid", "closed"].includes(invoice.status)
+            ? "green"
+            : "blue"
+      }
       label={invoice.status}
     />
   );
 }
 
-function InvoiceValue({ label, value }: { label: string; value: React.ReactNode }) {
+function InvoiceValue({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
   return (
     <div>
       <dt className="text-xs uppercase text-brand-silver">{label}</dt>
@@ -180,7 +217,9 @@ function InvoiceValue({ label, value }: { label: string; value: React.ReactNode 
 function Metric({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <Card className="portal-card-pad">
-      <div className="font-heading text-2xl font-bold min-[390px]:text-3xl">{value}</div>
+      <div className="font-heading text-2xl font-bold min-[390px]:text-3xl">
+        {value}
+      </div>
       <div className="text-sm uppercase text-brand-steel">{label}</div>
     </Card>
   );

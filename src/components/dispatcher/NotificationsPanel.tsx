@@ -11,7 +11,12 @@ export function NotificationsPanel({
   open: boolean;
   onClose: () => void;
 }) {
-  const { notificationsFor, acknowledgeNotification, acknowledgeAll, currentUser } = useOperations();
+  const {
+    notificationsFor,
+    acknowledgeNotification,
+    acknowledgeAll,
+    currentUser,
+  } = useOperations();
   const recipientId = currentUser?.id ?? "";
   const messages = notificationsFor(recipientId);
   const unread = messages.filter((message) => !message.acknowledgedAt);
@@ -41,9 +46,13 @@ export function NotificationsPanel({
           {messages.map((m) => (
             <li key={m.id} className="px-4 py-3 hover:bg-brand-mist">
               <div className="flex items-start gap-2.5">
-                <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${m.acknowledgedAt ? "bg-brand-silver" : "bg-brand-blue"}`} />
+                <span
+                  className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${m.acknowledgedAt ? "bg-brand-silver" : "bg-brand-blue"}`}
+                />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-brand-charcoal">{m.title}</p>
+                  <p className="text-sm font-medium text-brand-charcoal">
+                    {m.title}
+                  </p>
                   <p className="text-sm text-brand-steel">{m.body}</p>
                   <p className="text-xs text-brand-silver mt-1">
                     <RelativeTime iso={m.createdAt} />

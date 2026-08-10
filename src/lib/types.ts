@@ -54,11 +54,7 @@ export type ServiceType =
   | "Dry Run"
   | "Service Call";
 
-export type DumpsterSize =
-  | "10 Yard"
-  | "20 Yard"
-  | "30 Yard"
-  | "40 Yard";
+export type DumpsterSize = "10 Yard" | "20 Yard" | "30 Yard" | "40 Yard";
 
 export interface User {
   id: string;
@@ -257,19 +253,109 @@ export interface AbsenceEvent {
   note: string;
 }
 
-export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "closed" | "void";
+export type InvoiceStatus =
+  | "draft"
+  | "sent"
+  | "paid"
+  | "overdue"
+  | "closed"
+  | "void";
 export interface InvoiceRecord {
-  id: string; invoiceNumber: string; customerId: string; jobId: string | null;
-  amountCents: number; status: InvoiceStatus; dueDate: string; notes: string;
-  sentAt: string | null; paidAt: string | null; closedAt: string | null; createdAt: string;
+  id: string;
+  invoiceNumber: string;
+  customerId: string;
+  jobId: string | null;
+  amountCents: number;
+  status: InvoiceStatus;
+  dueDate: string;
+  notes: string;
+  sentAt: string | null;
+  paidAt: string | null;
+  closedAt: string | null;
+  createdAt: string;
 }
 
-export interface MessageChannel { id: string; name: string; kind: "channel" | "direct" | "announcement"; createdAt: string }
-export interface TeamMessage { id: string; channelId: string; senderId: string; body: string; createdAt: string; read: boolean }
+export interface MessageChannel {
+  id: string;
+  name: string;
+  kind: "channel" | "direct" | "announcement";
+  createdAt: string;
+}
+export interface TeamMessage {
+  id: string;
+  channelId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+  read: boolean;
+}
 
-export interface PretripTemplateItem { id: string; label: string; description?: string }
-export interface PretripTemplate { id: string; title: string; version: number; isPublished: boolean; items: PretripTemplateItem[] }
-export interface PretripSubmission { id: string; templateId: string; driverId: string; truckId: string; mileage: number; signature: string; results: Record<string, "pass" | "fail">; hasFailures: boolean; submittedAt: string }
+export interface PretripTemplateItem {
+  id: string;
+  label: string;
+  description?: string;
+}
+export interface PretripTemplate {
+  id: string;
+  title: string;
+  version: number;
+  isPublished: boolean;
+  items: PretripTemplateItem[];
+}
+export interface PretripSubmission {
+  id: string;
+  templateId: string;
+  driverId: string;
+  truckId: string;
+  mileage: number;
+  signature: string;
+  results: Record<string, "pass" | "fail">;
+  hasFailures: boolean;
+  submittedAt: string;
+}
 
-export interface SopDocument { id: string; title: string; category: string; version: number; body: string; isPublished: boolean; requiredForDrivers: boolean; createdAt: string; acknowledged: boolean }
-export interface CompanySettings { companyName: string; address: string; phone: string; email: string; timeZone: string; dateFormat: string; messageRetentionDays: number; invoicePrefix: string }
+export interface SopDocument {
+  id: string;
+  title: string;
+  category: string;
+  version: number;
+  body: string;
+  isPublished: boolean;
+  requiredForDrivers: boolean;
+  createdAt: string;
+  acknowledged: boolean;
+}
+export interface CompanySettings {
+  companyName: string;
+  address: string;
+  phone: string;
+  email: string;
+  timeZone: string;
+  dateFormat: string;
+  messageRetentionDays: number;
+  invoicePrefix: string;
+}
+
+export type TrainingDatasetStatus = "not_provisioned" | "active" | "removed";
+
+export interface TrainingDataset {
+  datasetKey: "training-v1";
+  status: TrainingDatasetStatus;
+  recordIds: Partial<{
+    customerId: string;
+    truckId: string;
+    dumpsterId: string;
+    jobId: string;
+    invoiceId: string;
+  }>;
+  createdAt?: string;
+  removedAt?: string;
+}
+
+export interface TrainingDatasetMutation {
+  datasetKey: "training-v1";
+  status: "active" | "removed";
+  idempotent: boolean;
+  createdCounts?: Record<string, number>;
+  deletedCounts?: Record<string, number>;
+}

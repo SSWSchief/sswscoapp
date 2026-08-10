@@ -1,8 +1,4 @@
-import type {
-  DumpsterStatus,
-  JobStatus,
-  TruckStatus,
-} from "./types";
+import type { DumpsterStatus, JobStatus, TruckStatus } from "./types";
 
 export function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");

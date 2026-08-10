@@ -1,10 +1,23 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export function Table({ children, className }: { children: React.ReactNode; className?: string }) {
+export function Table({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className={cn("overflow-x-auto [-webkit-overflow-scrolling:touch]", className)}>
-      <table className="min-w-full text-sm text-brand-charcoal">{children}</table>
+    <div
+      className={cn(
+        "overflow-x-auto [-webkit-overflow-scrolling:touch]",
+        className,
+      )}
+    >
+      <table className="min-w-full text-sm text-brand-charcoal">
+        {children}
+      </table>
     </div>
   );
 }
@@ -30,7 +43,7 @@ export function TH({
     <th
       className={cn(
         "px-5 py-3 font-heading text-xs font-semibold uppercase tracking-wide text-brand-steel",
-        className
+        className,
       )}
     >
       {children}
@@ -50,7 +63,12 @@ export function TR({
   className?: string;
 }) {
   return (
-    <tr className={cn("hover:bg-brand-mist/70 transition-colors", className)}>
+    <tr
+      className={cn(
+        "content-visibility-auto transition-colors hover:bg-brand-mist/70 focus-within:bg-brand-mist/70",
+        className,
+      )}
+    >
       {children}
     </tr>
   );
@@ -64,7 +82,9 @@ export function TD({
   className?: string;
 }) {
   return (
-    <td className={cn("px-5 py-3.5 text-brand-charcoal align-middle", className)}>
+    <td
+      className={cn("px-5 py-3.5 text-brand-charcoal align-middle", className)}
+    >
       {children}
     </td>
   );

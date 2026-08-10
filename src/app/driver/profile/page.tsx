@@ -13,7 +13,11 @@ import { useOperations } from "@/components/system/OperationsProvider";
 import { createClient } from "@/lib/supabase/client";
 
 // Screen 18 — Profile (driver).
-const items: { icon: IconName; label: string; action: "profile" | "password" | "notifications" | "support" }[] = [
+const items: {
+  icon: IconName;
+  label: string;
+  action: "profile" | "password" | "notifications" | "support";
+}[] = [
   { icon: "user", label: "Edit Profile", action: "profile" },
   { icon: "settings", label: "Change Password", action: "password" },
   { icon: "bell", label: "Notification Settings", action: "notifications" },
@@ -28,7 +32,9 @@ export default function DriverProfilePage() {
   const { toast } = useToast();
   const router = useRouter();
   const supportEmail = settings?.email ?? "dispatch@ssware.com";
-  const assignedTruck = trucks.find((truck) => truck.assignedDriverId === driver?.id);
+  const assignedTruck = trucks.find(
+    (truck) => truck.assignedDriverId === driver?.id,
+  );
 
   const emailSupport = (subject: string, body: string) => {
     window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -40,19 +46,22 @@ export default function DriverProfilePage() {
       return;
     }
     if (action === "notifications") {
-      toast("Use the bell icon at the top of the app to review alerts. Browser notification permissions are managed in your device settings.", { tone: "info", duration: 6500 });
+      toast(
+        "Use the bell icon at the top of the app to review alerts. Browser notification permissions are managed in your device settings.",
+        { tone: "info", duration: 6500 },
+      );
       return;
     }
     if (action === "profile") {
       emailSupport(
         "Driver profile update request",
-        `Please update my SSWSCO Overwatch profile.\n\nName: ${driver?.fullName ?? ""}\nEmployee ID: ${driver?.employeeId ?? ""}\nPhone/email changes requested:\n`
+        `Please update my SSWSCO Overwatch profile.\n\nName: ${driver?.fullName ?? ""}\nEmployee ID: ${driver?.employeeId ?? ""}\nPhone/email changes requested:\n`,
       );
       return;
     }
     emailSupport(
       "SSWSCO Overwatch support request",
-      `I need help with SSWSCO Overwatch.\n\nName: ${driver?.fullName ?? ""}\nEmployee ID: ${driver?.employeeId ?? ""}\nIssue:\n`
+      `I need help with SSWSCO Overwatch.\n\nName: ${driver?.fullName ?? ""}\nEmployee ID: ${driver?.employeeId ?? ""}\nIssue:\n`,
     );
   };
 
@@ -81,10 +90,14 @@ export default function DriverProfilePage() {
             <div className="font-heading font-semibold uppercase tracking-wide text-brand-charcoal dark:text-white text-lg">
               {driver?.fullName ?? "Employee"}
             </div>
-            <div className="text-sm text-brand-steel dark:text-gray-400">Driver</div>
+            <div className="text-sm text-brand-steel dark:text-gray-400">
+              Driver
+            </div>
             <div className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-brand-charcoal dark:text-gray-200">
               <Icon name="truck" width={16} height={16} />
-              {assignedTruck ? `Assigned truck: ${assignedTruck.number}` : "No truck assigned"}
+              {assignedTruck
+                ? `Assigned truck: ${assignedTruck.number}`
+                : "No truck assigned"}
             </div>
           </div>
         </div>
@@ -150,7 +163,12 @@ export default function DriverProfilePage() {
             onClick={logout}
             className="w-full flex items-center gap-3 px-5 py-4 active:bg-brand-mist dark:active:bg-white/5"
           >
-            <Icon name="logout" width={20} height={20} className="text-red-500" />
+            <Icon
+              name="logout"
+              width={20}
+              height={20}
+              className="text-red-500"
+            />
             <span className="text-sm font-medium text-red-500 flex-1 text-left">
               Log Out
             </span>

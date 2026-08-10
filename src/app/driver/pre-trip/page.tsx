@@ -1,2 +1,163 @@
-"use client";import * as React from "react";import {MobileHeader} from "@/components/driver/MobileHeader";import {Card,CardHeader} from "@/components/ui/Card";import {Button} from "@/components/ui/Button";import {FormField,Input,Select} from "@/components/ui/Field";import {useExpandedOperations} from "@/components/system/ExpandedOperationsProvider";import {useOperations} from "@/components/system/OperationsProvider";import {useToast} from "@/components/system/ToastProvider";
-export default function Page(){const {pretripTemplates,pretripSubmissions,submitPretrip}=useExpandedOperations();const {trucks,currentUser,canMutate}=useOperations();const {toast}=useToast();const template=pretripTemplates.find(t=>t.isPublished);const [truckId,setTruckId]=React.useState("");const [mileage,setMileage]=React.useState("");const [signature,setSignature]=React.useState("");const [results,setResults]=React.useState<Record<string,"pass"|"fail">>({});const [busy,setBusy]=React.useState(false);const save=async()=>{if(!template||!truckId||!signature.trim()||!Number.isInteger(Number(mileage))||template.items.some(i=>!results[i.id])){toast("Complete every inspection item, truck, mileage, and signature.",{tone:"error"});return;}setBusy(true);const r=await submitPretrip({templateId:template.id,truckId,mileage:Number(mileage),signature,results});setBusy(false);toast(r.ok?(Object.values(results).includes("fail")?"Inspection submitted; dispatch was alerted":"Inspection submitted"):r.error.message,{tone:r.ok?"success":"error"});if(r.ok){setResults({});setSignature("");setMileage("");}};return <><MobileHeader title="Electronic Pre-Trip"/><div className="flex-1 overflow-y-auto bg-surface p-4 space-y-4">{template?<Card><CardHeader title={`${template.title} · v${template.version}`}/><div className="space-y-4 p-4"><FormField label="Truck" required><Select value={truckId} onChange={e=>setTruckId(e.target.value)}><option value="">Select truck</option>{trucks.map(t=><option key={t.id} value={t.id}>{t.number}</option>)}</Select></FormField><FormField label="Current Mileage" required><Input type="number" min="0" value={mileage} onChange={e=>setMileage(e.target.value)}/></FormField><div className="divide-y divide-brand-ice rounded border border-brand-ice">{template.items.map(item=><fieldset key={item.id} className="p-3"><legend className="font-medium">{item.label}</legend><div className="mt-2 grid grid-cols-2 gap-2"><label className="flex min-h-11 items-center gap-2 rounded border p-2"><input type="radio" name={item.id} checked={results[item.id]==="pass"} onChange={()=>setResults({...results,[item.id]:"pass"})}/>Pass</label><label className="flex min-h-11 items-center gap-2 rounded border p-2 text-red-700"><input type="radio" name={item.id} checked={results[item.id]==="fail"} onChange={()=>setResults({...results,[item.id]:"fail"})}/>Fail</label></div></fieldset>)}</div><FormField label="Driver Signature (typed)" required><Input value={signature} onChange={e=>setSignature(e.target.value)} placeholder={currentUser?.fullName}/></FormField><Button className="w-full" disabled={!canMutate||busy} onClick={()=>void save()}>{busy?"Submitting…":"Submit Inspection"}</Button></div></Card>:<Card className="p-6 text-center text-brand-steel">No published checklist is available. Contact an administrator.</Card>}<Card><CardHeader title="Recent Inspections"/><div className="divide-y divide-brand-ice">{pretripSubmissions.filter(s=>s.driverId===currentUser?.id).slice(0,5).map(s=><div className="flex justify-between p-3 text-sm" key={s.id}><span>{new Date(s.submittedAt).toLocaleString()}</span><span className={s.hasFailures?"text-red-700":"text-emerald-700"}>{s.hasFailures?"Review required":"Passed"}</span></div>)}</div></Card></div></>}
+"use client";
+import * as React from "react";
+import { MobileHeader } from "@/components/driver/MobileHeader";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { FormField, Input, Select } from "@/components/ui/Field";
+import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
+import { useOperations } from "@/components/system/OperationsProvider";
+import { useToast } from "@/components/system/ToastProvider";
+export default function Page() {
+  const { pretripTemplates, pretripSubmissions, submitPretrip } =
+    useExpandedOperations();
+  const { trucks, currentUser, canMutate } = useOperations();
+  const { toast } = useToast();
+  const template = pretripTemplates.find((t) => t.isPublished);
+  const [truckId, setTruckId] = React.useState("");
+  const [mileage, setMileage] = React.useState("");
+  const [signature, setSignature] = React.useState("");
+  const [results, setResults] = React.useState<Record<string, "pass" | "fail">>(
+    {},
+  );
+  const [busy, setBusy] = React.useState(false);
+  const save = async () => {
+    if (
+      !template ||
+      !truckId ||
+      !signature.trim() ||
+      !Number.isInteger(Number(mileage)) ||
+      template.items.some((i) => !results[i.id])
+    ) {
+      toast("Complete every inspection item, truck, mileage, and signature.", {
+        tone: "error",
+      });
+      return;
+    }
+    setBusy(true);
+    const r = await submitPretrip({
+      templateId: template.id,
+      truckId,
+      mileage: Number(mileage),
+      signature,
+      results,
+    });
+    setBusy(false);
+    toast(
+      r.ok
+        ? Object.values(results).includes("fail")
+          ? "Inspection submitted; dispatch was alerted"
+          : "Inspection submitted"
+        : r.error.message,
+      { tone: r.ok ? "success" : "error" },
+    );
+    if (r.ok) {
+      setResults({});
+      setSignature("");
+      setMileage("");
+    }
+  };
+  return (
+    <>
+      <MobileHeader title="Electronic Pre-Trip" />
+      <div className="flex-1 overflow-y-auto bg-surface p-4 space-y-4">
+        {template ? (
+          <Card>
+            <CardHeader title={`${template.title} · v${template.version}`} />
+            <div className="space-y-4 p-4">
+              <FormField label="Truck" required>
+                <Select
+                  value={truckId}
+                  onChange={(e) => setTruckId(e.target.value)}
+                >
+                  <option value="">Select truck</option>
+                  {trucks.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.number}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+              <FormField label="Current Mileage" required>
+                <Input
+                  type="number"
+                  min="0"
+                  value={mileage}
+                  onChange={(e) => setMileage(e.target.value)}
+                />
+              </FormField>
+              <div className="divide-y divide-brand-ice rounded border border-brand-ice">
+                {template.items.map((item) => (
+                  <fieldset key={item.id} className="p-3">
+                    <legend className="font-medium">{item.label}</legend>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <label className="flex min-h-11 items-center gap-2 rounded border p-2">
+                        <input
+                          type="radio"
+                          name={item.id}
+                          checked={results[item.id] === "pass"}
+                          onChange={() =>
+                            setResults({ ...results, [item.id]: "pass" })
+                          }
+                        />
+                        Pass
+                      </label>
+                      <label className="flex min-h-11 items-center gap-2 rounded border p-2 text-red-700">
+                        <input
+                          type="radio"
+                          name={item.id}
+                          checked={results[item.id] === "fail"}
+                          onChange={() =>
+                            setResults({ ...results, [item.id]: "fail" })
+                          }
+                        />
+                        Fail
+                      </label>
+                    </div>
+                  </fieldset>
+                ))}
+              </div>
+              <FormField label="Driver Signature (typed)" required>
+                <Input
+                  value={signature}
+                  onChange={(e) => setSignature(e.target.value)}
+                  placeholder={currentUser?.fullName}
+                />
+              </FormField>
+              <Button
+                className="w-full"
+                disabled={!canMutate || busy}
+                onClick={() => void save()}
+              >
+                {busy ? "Submitting…" : "Submit Inspection"}
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-6 text-center text-brand-steel">
+            No published checklist is available. Contact an administrator.
+          </Card>
+        )}
+        <Card>
+          <CardHeader title="Recent Inspections" />
+          <div className="divide-y divide-brand-ice">
+            {pretripSubmissions
+              .filter((s) => s.driverId === currentUser?.id)
+              .slice(0, 5)
+              .map((s) => (
+                <div className="flex justify-between p-3 text-sm" key={s.id}>
+                  <span>{new Date(s.submittedAt).toLocaleString()}</span>
+                  <span
+                    className={
+                      s.hasFailures ? "text-red-700" : "text-emerald-700"
+                    }
+                  >
+                    {s.hasFailures ? "Review required" : "Passed"}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </Card>
+      </div>
+    </>
+  );
+}

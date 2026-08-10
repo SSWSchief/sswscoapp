@@ -1,1 +1,13 @@
-"use client";import {Topbar} from "@/components/dispatcher/Topbar";import {TeamMessages} from "@/components/system/TeamMessages";export default function Page(){return <><Topbar title="Messages"/><div className="portal-content flex min-h-0"><TeamMessages/></div></>}
+"use client";
+import { Topbar } from "@/components/dispatcher/Topbar";
+import { TeamMessages } from "@/components/system/TeamMessages";
+export default function Page() {
+  return (
+    <>
+      <Topbar title="Messages" />
+      <div className="portal-content flex min-h-0">
+        <TeamMessages />
+      </div>
+    </>
+  );
+}

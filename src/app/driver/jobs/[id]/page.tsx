@@ -20,26 +20,45 @@ export default function DriverJobDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = React.use(params);
-  const { jobs, activities, customers, jobNotes, hydrated, currentUser, canMutate, updateJobStatus, logDryRun, uploadJobPhotos, addJobNote } = useOperations();
+  const {
+    jobs,
+    activities,
+    customers,
+    jobNotes,
+    hydrated,
+    currentUser,
+    canMutate,
+    updateJobStatus,
+    logDryRun,
+    uploadJobPhotos,
+    addJobNote,
+  } = useOperations();
   const job = jobs.find(
-    (item) => item.id === id || item.reference === id || item.reference === `#${id}`
+    (item) =>
+      item.id === id || item.reference === id || item.reference === `#${id}`,
   );
   const router = useRouter();
   const { toast } = useToast();
   const confirm = useConfirm();
 
-  const [photos, setPhotos] = React.useState<(string | null)[]>(() => job?.photos.map((photo) => photo.url) ?? []);
+  const [photos, setPhotos] = React.useState<(string | null)[]>(
+    () => job?.photos.map((photo) => photo.url) ?? [],
+  );
   const [busy, setBusy] = React.useState(false);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const libraryInputRef = React.useRef<HTMLInputElement>(null);
   const objectUrlsRef = React.useRef<string[]>([]);
-  const persistedNotes = jobNotes.filter(note => note.jobId === job?.id);
+  const persistedNotes = jobNotes.filter((note) => note.jobId === job?.id);
   const [optimisticNotes, setOptimisticNotes] = React.useState<string[]>([]);
   const [composing, setComposing] = React.useState(false);
   const [draft, setDraft] = React.useState("");
-  const [dryRunOpen,setDryRunOpen]=React.useState(false);
+  const [dryRunOpen, setDryRunOpen] = React.useState(false);
 
-  React.useEffect(() => () => objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)), []);
+  React.useEffect(
+    () => () =>
+      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)),
+    [],
+  );
   React.useEffect(() => {
     if (job) {
       setPhotos(job.photos.map((photo) => photo.url));
@@ -57,31 +76,49 @@ export default function DriverJobDetailsPage({
 
   const logAction = async (
     nextStatus: Extract<JobStatus, "en_route" | "arrived" | "complete">,
-    body: string
+    body: string,
   ) => {
     if (!currentUser || busy || !canMutate) return false;
     setBusy(true);
     const result = await updateJobStatus(job.id, nextStatus);
     setBusy(false);
-    toast(result.ok ? `${job.reference} ${body.toLowerCase()}` : result.error.message, { tone: result.ok ? "success" : "error" });
+    toast(
+      result.ok
+        ? `${job.reference} ${body.toLowerCase()}`
+        : result.error.message,
+      { tone: result.ok ? "success" : "error" },
+    );
     return result.ok;
   };
 
-  const markDryRun = async (reason:string) => {
+  const markDryRun = async (reason: string) => {
     if (!currentUser || busy || !canMutate) return;
     setBusy(true);
-    const result=await logDryRun(job.id,reason);setBusy(false);
-    toast(result.ok ? "Job cancelled as a dry run and dispatch notified" : result.error.message, { tone: result.ok ? "info" : "error" });
-    if(result.ok){setDryRunOpen(false);router.push("/driver/jobs");}
+    const result = await logDryRun(job.id, reason);
+    setBusy(false);
+    toast(
+      result.ok
+        ? "Job cancelled as a dry run and dispatch notified"
+        : result.error.message,
+      { tone: result.ok ? "info" : "error" },
+    );
+    if (result.ok) {
+      setDryRunOpen(false);
+      router.push("/driver/jobs");
+    }
   };
 
   const addPhotos = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (busy || !canMutate) return;
     const selected = Array.from(event.target.files ?? []);
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/heic"];
-    const valid = selected.filter((file) => allowed.includes(file.type) && file.size <= 10 * 1024 * 1024);
+    const valid = selected.filter(
+      (file) => allowed.includes(file.type) && file.size <= 10 * 1024 * 1024,
+    );
     if (valid.length !== selected.length) {
-      toast("Use JPEG, PNG, WebP, or HEIC images no larger than 10 MB.", { tone: "error" });
+      toast("Use JPEG, PNG, WebP, or HEIC images no larger than 10 MB.", {
+        tone: "error",
+      });
     }
     if (valid.length) {
       setBusy(true);
@@ -90,9 +127,14 @@ export default function DriverJobDetailsPage({
       setPhotos((current) => [...current, ...urls]);
       const result = await uploadJobPhotos(job.id, valid);
       if (result.ok) {
-        toast(`${valid.length} photo${valid.length === 1 ? "" : "s"} uploaded`, { tone: "success" });
+        toast(
+          `${valid.length} photo${valid.length === 1 ? "" : "s"} uploaded`,
+          { tone: "success" },
+        );
       } else {
-        setPhotos((current) => current.filter((url) => !urls.includes(url ?? "")));
+        setPhotos((current) =>
+          current.filter((url) => !urls.includes(url ?? "")),
+        );
         toast(result.error.message, { tone: "error" });
       }
       setBusy(false);
@@ -111,7 +153,7 @@ export default function DriverJobDetailsPage({
     const result = await addJobNote(job.id, body);
     setBusy(false);
     if (result.ok) {
-      setOptimisticNotes(current => current.filter(note => note !== body));
+      setOptimisticNotes((current) => current.filter((note) => note !== body));
       toast("Note added", { tone: "success" });
     } else {
       setOptimisticNotes((current) => current.filter((note) => note !== body));
@@ -128,11 +170,13 @@ export default function DriverJobDetailsPage({
     }
     const ok = await confirm({
       title: `Complete ${job.reference}?`,
-      message: "This marks the job done and notifies dispatch. You can't undo it from here.",
+      message:
+        "This marks the job done and notifies dispatch. You can't undo it from here.",
       confirmLabel: "Complete Job",
     });
     if (!ok) return;
-    if (await logAction("complete", "completed by driver")) router.push("/driver/jobs");
+    if (await logAction("complete", "completed by driver"))
+      router.push("/driver/jobs");
   };
 
   return (
@@ -147,11 +191,25 @@ export default function DriverJobDetailsPage({
             </h2>
             <JobStatusBadge status={status} />
           </div>
-          <p className="text-sm text-brand-steel dark:text-gray-400 mt-1">{job.address}</p>
+          <p className="text-sm text-brand-steel dark:text-gray-400 mt-1">
+            {job.address}
+          </p>
 
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <PlatformMapLink address={job.address} className="flex min-h-12 items-center justify-center gap-2 rounded bg-brand-blue px-2 text-center font-heading text-sm font-semibold uppercase tracking-wide text-white active:bg-brand-navy"><Icon name="pin" width={18} height={18} />Navigate</PlatformMapLink>
-            <a href={`tel:${job.phone.replace(/[^\d+]/g, "")}`} className="flex min-h-12 items-center justify-center gap-2 rounded border border-brand-blue/40 px-2 text-center font-heading text-sm font-semibold uppercase tracking-wide text-brand-blue"><Icon name="customers" width={18} height={18} />Call Customer</a>
+            <PlatformMapLink
+              address={job.address}
+              className="flex min-h-12 items-center justify-center gap-2 rounded bg-brand-blue px-2 text-center font-heading text-sm font-semibold uppercase tracking-wide text-white active:bg-brand-navy"
+            >
+              <Icon name="pin" width={18} height={18} />
+              Navigate
+            </PlatformMapLink>
+            <a
+              href={`tel:${job.phone.replace(/[^\d+]/g, "")}`}
+              className="flex min-h-12 items-center justify-center gap-2 rounded border border-brand-blue/40 px-2 text-center font-heading text-sm font-semibold uppercase tracking-wide text-brand-blue"
+            >
+              <Icon name="customers" width={18} height={18} />
+              Call Customer
+            </a>
           </div>
           <JobProgress status={status} hasPhotos={photoCount > 0} />
         </div>
@@ -164,7 +222,9 @@ export default function DriverJobDetailsPage({
           </dl>
         </Panel>
 
-        <Panel title={`Activity${activity.length ? ` (${activity.length})` : ""}`}>
+        <Panel
+          title={`Activity${activity.length ? ` (${activity.length})` : ""}`}
+        >
           <ul className="space-y-3">
             {activity.map((item) => (
               <li key={item.id} className="flex gap-3 text-sm">
@@ -174,7 +234,8 @@ export default function DriverJobDetailsPage({
                     {item.body}
                   </div>
                   <div className="text-xs text-brand-steel dark:text-gray-400">
-                    {item.actorName} · Dispatch {item.dispatchNotified ? "notified" : "not notified"}
+                    {item.actorName} · Dispatch{" "}
+                    {item.dispatchNotified ? "notified" : "not notified"}
                   </div>
                 </div>
               </li>
@@ -191,7 +252,15 @@ export default function DriverJobDetailsPage({
               <div
                 key={url ?? `seed-${i}`}
                 className="h-16 w-16 rounded bg-brand-mist dark:bg-white/10 border border-brand-ice dark:border-white/10 flex items-center justify-center text-brand-silver"
-                style={url ? { backgroundImage: `url(${url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                style={
+                  url
+                    ? {
+                        backgroundImage: `url(${url})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }
+                    : undefined
+                }
                 role={url ? "img" : undefined}
                 aria-label={url ? `Selected job photo ${i + 1}` : undefined}
               >
@@ -205,21 +274,45 @@ export default function DriverJobDetailsPage({
             >
               <Icon name="plus" width={18} height={18} />
             </button>
-            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={addPhotos} className="sr-only" aria-label="Take job photo" />
-            <input ref={libraryInputRef} type="file" accept="image/*" multiple onChange={addPhotos} className="sr-only" aria-label="Choose job photos" />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={addPhotos}
+              className="sr-only"
+              aria-label="Take job photo"
+            />
+            <input
+              ref={libraryInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={addPhotos}
+              className="sr-only"
+              aria-label="Choose job photos"
+            />
           </div>
           {photoCount === 0 && (
             <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
               At least one photo is required to complete this job.
             </p>
           )}
-          <p className="mt-2 text-xs leading-5 text-brand-steel dark:text-gray-400">Accepted: JPEG, PNG, WebP, and HEIC up to 10 MB each. Upload status is confirmed before completion.</p>
+          <p className="mt-2 text-xs leading-5 text-brand-steel dark:text-gray-400">
+            Accepted: JPEG, PNG, WebP, and HEIC up to 10 MB each. Upload status
+            is confirmed before completion.
+          </p>
         </Panel>
 
-        <Panel title={`Job Notes${persistedNotes.length + optimisticNotes.length ? ` (${persistedNotes.length + optimisticNotes.length})` : ""}`}>
+        <Panel
+          title={`Job Notes${persistedNotes.length + optimisticNotes.length ? ` (${persistedNotes.length + optimisticNotes.length})` : ""}`}
+        >
           {persistedNotes.length + optimisticNotes.length > 0 && (
             <ul className="space-y-2 mb-3">
-              {[...persistedNotes.map(note => note.body), ...optimisticNotes].map((n, i) => (
+              {[
+                ...persistedNotes.map((note) => note.body),
+                ...optimisticNotes,
+              ].map((n, i) => (
                 <li
                   key={i}
                   className="text-sm text-brand-charcoal dark:text-gray-300 bg-brand-mist dark:bg-white/5 rounded px-3 py-2"
@@ -240,7 +333,7 @@ export default function DriverJobDetailsPage({
               />
               <div className="flex gap-2">
                 <button
-                onClick={saveNote}
+                  onClick={saveNote}
                   disabled={busy || !canMutate}
                   className="min-h-11 flex-1 rounded bg-brand-blue text-white font-heading text-sm font-medium uppercase tracking-wide disabled:opacity-50"
                 >
@@ -311,7 +404,7 @@ export default function DriverJobDetailsPage({
               </button>
             </div>
             <button
-              onClick={()=>setDryRunOpen(true)}
+              onClick={() => setDryRunOpen(true)}
               disabled={busy || !canMutate}
               className="w-full h-12 rounded border border-amber-300 text-amber-700 font-heading font-semibold uppercase tracking-wide text-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
@@ -334,25 +427,54 @@ export default function DriverJobDetailsPage({
           </div>
         )}
       </div>
-      <ReasonDialog open={dryRunOpen} onClose={()=>setDryRunOpen(false)} onSubmit={markDryRun} busy={busy} title="Record dry run" label="What prevented service?" confirmLabel="Cancel as Dry Run" />
+      <ReasonDialog
+        open={dryRunOpen}
+        onClose={() => setDryRunOpen(false)}
+        onSubmit={markDryRun}
+        busy={busy}
+        title="Record dry run"
+        label="What prevented service?"
+        confirmLabel="Cancel as Dry Run"
+      />
     </>
   );
 }
 
-function JobProgress({ status, hasPhotos }: { status: JobStatus; hasPhotos: boolean }) {
-  const current = status === "complete" ? 4 : status === "arrived" ? hasPhotos ? 3 : 2 : status === "en_route" ? 1 : 0;
+function JobProgress({
+  status,
+  hasPhotos,
+}: {
+  status: JobStatus;
+  hasPhotos: boolean;
+}) {
+  const current =
+    status === "complete"
+      ? 4
+      : status === "arrived"
+        ? hasPhotos
+          ? 3
+          : 2
+        : status === "en_route"
+          ? 1
+          : 0;
   const steps = ["Start", "Arrive", "Photo", "Complete"];
   return (
     <div className="mt-4 rounded border border-brand-ice/70 bg-brand-mist/60 p-3 dark:border-white/10 dark:bg-white/5">
-      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-steel dark:text-gray-400">Job steps</div>
+      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-steel dark:text-gray-400">
+        Job steps
+      </div>
       <ol className="grid grid-cols-4 gap-2">
         {steps.map((step, index) => {
           const done = current > index || status === "complete";
           const active = current === index && status !== "complete";
           return (
             <li key={step} className="min-w-0">
-              <div className={`h-1.5 rounded-full ${done ? "bg-status-complete" : active ? "bg-brand-blue" : "bg-brand-ice dark:bg-white/15"}`} />
-              <div className={`mt-1 truncate text-[11px] font-medium ${done || active ? "text-brand-charcoal dark:text-white" : "text-brand-silver dark:text-gray-500"}`}>
+              <div
+                className={`h-1.5 rounded-full ${done ? "bg-status-complete" : active ? "bg-brand-blue" : "bg-brand-ice dark:bg-white/15"}`}
+              />
+              <div
+                className={`mt-1 truncate text-[11px] font-medium ${done || active ? "text-brand-charcoal dark:text-white" : "text-brand-silver dark:text-gray-500"}`}
+              >
                 {step}
               </div>
             </li>
