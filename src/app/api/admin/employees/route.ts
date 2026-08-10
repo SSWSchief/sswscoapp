@@ -7,6 +7,7 @@ import {
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { employeeCreateSchema, jsonBodySizeAllowed } from "@/lib/validation";
+import { generateTemporaryPassword } from "@/lib/temporary-password";
 
 const route = "/api/admin/employees";
 
@@ -89,6 +90,42 @@ export async function POST(request: Request) {
       "An employee with those details already exists.",
       409,
     );
+  // The profile is created first in both paths. `link_auth_user` attaches the
+  // Auth account to it by email on insert, so the account lands linked either
+  // way. If the Auth step fails the profile is rolled back so a half-created
+  // employee never lingers.
+  if (input.delivery === "temporary_password") {
+    const temporaryPassword = generateTemporaryPassword();
+    const created = await admin.auth.admin.createUser({
+      email: input.email.toLowerCase(),
+      password: temporaryPassword,
+      email_confirm: true,
+      user_metadata: { full_name: input.fullName },
+    });
+    if (created.error) {
+      await admin.from("users").delete().eq("id", profile.data.id);
+      return fail(
+        "account_failed",
+        "The employee profile was rolled back because the account could not be created.",
+        502,
+      );
+    }
+    await access.client.rpc("audit_admin_action", {
+      target_user_id: profile.data.id,
+      admin_action: "temporary_password_issued",
+    });
+    logRequest("info", "admin_employee_created", {
+      requestId: id,
+      route,
+      method: "POST",
+      startedAt,
+      status: 201,
+    });
+    // Returned once and never stored in plaintext. The administrator hands it
+    // to the employee, who replaces it from Change Password.
+    return apiSuccess({ id: profile.data.id, temporaryPassword }, id, 201);
+  }
+
   const invite = await admin.auth.admin.inviteUserByEmail(
     input.email.toLowerCase(),
     { data: { full_name: input.fullName } },

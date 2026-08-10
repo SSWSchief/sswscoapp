@@ -2,7 +2,15 @@ import { defineConfig } from "vitest/config";
 import path from "node:path";
 
 export default defineConfig({
-  resolve: { alias: { "@": path.resolve(__dirname, "src") } },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+      // `server-only` throws on import outside a Server Component, which is the
+      // point of it in production but makes server modules untestable. Stubbing
+      // it here keeps the runtime guard while letting the tests run.
+      "server-only": path.resolve(__dirname, "src/test/server-only-stub.ts"),
+    },
+  },
   test: {
     include: ["src/**/*.test.{ts,tsx}"],
     environment: "jsdom",

@@ -25,29 +25,40 @@ export function DispatcherAccount({
   };
 
   return (
-    <button
-      type="button"
-      onClick={signOut}
-      className={cn(
-        "flex w-full items-center gap-2.5 rounded px-2 py-2 text-left hover:bg-white/10",
-        className,
-      )}
-    >
-      <Avatar
-        initials={currentUser?.initials ?? "--"}
-        size="sm"
-        colorful={false}
-        className="bg-brand-blue/25 text-brand-ice"
-      />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">
-          {currentUser?.fullName ?? "Loading account"}
+    <div className={cn("w-full", className)}>
+      <div className="flex w-full items-center gap-2.5 rounded px-2 py-2 text-left">
+        <Avatar
+          initials={currentUser?.initials ?? "--"}
+          size="sm"
+          colorful={false}
+          className="bg-brand-blue/25 text-brand-ice"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium">
+            {currentUser?.fullName ?? "Loading account"}
+          </div>
+          <div className="text-xs capitalize opacity-70">
+            {currentUser?.accessRole ?? ""}
+          </div>
         </div>
-        <div className="text-xs capitalize opacity-70">
-          {currentUser?.accessRole ?? ""}
-        </div>
+        <button
+          type="button"
+          onClick={signOut}
+          aria-label="Sign out"
+          className="rounded p-1 hover:bg-white/10"
+        >
+          <Icon name="logout" width={16} height={16} className="opacity-70" />
+        </button>
       </div>
-      <Icon name="logout" width={16} height={16} className="opacity-70" />
-    </button>
+      {/* Staff had no way to change their own password; drivers already do from
+          Profile. Matters more now that accounts can start on a temporary one. */}
+      <button
+        type="button"
+        onClick={() => router.push("/reset-password")}
+        className="w-full rounded px-2 py-1.5 text-left text-xs opacity-70 hover:bg-white/10 hover:opacity-100"
+      >
+        Change password
+      </button>
+    </div>
   );
 }

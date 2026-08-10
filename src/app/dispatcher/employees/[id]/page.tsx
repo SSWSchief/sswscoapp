@@ -40,6 +40,9 @@ export default function EmployeeAccessPage({
   } = useOperations();
   const { toast } = useToast();
   const [pending, setPending] = React.useState(false);
+  const [issuedPassword, setIssuedPassword] = React.useState<string | null>(
+    null,
+  );
   const employee = users.find((user) => user.id === id);
   if (!hydrated) return <div className="flex-1 bg-surface" />;
   if (!employee) return notFound();
@@ -209,6 +212,49 @@ export default function EmployeeAccessPage({
               </p>
               {currentUser?.accessRole === "admin" && (
                 <div className="space-y-2 border-t border-brand-ice pt-4">
+                  {issuedPassword && (
+                    <div className="rounded border border-brand-ice bg-brand-mist p-3">
+                      <p className="text-xs text-brand-steel">
+                        Give this to {employee.fullName}. Shown once only.
+                      </p>
+                      <code className="mt-1 block select-all break-all font-mono text-sm font-semibold text-brand-charcoal">
+                        {issuedPassword}
+                      </code>
+                    </div>
+                  )}
+                  <Button
+                    className="w-full"
+                    variant="secondary"
+                    disabled={!canMutate || pending}
+                    onClick={async () => {
+                      setPending(true);
+                      setIssuedPassword(null);
+                      const response = await fetch(
+                        `/api/admin/employees/${employee.id}/temporary-password`,
+                        { method: "POST" },
+                      );
+                      if (response.ok) {
+                        const body = (await response.json()) as {
+                          data?: { temporaryPassword?: string };
+                        };
+                        setIssuedPassword(body.data?.temporaryPassword ?? null);
+                        toast("Temporary password issued.", {
+                          tone: "success",
+                        });
+                      } else {
+                        toast(
+                          await apiErrorMessage(
+                            response,
+                            "The password could not be issued.",
+                          ),
+                          { tone: "error" },
+                        );
+                      }
+                      setPending(false);
+                    }}
+                  >
+                    Issue Temporary Password
+                  </Button>
                   <Button
                     className="w-full"
                     variant="secondary"
@@ -231,7 +277,7 @@ export default function EmployeeAccessPage({
                       );
                     }}
                   >
-                    Send Password Reset
+                    Send Password Reset Email
                   </Button>
                   {owner ? (
                     <p className="rounded bg-brand-mist p-3 text-xs text-brand-steel">

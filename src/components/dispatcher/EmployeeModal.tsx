@@ -19,6 +19,10 @@ export function EmployeeModal({
   const { canMutate, refresh } = useOperations();
   const { toast } = useToast();
   const [saving, setSaving] = React.useState(false);
+  const [issued, setIssued] = React.useState<{
+    name: string;
+    password: string;
+  } | null>(null);
   const [form, setForm] = React.useState({
     employeeId: "",
     fullName: "",
@@ -26,9 +30,11 @@ export function EmployeeModal({
     phone: "",
     role: "driver" as UserRole,
     accessRole: "driver" as AccessRole,
+    delivery: "temporary_password" as "invitation" | "temporary_password",
   });
   React.useEffect(() => {
-    if (open)
+    if (open) {
+      setIssued(null);
       setForm({
         employeeId: "",
         fullName: "",
@@ -36,7 +42,9 @@ export function EmployeeModal({
         phone: "",
         role: "driver",
         accessRole: "driver",
+        delivery: "temporary_password",
       });
+    }
   }, [open]);
   const save = async () => {
     if (
@@ -56,23 +64,60 @@ export function EmployeeModal({
       });
       if (!response.ok)
         throw new Error(
-          await apiErrorMessage(
-            response,
-            "Employee invitation could not be created.",
-          ),
+          await apiErrorMessage(response, "The employee could not be created."),
         );
+      const body = (await response.json()) as {
+        data?: { temporaryPassword?: string };
+      };
       await refresh();
-      toast("Employee created and invitation initiated", { tone: "success" });
+      if (body.data?.temporaryPassword) {
+        // Held on screen rather than closing: this is the only time the
+        // password is ever shown.
+        setIssued({
+          name: form.fullName,
+          password: body.data.temporaryPassword,
+        });
+        toast("Employee created.", { tone: "success" });
+        return;
+      }
+      toast("Employee created and invitation sent.", { tone: "success" });
       onClose();
     } catch (error) {
       toast(
-        error instanceof Error ? error.message : "Employee invitation failed.",
+        error instanceof Error ? error.message : "The employee could not be created.",
         { tone: "error" },
       );
     } finally {
       setSaving(false);
     }
   };
+  if (issued)
+    return (
+      <Modal
+        open={open}
+        onClose={onClose}
+        title="Employee Created"
+        footer={<Button onClick={onClose}>Done</Button>}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-brand-steel">
+            Give this password to {issued.name}. It is shown once and cannot be
+            retrieved later — if it is lost, issue a new one from their employee
+            page.
+          </p>
+          <div className="rounded border border-brand-ice bg-brand-mist p-4 text-center">
+            <code className="select-all font-mono text-lg font-semibold tracking-wider text-brand-charcoal">
+              {issued.password}
+            </code>
+          </div>
+          <p className="text-sm text-brand-steel">
+            They sign in with their email and this password, then set their own
+            from Change Password.
+          </p>
+        </div>
+      </Modal>
+    );
+
   return (
     <Modal
       open={open}
@@ -84,7 +129,11 @@ export function EmployeeModal({
             Cancel
           </Button>
           <Button disabled={!canMutate || saving} onClick={() => void save()}>
-            {saving ? "Creating…" : "Create & Invite"}
+            {saving
+              ? "Creating…"
+              : form.delivery === "temporary_password"
+                ? "Create Employee"
+                : "Create & Invite"}
           </Button>
         </>
       }
@@ -151,9 +200,26 @@ export function EmployeeModal({
             <option value="admin">Administrator</option>
           </Select>
         </FormField>
+        <FormField label="How they get in">
+          <Select
+            value={form.delivery}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                delivery: e.target.value as typeof form.delivery,
+              })
+            }
+          >
+            <option value="temporary_password">
+              Give them a temporary password
+            </option>
+            <option value="invitation">Email them an invitation</option>
+          </Select>
+        </FormField>
         <p className="text-xs text-brand-steel">
-          Submitting invokes the secure server endpoint and sends the configured
-          Supabase invitation email.
+          {form.delivery === "temporary_password"
+            ? "No email is sent. A password is shown once for you to pass on, and they change it after signing in."
+            : "Sends an invitation email. This requires company email sending to be configured."}
         </p>
       </div>
     </Modal>

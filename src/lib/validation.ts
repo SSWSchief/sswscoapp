@@ -9,6 +9,15 @@ export const employeeCreateSchema = z
     phone: z.string().trim().max(30).optional().default(""),
     role: z.enum(["dispatcher", "driver", "office", "management"]),
     accessRole: z.enum(["admin", "dispatcher", "driver"]),
+    /**
+     * How the employee first gets in. `temporary_password` sends no email at
+     * all, so onboarding works before SMTP is configured and for staff who do
+     * not read email during the working day.
+     */
+    delivery: z
+      .enum(["invitation", "temporary_password"])
+      .optional()
+      .default("invitation"),
   })
   .strict()
   .refine(
