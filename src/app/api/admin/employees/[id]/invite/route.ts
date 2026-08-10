@@ -60,7 +60,7 @@ export async function POST(
   if (!profile.data)
     return fail("employee_not_found", "Employee not found.", 404);
   const result = await admin.auth.resetPasswordForEmail(profile.data.email, {
-    redirectTo: `${new URL(request.url).origin}/auth/callback?next=/reset-password`,
+    redirectTo: `${new URL(request.url).origin}/auth/confirm?next=/reset-password`,
   });
   if (result.error)
     return fail(

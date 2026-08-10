@@ -22,6 +22,13 @@ export default function LoginPage() {
 
   React.useEffect(() => {
     setHydrated(true);
+    // A failed invitation or reset link redirects here. Without this the failure
+    // is silent and the employee has no idea their link expired.
+    const reason = new URLSearchParams(window.location.search).get("error");
+    if (reason === "auth_confirm" || reason === "auth_callback")
+      setError(
+        "That sign-in link is invalid or has expired. Ask an administrator to send a new one.",
+      );
   }, []);
 
   const signIn = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -80,7 +87,7 @@ export default function LoginPage() {
     setError("");
     const { error: resetError } =
       await createClient().auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+        redirectTo: `${window.location.origin}/auth/confirm?next=/reset-password`,
       });
     if (resetError) setError(resetError.message);
     else

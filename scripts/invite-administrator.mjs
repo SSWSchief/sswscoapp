@@ -84,7 +84,7 @@ async function findAuthUserByEmail(targetEmail) {
 
 let authUser = await findAuthUserByEmail(email);
 let delivery;
-const redirectTo = `${siteUrl.origin}/auth/callback?next=/reset-password`;
+const redirectTo = `${siteUrl.origin}/auth/confirm?next=/reset-password`;
 if (authUser) {
   const reset = await service.auth.resetPasswordForEmail(email, { redirectTo });
   if (reset.error) throw reset.error;
