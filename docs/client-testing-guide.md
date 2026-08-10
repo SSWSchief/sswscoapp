@@ -9,8 +9,16 @@ built yet, and how to report a problem.
 **https://sswscoapp.vercel.app**
 
 Sign in with the email and password issued to you. There is no public sign-up —
-accounts are created by an administrator. If you forget your password, use
-**Forgot password?** on the sign-in screen.
+accounts are created by an administrator, who will either email you an
+invitation or hand you a temporary password directly.
+
+If you were given a temporary password, sign in with it and then set your own
+from **Change Password** — it's in the menu at the bottom of the sidebar on a
+computer, and under **Profile** on a phone.
+
+Forgotten your password? If company email sending is switched on, use
+**Forgot password?** on the sign-in screen. Otherwise ask an administrator to
+issue you a new temporary one.
 
 Overwatch works in any modern browser and installs to a phone's Home Screen.
 Drivers should install it: open the site in Safari on iPhone, tap Share, then
@@ -70,7 +78,8 @@ Work through these end to end and note anything confusing or wrong.
 7. Turn airplane mode on mid-task and watch how the app behaves, then reconnect.
 
 **Administrator**
-1. Add an employee, set their role and module access, and send their invitation.
+1. Add an employee, set their role and module access, and give them access
+   (temporary password or emailed invitation).
 2. Turn one module off for a dispatcher and confirm it disappears for them.
 3. Review Management Overview metrics against what you know is true.
 4. Change a company setting and confirm it is recorded.

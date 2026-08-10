@@ -13,7 +13,12 @@ training dataset. Automated E2E identities never enter production.
    passwords. Tehron is the approved indefinite support administrator. Add and
    verify a second client-controlled administrator before staff rollout.
 3. Enter real employees and verify role, access preset, individual overrides,
-   phone, and active status before sending password setup emails.
+   phone, and active status before giving anyone access. Each employee is
+   created either with an emailed invitation or with a temporary password shown
+   once for you to hand over; the temporary-password path sends no email and
+   works before SMTP is configured. Employees replace the temporary password
+   themselves from Change Password, and administrators can issue a replacement
+   from the employee page if one is lost.
 4. Enter real trucks, dumpsters, mileage, maintenance information, and current
    assignments. Then enter initial customers and every open launch-day job.
 5. Publish only client-approved pre-trip and SOP content. Training or generic
