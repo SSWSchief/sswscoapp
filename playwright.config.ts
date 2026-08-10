@@ -9,7 +9,16 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   forbidOnly: Boolean(process.env.CI),
   timeout: 60_000,
-  reporter: process.env.CI ? "github" : "list",
+  // CI must emit report files, not just annotations: a fully passing run writes
+  // nothing to `test-results/`, so the release evidence artifact required by
+  // docs/staging-verification.md would upload empty.
+  reporter: process.env.CI
+    ? [
+        ["github"],
+        ["html", { open: "never", outputFolder: "playwright-report" }],
+        ["json", { outputFile: "playwright-report/results.json" }],
+      ]
+    : "list",
   use: {
     baseURL: externalBaseUrl ?? "http://127.0.0.1:3000",
     trace: "on-first-retry",
