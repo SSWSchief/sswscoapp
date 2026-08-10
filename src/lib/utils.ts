@@ -22,6 +22,16 @@ export function formatDate(iso: string): string {
   });
 }
 
+const currencyFormat = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
+
+/** Money is stored as whole cents everywhere; format from cents, never floats. */
+export function formatCurrency(cents: number): string {
+  return currencyFormat.format(cents / 100);
+}
+
 export function formatDateTime(iso: string): string {
   return `${formatDate(iso)} ${formatTime(iso)}`;
 }

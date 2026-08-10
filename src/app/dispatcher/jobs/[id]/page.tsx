@@ -10,8 +10,9 @@ import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { formatDateTime, formatTime } from "@/lib/utils";
-import type { JobEvent } from "@/lib/types";
+import type { AcknowledgementEntry, JobEvent } from "@/lib/types";
 import { CreateJobModal } from "@/components/dispatcher/CreateJobModal";
 import { useToast } from "@/components/system/ToastProvider";
 import { useConfirm } from "@/components/system/ConfirmProvider";
@@ -209,6 +210,9 @@ export default function JobDetailsPage({
                 label="Dumpster"
                 value={dumpster?.code ?? "Unassigned"}
               />
+              {job.assignedDriverId && (
+                <AssignmentAcknowledgement jobId={job.id} />
+              )}
             </div>
           </Card>
 
@@ -360,7 +364,7 @@ function Assignment({
   value,
   initials,
 }: {
-  icon: "employees" | "truck" | "dumpster";
+  icon: "employees" | "truck" | "dumpster" | "clipboard";
   label: string;
   value: string;
   initials?: string;
@@ -379,6 +383,39 @@ function Assignment({
       </div>
     </div>
   );
+}
+
+/**
+ * Whether the assigned driver has acknowledged the job. The assignment
+ * notification has always asked drivers to acknowledge; this surfaces the
+ * answer to dispatch, who previously had no way to see it.
+ */
+function AssignmentAcknowledgement({ jobId }: { jobId: string }) {
+  const { loadJobAcknowledgements } = useExpandedOperations();
+  const [entries, setEntries] = React.useState<AcknowledgementEntry[] | null>(
+    null,
+  );
+
+  React.useEffect(() => {
+    let active = true;
+    void loadJobAcknowledgements(jobId).then((result) => {
+      if (active) setEntries(result.ok ? result.data : []);
+    });
+    return () => {
+      active = false;
+    };
+  }, [jobId, loadJobAcknowledgements]);
+
+  const acknowledged = entries?.find((entry) => entry.acknowledgedAt);
+  const value = !entries
+    ? "Checking…"
+    : acknowledged
+      ? `Acknowledged ${formatDateTime(acknowledged.acknowledgedAt!)}`
+      : entries.length
+        ? "Awaiting driver acknowledgement"
+        : "No assignment alert sent";
+
+  return <Assignment icon="clipboard" label="Acknowledgement" value={value} />;
 }
 
 const eventLabel: Record<JobEvent["type"], string> = {

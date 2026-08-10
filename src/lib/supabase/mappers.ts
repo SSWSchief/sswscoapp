@@ -1,4 +1,5 @@
 import type {
+  AcknowledgementEntry,
   AppNotification,
   CompanySettings,
   Customer,
@@ -8,6 +9,8 @@ import type {
   JobActivity,
   JobNote,
   MessageChannel,
+  PriceListItem,
+  ReadReceiptEntry,
   PretripSubmission,
   PretripTemplate,
   SopDocument,
@@ -20,8 +23,11 @@ import type {
 } from "@/lib/types";
 import type {
   AbsenceRow,
+  AcknowledgementRow,
   CompanySettingsRow,
   CorrectionRow,
+  PriceListRow,
+  ReadReceiptRow,
   CustomerRow,
   DumpsterRow,
   InvoiceRow,
@@ -237,6 +243,26 @@ export const mapInvoice = (row: InvoiceRow): InvoiceRecord => ({
   paidAt: row.paid_at,
   closedAt: row.closed_at,
   createdAt: row.created_at,
+});
+export const mapPriceListItem = (row: PriceListRow): PriceListItem => ({
+  id: row.id,
+  serviceType: row.service_type as PriceListItem["serviceType"],
+  dumpsterSize: row.dumpster_size as PriceListItem["dumpsterSize"],
+  priceCents: Number(row.price_cents),
+  notes: row.notes,
+  updatedAt: row.updated_at,
+});
+export const mapAcknowledgement = (
+  row: AcknowledgementRow,
+): AcknowledgementEntry => ({
+  userId: row.user_id,
+  fullName: row.full_name,
+  acknowledgedAt: row.acknowledged_at,
+});
+export const mapReadReceipt = (row: ReadReceiptRow): ReadReceiptEntry => ({
+  userId: row.user_id,
+  fullName: row.full_name,
+  readAt: row.read_at,
 });
 export const mapMessageChannel = (row: MessageChannelRow): MessageChannel => ({
   id: row.id,

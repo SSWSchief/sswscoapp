@@ -272,6 +272,27 @@ export interface CompanySettingsRow extends Record<string, unknown> {
   invoice_prefix: string;
   updated_at: string;
 }
+export interface PriceListRow extends Record<string, unknown> {
+  id: string;
+  service_type: string;
+  dumpster_size: string;
+  price_cents: number;
+  notes: string;
+  updated_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+/** Shared shape of the acknowledgement/read-receipt reporting functions. */
+export interface AcknowledgementRow extends Record<string, unknown> {
+  user_id: string;
+  full_name: string;
+  acknowledged_at: string | null;
+}
+export interface ReadReceiptRow extends Record<string, unknown> {
+  user_id: string;
+  full_name: string;
+  read_at: string;
+}
 export interface ProtectedAdministratorRow extends Record<string, unknown> {
   user_id: string;
   reason: string;
@@ -356,6 +377,7 @@ export interface Database {
       >;
       protected_administrators: Table<ProtectedAdministratorRow>;
       training_datasets: Table<TrainingDatasetRow>;
+      price_list: Table<PriceListRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -532,6 +554,18 @@ export interface Database {
       create_direct_message_channel: {
         Args: { other_user_id: string };
         Returns: string;
+      };
+      job_acknowledgement_status: {
+        Args: { target_job_id: string };
+        Returns: AcknowledgementRow[];
+      };
+      message_read_receipts: {
+        Args: { target_message_id: string };
+        Returns: ReadReceiptRow[];
+      };
+      sop_acknowledgement_coverage: {
+        Args: { target_sop_id: string };
+        Returns: AcknowledgementRow[];
       };
       write_audit: {
         Args: {

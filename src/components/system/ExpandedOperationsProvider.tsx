@@ -3,27 +3,36 @@ import * as React from "react";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
+  mapAcknowledgement,
   mapCompanySettings,
   mapInvoice,
   mapMessageChannel,
   mapPretripSubmission,
   mapPretripTemplate,
+  mapPriceListItem,
+  mapReadReceipt,
   mapSopDocument,
   mapTeamMessage,
 } from "@/lib/supabase/mappers";
 import type {
+  AcknowledgementEntry,
   CompanySettings,
+  DumpsterSize,
   InvoiceRecord,
   InvoiceStatus,
   MessageChannel,
   PretripSubmission,
   PretripTemplate,
+  PriceListItem,
+  ReadReceiptEntry,
+  ServiceType,
   SopDocument,
   TeamMessage,
   TrainingDataset,
   TrainingDatasetMutation,
 } from "@/lib/types";
 import type {
+  AcknowledgementRow,
   CompanySettingsRow,
   InvoiceRow,
   MessageChannelRow,
@@ -31,6 +40,8 @@ import type {
   MessageRow,
   PretripSubmissionRow,
   PretripTemplateRow,
+  PriceListRow,
+  ReadReceiptRow,
   SopAcknowledgementRow,
   SopDocumentRow,
 } from "@/lib/supabase/database.types";
@@ -61,6 +72,7 @@ type State = {
   sops: SopDocument[];
   settings: CompanySettings | null;
   trainingDataset: TrainingDataset;
+  priceList: PriceListItem[];
 };
 type Value = State & {
   loading: boolean;
@@ -100,10 +112,30 @@ type Value = State & {
   removeTrainingDataset: (
     datasetKey: "training-v1",
   ) => Promise<MutationResult<TrainingDatasetMutation>>;
+  savePriceListItem: (input: {
+    serviceType: ServiceType;
+    dumpsterSize: DumpsterSize;
+    priceCents: number;
+    notes: string;
+  }) => Promise<MutationResult<void>>;
+  deletePriceListItem: (id: string) => Promise<MutationResult<void>>;
+  /** Read receipts for one message, scoped to that message's channel members. */
+  loadReadReceipts: (
+    messageId: string,
+  ) => Promise<MutationResult<ReadReceiptEntry[]>>;
+  /** Who has acknowledged this job assignment. */
+  loadJobAcknowledgements: (
+    jobId: string,
+  ) => Promise<MutationResult<AcknowledgementEntry[]>>;
+  /** Every active driver against one SOP, outstanding people first. */
+  loadSopCoverage: (
+    sopId: string,
+  ) => Promise<MutationResult<AcknowledgementEntry[]>>;
 };
 const Context = React.createContext<Value | null>(null);
 const initial: State = {
   invoices: [],
+  priceList: [],
   channels: [],
   messages: [],
   messageRecipients: [],
@@ -153,13 +185,21 @@ export function ExpandedOperationsProvider({
         const db = createClient();
         const patch: Partial<State> = {};
         if (domains.has("finance")) {
-          const result = await db
-            .from("invoices")
-            .select("*")
-            .order("due_date")
-            .limit(50);
-          if (result.error) throw result.error;
+          const [result, prices] = await Promise.all([
+            db.from("invoices").select("*").order("due_date").limit(50),
+            db
+              .from("price_list")
+              .select("*")
+              .order("dumpster_size")
+              .order("service_type")
+              .limit(100),
+          ]);
+          const financeError = [result, prices].find((r) => r.error)?.error;
+          if (financeError) throw financeError;
           patch.invoices = (result.data as InvoiceRow[]).map(mapInvoice);
+          patch.priceList = (prices.data as PriceListRow[]).map(
+            mapPriceListItem,
+          );
         }
         if (domains.has("messaging")) {
           const [channels, messages, reads, recipients] = await Promise.all([
@@ -472,6 +512,62 @@ export function ExpandedOperationsProvider({
             requested_dataset_key: datasetKey,
           }),
         ),
+      savePriceListItem: (input) =>
+        run(
+          () =>
+            createClient()
+              .from("price_list")
+              .upsert(
+                {
+                  service_type: input.serviceType,
+                  dumpster_size: input.dumpsterSize,
+                  price_cents: input.priceCents,
+                  notes: input.notes,
+                  updated_by_id: currentUser?.id ?? null,
+                },
+                { onConflict: "service_type,dumpster_size" },
+              ),
+          "finance",
+        ),
+      deletePriceListItem: (id) =>
+        run(
+          () => createClient().from("price_list").delete().eq("id", id),
+          "finance",
+        ),
+      loadReadReceipts: async (messageId) => {
+        const result = await createClient().rpc("message_read_receipts", {
+          target_message_id: messageId,
+        });
+        if (result.error) return fail(result.error);
+        return {
+          ok: true,
+          data: ((result.data ?? []) as ReadReceiptRow[]).map(mapReadReceipt),
+        };
+      },
+      loadJobAcknowledgements: async (jobId) => {
+        const result = await createClient().rpc("job_acknowledgement_status", {
+          target_job_id: jobId,
+        });
+        if (result.error) return fail(result.error);
+        return {
+          ok: true,
+          data: ((result.data ?? []) as AcknowledgementRow[]).map(
+            mapAcknowledgement,
+          ),
+        };
+      },
+      loadSopCoverage: async (sopId) => {
+        const result = await createClient().rpc("sop_acknowledgement_coverage", {
+          target_sop_id: sopId,
+        });
+        if (result.error) return fail(result.error);
+        return {
+          ok: true,
+          data: ((result.data ?? []) as AcknowledgementRow[]).map(
+            mapAcknowledgement,
+          ),
+        };
+      },
     }),
     [loading, data, refresh, run, runWithData, currentUser, canMutate],
   );

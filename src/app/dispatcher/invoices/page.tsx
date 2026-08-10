@@ -12,12 +12,7 @@ import { Card } from "@/components/ui/Card";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { downloadCsv } from "@/lib/client-download";
 import type { InvoiceRecord } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
-
-const currency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function InvoicesPage() {
   const { invoices } = useExpandedOperations();
@@ -73,7 +68,7 @@ export default function InvoicesPage() {
         <div className="portal-action-grid">
           <Metric
             label="Receivables"
-            value={currency.format(receivables / 100)}
+            value={formatCurrency(receivables)}
           />
           <Metric
             label="Open Invoices"
@@ -115,7 +110,7 @@ export default function InvoicesPage() {
                       (customer) => customer.id === invoice.customerId,
                     )?.name ?? "—"}
                   </TD>
-                  <TD>{currency.format(invoice.amountCents / 100)}</TD>
+                  <TD>{formatCurrency(invoice.amountCents)}</TD>
                   <TD>
                     <InvoiceStatus invoice={invoice} />
                   </TD>
@@ -152,7 +147,7 @@ export default function InvoicesPage() {
                 <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                   <InvoiceValue
                     label="Amount"
-                    value={currency.format(invoice.amountCents / 100)}
+                    value={formatCurrency(invoice.amountCents)}
                   />
                   <InvoiceValue
                     label="Due"

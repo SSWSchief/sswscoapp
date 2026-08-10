@@ -32,10 +32,12 @@ next-env.d.ts
 /imports/*
 !/imports/README.md
 
-# Local/iCloud conflict copies; canonical source files do not contain numeric suffixes.
-**/* 2.ts
-**/* 2.tsx
-**/* 3.tsx
+# Local/iCloud conflict copies; canonical source files never carry a numeric
+# suffix. iCloud recreates these on sync and they break knip and tsc, so the
+# pattern is deliberately broad rather than per-extension.
+**/* [0-9].*
+**/*.* [0-9]
+**/.* [0-9]
 .vercel
 .env*
 

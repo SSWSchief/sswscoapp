@@ -83,6 +83,8 @@ export function expandedDomainsForPath(pathname: string): Set<ExpandedDomain> {
   if (pathname.startsWith("/dispatcher/settings")) {
     domains.add("compliance");
     domains.add("settings");
+    // The pricing tab lives in Settings but its data belongs to finance.
+    domains.add("finance");
   }
   if (pathname.startsWith("/driver/profile")) domains.add("settings");
   return domains;
@@ -122,6 +124,7 @@ export const coreTableDomain: Record<string, CoreDomain> = {
 
 export const expandedTableDomain: Record<string, ExpandedDomain> = {
   invoices: "finance",
+  price_list: "finance",
   message_channels: "messaging",
   message_channel_members: "messaging",
   messages: "messaging",

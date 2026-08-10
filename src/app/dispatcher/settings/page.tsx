@@ -13,8 +13,13 @@ import { effectivePermissions, permissionLabels } from "@/lib/permissions";
 import { isProtectedAdministrator } from "@/lib/owners";
 import { cn } from "@/lib/utils";
 import { apiErrorMessage } from "@/lib/client-api";
-import type { CompanySettings } from "@/lib/types";
+import type {
+  AcknowledgementEntry,
+  CompanySettings,
+  SopDocument,
+} from "@/lib/types";
 import { TrainingDataPanel } from "@/components/dispatcher/TrainingDataPanel";
+import { PriceListPanel } from "@/components/dispatcher/PriceListPanel";
 
 const defaults: CompanySettings = {
   companyName: "Silver State Waste Solutions",
@@ -32,6 +37,7 @@ const tabs = [
   "checklist",
   "sops",
   "users",
+  "pricing",
   "training",
 ] as const;
 type Tab = (typeof tabs)[number];
@@ -41,8 +47,64 @@ const tabLabels: Record<Tab, string> = {
   checklist: "Driver Checklist",
   sops: "SOP Library",
   users: "Users & Roles",
+  pricing: "Pricing",
   training: "Training Data",
 };
+
+/**
+ * Who still owes an acknowledgement on the published SOP. Publishing a new
+ * version retires the previous one, so this always reports against the version
+ * currently in force.
+ */
+function SopCoverage({ sops }: { sops: SopDocument[] }) {
+  const { loadSopCoverage } = useExpandedOperations();
+  const published = sops.find((item) => item.isPublished);
+  const [entries, setEntries] = React.useState<AcknowledgementEntry[] | null>(
+    null,
+  );
+
+  React.useEffect(() => {
+    if (!published) return;
+    let active = true;
+    void loadSopCoverage(published.id).then((result) => {
+      if (active) setEntries(result.ok ? result.data : []);
+    });
+    return () => {
+      active = false;
+    };
+  }, [published, loadSopCoverage]);
+
+  if (!published) return null;
+  const outstanding = entries?.filter((entry) => !entry.acknowledgedAt) ?? [];
+  const done = (entries?.length ?? 0) - outstanding.length;
+
+  return (
+    <div className="rounded border border-brand-ice p-3 text-sm">
+      <p className="font-semibold text-brand-charcoal">
+        Acknowledgement of “{published.title}”
+      </p>
+      {!entries ? (
+        <p className="mt-1 text-brand-steel">Checking…</p>
+      ) : !entries.length ? (
+        <p className="mt-1 text-brand-steel">No active drivers to track.</p>
+      ) : (
+        <>
+          <p className="mt-1 text-brand-steel">
+            {done} of {entries.length} drivers acknowledged.
+          </p>
+          {outstanding.length > 0 && (
+            <p className="mt-1 text-brand-steel">
+              Outstanding:{" "}
+              <span className="text-brand-charcoal">
+                {outstanding.map((entry) => entry.fullName).join(", ")}
+              </span>
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 function validateSettings(settings: CompanySettings) {
   const errors: Partial<Record<keyof CompanySettings, string>> = {};
@@ -499,6 +561,7 @@ export default function Page() {
                 <Button disabled={disabled} onClick={() => void submitSop()}>
                   {busy === "sop" ? "Publishing..." : "Publish New SOP"}
                 </Button>
+                <SopCoverage sops={sops} />
               </div>
             </section>
           )}
@@ -587,6 +650,7 @@ export default function Page() {
               </div>
             </section>
           )}
+          {activeTab === "pricing" && <PriceListPanel />}
           {activeTab === "training" && <TrainingDataPanel />}
         </Card>
       </div>

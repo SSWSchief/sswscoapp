@@ -275,6 +275,32 @@ export interface InvoiceRecord {
   createdAt: string;
 }
 
+/** A reference rate for one service and container size. */
+export interface PriceListItem {
+  id: string;
+  serviceType: ServiceType;
+  dumpsterSize: DumpsterSize;
+  priceCents: number;
+  notes: string;
+  updatedAt: string;
+}
+
+/**
+ * Acknowledgement state for one person. `acknowledgedAt` is null when the
+ * person still owes an acknowledgement, which is the case staff care about.
+ */
+export interface AcknowledgementEntry {
+  userId: string;
+  fullName: string;
+  acknowledgedAt: string | null;
+}
+
+export interface ReadReceiptEntry {
+  userId: string;
+  fullName: string;
+  readAt: string;
+}
+
 export interface MessageChannel {
   id: string;
   name: string;

@@ -39,7 +39,8 @@ describe("route domain selection", () => {
     ["/driver/pre-trip", ["compliance"]],
     ["/driver/sops", ["compliance"]],
     ["/driver/profile", ["settings"]],
-    ["/dispatcher/settings", ["compliance", "settings"]],
+    // Settings also loads finance: the pricing tab reads the rate card.
+    ["/dispatcher/settings", ["compliance", "settings", "finance"]],
   ])("selects expanded domains for %s", (path, expected) => {
     expect([...expandedDomainsForPath(path)]).toEqual(expected);
   });

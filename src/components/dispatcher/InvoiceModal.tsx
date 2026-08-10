@@ -16,8 +16,9 @@ export function InvoiceModal({
   onClose: () => void;
   invoice?: InvoiceRecord;
 }) {
-  const { saveInvoice, settings } = useExpandedOperations();
+  const { saveInvoice, settings, priceList } = useExpandedOperations();
   const { customers, jobs, canMutate } = useOperations();
+  const [pricedFrom, setPricedFrom] = React.useState<string | null>(null);
   const { toast } = useToast();
   const [busy, setBusy] = React.useState(false);
   const [form, setForm] = React.useState({
@@ -30,7 +31,8 @@ export function InvoiceModal({
     notes: "",
   });
   React.useEffect(() => {
-    if (open)
+    if (open) {
+      setPricedFrom(null);
       setForm({
         invoiceNumber:
           invoice?.invoiceNumber ?? `${settings?.invoicePrefix ?? "INV"}-`,
@@ -41,7 +43,30 @@ export function InvoiceModal({
         dueDate: invoice?.dueDate ?? "",
         notes: invoice?.notes ?? "",
       });
+    }
   }, [open, invoice, settings]);
+
+  /**
+   * Prefill the amount from the rate card when a job is picked on a new
+   * invoice. Only ever fills a blank amount: an existing invoice keeps the
+   * price it was issued at, and a dispatcher's manual figure is never
+   * overwritten.
+   */
+  const applyJob = (jobId: string) => {
+    setForm((current) => {
+      const next = { ...current, jobId };
+      const job = jobs.find((item) => item.id === jobId);
+      if (invoice || !job || current.amount.trim()) return next;
+      const rate = priceList.find(
+        (item) =>
+          item.serviceType === job.serviceType &&
+          item.dumpsterSize === job.dumpsterSize,
+      );
+      if (!rate) return next;
+      setPricedFrom(`${job.serviceType} · ${job.dumpsterSize}`);
+      return { ...next, amount: (rate.priceCents / 100).toFixed(2) };
+    });
+  };
   const save = async () => {
     const amount = Math.round(Number(form.amount) * 100);
     if (
@@ -93,13 +118,20 @@ export function InvoiceModal({
             }
           />
         </FormField>
-        <FormField label="Amount" required>
+        <FormField
+          label="Amount"
+          required
+          hint={pricedFrom ? `Rate applied for ${pricedFrom}` : undefined}
+        >
           <Input
             type="number"
             min="0"
             step="0.01"
             value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
+            onChange={(e) => {
+              setPricedFrom(null);
+              setForm({ ...form, amount: e.target.value });
+            }}
           />
         </FormField>
         <FormField label="Customer" required>
@@ -120,7 +152,7 @@ export function InvoiceModal({
         <FormField label="Related Job">
           <Select
             value={form.jobId}
-            onChange={(e) => setForm({ ...form, jobId: e.target.value })}
+            onChange={(e) => applyJob(e.target.value)}
           >
             <option value="">No job</option>
             {jobs

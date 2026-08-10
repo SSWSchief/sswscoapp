@@ -9,6 +9,43 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Select, Textarea } from "@/components/ui/Field";
 import { RelativeTime } from "@/components/ui/RelativeTime";
 
+/**
+ * "Seen by" for a message you sent. Loaded on demand rather than with the
+ * channel: receipts are only meaningful for your own messages, and fetching
+ * them for every message in a thread would be a query per message.
+ */
+function ReadReceipts({ messageId }: { messageId: string }) {
+  const { loadReadReceipts } = useExpandedOperations();
+  const [names, setNames] = React.useState<string[] | null>(null);
+  const [open, setOpen] = React.useState(false);
+
+  const reveal = async () => {
+    setOpen(true);
+    if (names) return;
+    const result = await loadReadReceipts(messageId);
+    setNames(result.ok ? result.data.map((entry) => entry.fullName) : []);
+  };
+
+  if (!open)
+    return (
+      <button
+        type="button"
+        onClick={() => void reveal()}
+        className="underline underline-offset-2"
+      >
+        Seen by…
+      </button>
+    );
+  if (!names) return <span>Checking…</span>;
+  return (
+    <span>
+      {names.length
+        ? `Seen by ${names.length}: ${names.join(", ")}`
+        : "Not seen yet"}
+    </span>
+  );
+}
+
 export function TeamMessages() {
   const {
     channels,
@@ -133,8 +170,11 @@ export function TeamMessages() {
                   "Employee"}
               </div>
               <p className="whitespace-pre-wrap text-sm">{message.body}</p>
-              <div className="mt-1 text-[11px] opacity-70">
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] opacity-70">
                 <RelativeTime iso={message.createdAt} />
+                {message.senderId === currentUser?.id && (
+                  <ReadReceipts messageId={message.id} />
+                )}
               </div>
             </div>
           ))}
