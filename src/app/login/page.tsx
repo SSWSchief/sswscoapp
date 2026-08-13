@@ -6,6 +6,10 @@ import { LogoFull } from "@/components/ui/Logo";
 import { Input, Label } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { createClient } from "@/lib/supabase/client";
+import {
+  emailDeliveryEnabled,
+  passwordRecoveryGuidance,
+} from "@/lib/email-delivery";
 
 function safeInternalPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
@@ -75,6 +79,8 @@ export default function LoginPage() {
     router.refresh();
   };
 
+  // Only reachable while email delivery is on; the control is replaced with
+  // static guidance otherwise, so there is nothing here to short-circuit.
   const resetPassword = async () => {
     const email = (
       document.querySelector<HTMLInputElement>('input[name="email"]')?.value ??
@@ -90,10 +96,7 @@ export default function LoginPage() {
         redirectTo: `${window.location.origin}/auth/confirm?next=/reset-password`,
       });
     if (resetError) setError(resetError.message);
-    else
-      setMessage(
-        "Password reset instructions were sent if that account exists.",
-      );
+    else setMessage(passwordRecoveryGuidance(true));
   };
 
   return (
@@ -166,14 +169,23 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* A reset button that cannot send anything is worse than no button:
+            it looks like it acted, so the employee waits for mail that will
+            never arrive. Until SMTP is configured, say so plainly instead. */}
         <div className="text-center mt-4">
-          <button
-            type="button"
-            onClick={resetPassword}
-            className="inline-flex min-h-11 items-center text-sm font-medium text-brand-blue hover:underline"
-          >
-            Forgot password?
-          </button>
+          {emailDeliveryEnabled() ? (
+            <button
+              type="button"
+              onClick={resetPassword}
+              className="inline-flex min-h-11 items-center text-sm font-medium text-brand-blue hover:underline"
+            >
+              Forgot password?
+            </button>
+          ) : (
+            <p className="text-sm text-brand-steel">
+              Forgotten your password? {passwordRecoveryGuidance(false)}
+            </p>
+          )}
         </div>
         <p className="text-center text-xs text-brand-steel mt-6">
           Secure employee access powered by Supabase Auth.

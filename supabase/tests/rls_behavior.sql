@@ -71,7 +71,7 @@ select is((select status from public.users where lower(email)='amarshall@sswsco.
 
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',true);
 set local role authenticated;
-select is(public.has_permission('management'),true,'active admin AAL1 receives administrator permissions while MFA is temporarily disabled');
+select is(public.has_permission('management'),true,'active admin AAL1 receives administrator permissions under the accepted password-only policy');
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal2"}',true);
 select is(public.has_permission('management'),true,'active admin AAL2 continues to receive administrator permissions');
 select is((public.save_company_settings('RLS Company','100 Test Way','555-0100','settings@example.invalid','America/Los_Angeles','MM/DD/YYYY',365,'QA')).invoice_prefix,'QA','active admin saves validated company settings through RPC');

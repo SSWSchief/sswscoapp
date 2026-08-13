@@ -15,11 +15,14 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "dead-code": "knip",
-    "check": "npm run lint && npm run typecheck && npm run test:coverage && npm run test:scripts && npm run dead-code && npm run build",
+    "clean:conflicts": "node scripts/clean-sync-conflicts.mjs",
+    "check": "npm run clean:conflicts && npm run lint && npm run typecheck && npm run test:coverage && npm run test:scripts && npm run dead-code && npm run build",
     "db:lint": "supabase db lint --linked --level warning",
     "import:validate": "node scripts/import-operations.mjs",
     "staging:bootstrap": "node scripts/bootstrap-staging-e2e.mjs",
-    "admin:invite": "node scripts/invite-administrator.mjs"
+    "admin:invite": "node scripts/invite-administrator.mjs",
+    "auth:check-redirect": "node scripts/check-auth-redirect.mjs",
+    "identities:retire": "node scripts/retire-test-identities.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

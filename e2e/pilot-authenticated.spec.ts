@@ -80,11 +80,15 @@ test.describe("authenticated production journeys", () => {
     // All three portals are named in the switcher. Asserted as attached rather
     // than visible: the sidebar is `hidden md:flex`, and asserting visibility
     // on it is what broke this suite on the mobile projects before.
+    //
+    // The switcher renders nothing until the signed-in profile has loaded from
+    // Supabase, so this waits on a network round trip rather than a paint. The
+    // emulated mobile profiles are slow enough to exceed the 5s default.
     await page.goto("/management");
     for (const name of ["Management", "Dispatch", "Driver"])
       await expect(
         page.getByRole("link", { name, exact: true }).first(),
-      ).toBeAttached();
+      ).toBeAttached({ timeout: 20_000 });
     await page.goto("/dispatcher/settings");
     await page.getByRole("tab", { name: "Training Data" }).click();
     const create = page.getByRole("button", { name: "Create Training Data" });
