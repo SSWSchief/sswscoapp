@@ -18,8 +18,7 @@ oversight:
 
 | Deferred | Consequence today | To enable |
 | --- | --- | --- |
-| Custom SMTP | No email is delivered. Onboarding uses temporary passwords; the sign-in screen tells people to ask an administrator rather than offering a reset it cannot send. | Connect SMTP (appendix below), then set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel. |
-| Supabase email templates | **Unverified.** The redirect now works, but a link only redeems if the template carries `token_hash` in the query string. Supabase's default `{{ .ConfirmationURL }}` returns tokens in the URL *fragment*, which never reaches a server route, so it cannot work here. Harmless today because nothing is sent. | Set both templates to the form in step 2 of the appendix before enabling SMTP. |
+| Email delivery | **Not planned.** No SMTP, so the system sends no mail at all. Onboarding and password recovery run entirely on administrator-issued temporary passwords, and the sign-in screen says so rather than offering a reset it cannot send. This is a deliberate choice for a small team, not an unfinished feature. | Nothing. If the company later outgrows manual passwords, the optional appendix explains how to switch email on. |
 | Administrator MFA | Administrator accounts are password-only. | A deliberate change with factor enrolment rehearsed first — see the accepted risks. |
 | 15-minute maintenance cron | Unassigned-job alerts run once daily instead of every 15 minutes. | A Vercel plan supporting sub-daily cron, or an external scheduler calling `/api/cron/maintenance` with `CRON_SECRET`. |
 
@@ -29,34 +28,49 @@ release.
 1. *Password-only administrator access.* MFA is not enforced. Compensating
    controls: strong unique passwords, short administrator sessions, Auth and
    application rate limits, immutable owner profiles, active-profile
-   enforcement, and audited administrator actions.
+   enforcement, and audited administrator actions. See the two dashboard
+   settings below — the first compensating control is not currently enforced.
 2. *Permanent support administrator.* See "Protected administrator profiles"
    below — this one has consequences worth understanding before signing.
+
+**Two dashboard settings worth closing.** Neither is exploitable today and
+neither blocks handover, but both are one toggle each and both contradict what
+this documentation claims is in place. Verified against production on
+August 13, 2026.
+
+*Minimum password length is not enforced by the server.* `/reset-password`
+requires 12 characters, but that is browser-side only — the platform accepted a
+7-character password when set through the API directly. Since passwords are the
+sole authentication factor, this is the compensating control named above, and it
+is currently advisory rather than enforced. Fix in Authentication → Sign In /
+Providers → set minimum password length to 12. Note `supabase/config.toml`
+already specifies 12, but that file governs only local development and never
+touches a hosted project — which is why the mismatch went unnoticed.
+
+*Public signup is enabled.* `disable_signup` reads `false` on production, so the
+signup endpoint accepts requests even though the application exposes no sign-up
+screen. This matters because of `link_auth_user`, which attaches any newly
+created account to an employee profile whose email matches and which has no
+account yet:
+
+```sql
+update public.users set auth_user_id = new.id
+where lower(email) = lower(new.email) and auth_user_id is null;
+```
+
+Someone who knew an employee's address and signed up with it before that
+employee received an account would inherit the profile, and with it that
+person's role. It is not reachable today because new signups require email
+confirmation and no mail can be delivered — but that protection disappears the
+moment SMTP is switched on. **If you ever follow the email appendix, disable
+signup first.** Fix in Authentication → Sign In / Providers → disable "Allow new
+users to sign up".
 
 **Reserved development accounts** used during build
 (`tehronporter+ssws.dispatch@`, `tehronporter+ssws.driver@`) have had their
 sign-in deleted and their profiles deactivated. Their profile rows remain
 because audit history references them and that history is immutable by design.
 They cannot sign in and will not appear as active employees.
-
-## Rotate the development credentials first
-
-Do this before anything else. The build-phase workbook `ssw app data sheet and
-api.xlsx` holds **live production credentials** — the project secret key and the
-database password — and copies have been shared over chat and email during the
-project. Every copy must be treated as compromised.
-
-1. Supabase → Settings → Database → **Reset database password**.
-2. Supabase → Settings → API keys → **rotate the secret key**.
-3. Update `SUPABASE_SECRET_KEY` in the Vercel project for Production and
-   Preview, then redeploy. Keep it marked Sensitive so it cannot be read back.
-4. Confirm the application still works: `/api/health` reports `ok` with a
-   reachable database, and an administrator can sign in.
-5. Delete every copy of the workbook.
-
-Nothing else in this guide is safe to rely on until this is done: anyone holding
-the old secret key has full read and write access to all client data,
-bypassing every row-level security policy in the system.
 
 ## Administrator setup order
 
@@ -156,15 +170,25 @@ The client owner accepts, by signing this handoff, that the support
 administrator retains access to production data until such a migration is
 applied.
 
-## Appendix — connecting email later
+## Appendix — connecting email later (optional, not planned)
 
-Email is not required to run the system, but connecting it restores emailed
-invitations and self-service password reset.
+**Skip this section.** The company runs on administrator-issued temporary
+passwords by choice, and with a small team that is a complete and reasonable
+onboarding method — nothing here is required for the system to work.
+
+Keep it only for the day handing out passwords by hand stops being practical.
+Connecting email restores emailed invitations and self-service password reset.
 
 Silver State already has Microsoft 365 (the domain's DNS resolves mail through
 Proofpoint to a Microsoft tenant), so **this needs no new vendor** — the
 existing mail service can send for the application.
 
+0. **Disable public signup first.** Authentication → Sign In / Providers →
+   turn off "Allow new users to sign up". Until email exists, an unconfirmed
+   self-signup cannot sign in; once mail is delivered it can, and
+   `link_auth_user` would attach it to any employee profile with a matching
+   address that has no account yet. Doing this after enabling SMTP leaves a
+   window open.
 1. In Microsoft 365, enable **SMTP AUTH** on the mailbox that will send. It is
    disabled by default on modern tenants, and security defaults may need
    adjusting; this is the step most likely to need administrator help.
@@ -176,7 +200,27 @@ existing mail service can send for the application.
    different provider would need new DNS records and the domain currently
    publishes `p=quarantine`, so misaligned mail is quarantined rather than
    delivered.
-4. Re-confirm the Site URL and redirect allowlist. Production was corrected and
+4. **Repoint the two email templates.** Authentication → Emails, then set the
+   link `href` in each. Leave the rest of the HTML alone.
+
+   *Invite user*
+   ```
+   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/reset-password
+   ```
+   *Reset Password*
+   ```
+   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password
+   ```
+
+   This is not cosmetic and it is easy to skip. The default
+   `{{ .ConfirmationURL }}` returns the token in the URL *fragment* — the part
+   after `#` — which browsers never send to a server, so `/auth/confirm` sees
+   nothing and bounces the employee to `/login?error=auth_confirm`. Putting
+   `token_hash` in the query string is what lets the server redeem it.
+
+   Hardcode `type` as shown. Do not use `{{ .Type }}`: it is not a documented
+   Supabase variable, and an empty value makes the route reject the link.
+5. Re-confirm the Site URL and redirect allowlist. Production was corrected and
    verified on August 13, 2026 — Site URL `https://sswscoapp.vercel.app`, one
    redirect entry `https://sswscoapp.vercel.app/**` — so this is a regression
    check, not a fix:
@@ -196,6 +240,8 @@ existing mail service can send for the application.
    ```
    Take the secret key from the Supabase dashboard. Vercel marks it Sensitive,
    so `vercel env pull` returns it empty — that is intended, not a fault.
-5. Set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel and redeploy. The
+6. Set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel and redeploy. The
    sign-in screen then offers self-service password reset again.
-6. Send one invitation to yourself end to end before switching any employee over.
+7. Send one invitation to yourself end to end before switching any employee over.
+   Click the link from a real inbox. If it lands on `/login?error=auth_confirm`,
+   step 4 was missed or mistyped.
