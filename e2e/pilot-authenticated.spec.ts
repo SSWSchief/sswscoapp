@@ -77,18 +77,20 @@ test.describe("authenticated production journeys", () => {
       await expect(page).toHaveURL(new RegExp(path));
       await expectPage(page, heading);
     }
-    // All three portals are named in the switcher. Asserted as attached rather
-    // than visible: the sidebar is `hidden md:flex`, and asserting visibility
-    // on it is what broke this suite on the mobile projects before.
-    //
-    // The switcher renders nothing until the signed-in profile has loaded from
-    // Supabase, so this waits on a network round trip rather than a paint. The
-    // emulated mobile profiles are slow enough to exceed the 5s default.
+    // All three portals must be reachable by name, on whichever surface this
+    // viewport actually offers. The sidebar is `hidden md:flex`, and a
+    // display:none element is absent from the accessibility tree entirely — so
+    // a role-based locator finds nothing on a phone no matter how long it
+    // waits, and `toBeAttached` does not change that. Walk the real path
+    // instead: on a phone the portals live behind the menu button.
     await page.goto("/management");
+    const menu = page.getByRole("button", { name: "Open menu" });
+    if (await menu.isVisible()) await menu.click();
     for (const name of ["Management", "Dispatch", "Driver"])
       await expect(
         page.getByRole("link", { name, exact: true }).first(),
-      ).toBeAttached({ timeout: 20_000 });
+        `${name} portal should be reachable`,
+      ).toBeVisible({ timeout: 20_000 });
     await page.goto("/dispatcher/settings");
     await page.getByRole("tab", { name: "Training Data" }).click();
     const create = page.getByRole("button", { name: "Create Training Data" });
