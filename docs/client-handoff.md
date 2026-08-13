@@ -47,6 +47,14 @@ history. Repeating either create or remove is safe.
   access. Dispatchers verify customers, assets, jobs, assignments, messages,
   time review, and reports. Drivers verify assigned work, photos, notes, time,
   messages, pre-trip, SOPs, profile, offline/reconnect, and sign-out.
+- The navigation opens with a Portals list naming every portal the account can
+  open — Management, Dispatch, Driver — in the office sidebar, the office mobile
+  drawer, and the driver menu. Administrators hold all three. A dispatcher sees
+  only Dispatch until an administrator grants Driver My Jobs from Employees, and
+  drivers see no list at all, since a single portal has nothing to switch to.
+- Jobs can still only be assigned to driver-access accounts, so My Jobs stays
+  empty for an office account opening the driver portal. Anyone who needs work
+  dispatched under their own name needs a driver-access profile.
 - Reconcile the first live jobs and time events against the previous process.
   Keep the prior Vercel deployment available throughout the rollback window.
 

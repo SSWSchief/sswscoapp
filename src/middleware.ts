@@ -2,34 +2,15 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/supabase/database.types";
 import {
-  driverPrimaryNav,
-  driverSecondaryNav,
-  staffNavItems,
-} from "@/components/navigation/routes";
+  landingRoutes,
+  portalAllowsRole,
+  routePermissionFor,
+} from "@/lib/portal-access";
 
 const protectedPrefixes = ["/dispatcher", "/driver", "/management"];
 type Profile = {
   access_role: "admin" | "dispatcher" | "driver";
   permission_overrides: Record<string, boolean> | null;
-};
-const driverNavItems = [...driverPrimaryNav, ...driverSecondaryNav];
-const routePermissions = [...staffNavItems, ...driverNavItems].map((item) => ({
-  prefix: item.href,
-  key: item.permission,
-}));
-const fallbackRoutes = {
-  admin: [...staffNavItems]
-    .sort((left, right) =>
-      left.href === "/management" ? -1 : right.href === "/management" ? 1 : 0,
-    )
-    .map((item) => ({ path: item.href, key: item.permission })),
-  driver: driverNavItems.map((item) => ({
-    path: item.href,
-    key: item.permission,
-  })),
-  staff: staffNavItems
-    .filter((item) => !item.href.startsWith("/management"))
-    .map((item) => ({ path: item.href, key: item.permission })),
 };
 
 function safeInternalPath(value: string | null) {
@@ -106,13 +87,7 @@ export async function middleware(request: NextRequest) {
     },
   });
   const permittedDestination = async (profile: Profile) => {
-    const routes =
-      profile.access_role === "driver"
-        ? fallbackRoutes.driver
-        : profile.access_role === "admin"
-          ? fallbackRoutes.admin
-          : fallbackRoutes.staff;
-    for (const route of routes) {
+    for (const route of landingRoutes(profile.access_role)) {
       const result = await supabase.rpc("has_permission", {
         permission_key: route.key,
       });
@@ -154,14 +129,8 @@ export async function middleware(request: NextRequest) {
   }
   if (user && isProtected) {
     const path = request.nextUrl.pathname;
-    const baseAllowed =
-      profile &&
-      ((path.startsWith("/driver") && profile.access_role === "driver") ||
-        (path.startsWith("/dispatcher") && profile.access_role !== "driver") ||
-        (path.startsWith("/management") && profile.access_role === "admin"));
-    const permission = routePermissions.find((route) =>
-      path.startsWith(route.prefix),
-    );
+    const baseAllowed = profile && portalAllowsRole(path, profile.access_role);
+    const permission = routePermissionFor(path);
     let permissionAllowed = true;
     if (profile && permission) {
       const result = await supabase.rpc("has_permission", {

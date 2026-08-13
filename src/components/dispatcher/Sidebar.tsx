@@ -8,6 +8,7 @@ import { LogoFull } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
 import { effectivePermissions } from "@/lib/permissions";
 import { staffNavSections } from "@/components/navigation/routes";
+import { PortalSwitch } from "@/components/navigation/PortalSwitch";
 import { DispatcherAccount } from "./DispatcherAccount";
 
 /** Desktop sidebar. The mobile drawer reuses `dispatcherNav` from ./nav. */
@@ -30,6 +31,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
+        <PortalSwitch />
         {visibleSections.map((section) => (
           <div key={section.label} className="space-y-1">
             <div className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-ice/55">
