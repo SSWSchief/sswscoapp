@@ -19,6 +19,7 @@ oversight:
 | Deferred | Consequence today | To enable |
 | --- | --- | --- |
 | Custom SMTP | No email is delivered. Onboarding uses temporary passwords; the sign-in screen tells people to ask an administrator rather than offering a reset it cannot send. | Connect SMTP (appendix below), then set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel. |
+| Supabase Site URL | **Outstanding.** Production's Site URL still points at an SSO-protected Vercel alias, so any emailed link would dead-end even once SMTP exists. Harmless today because nothing is sent. | Fix it in the dashboard now — step 4 of the appendix — so it is already correct when email is switched on. |
 | Administrator MFA | Administrator accounts are password-only. | A deliberate change with factor enrolment rehearsed first — see the accepted risks. |
 | 15-minute maintenance cron | Unassigned-job alerts run once daily instead of every 15 minutes. | A Vercel plan supporting sub-daily cron, or an external scheduler calling `/api/cron/maintenance` with `CRON_SECRET`. |
 
@@ -162,6 +163,16 @@ existing mail service can send for the application.
    ```
    This generates a link and sends nothing. It must report PASS before you rely
    on email — a rewritten redirect means links will dead-end.
+
+   The check reads `.env.local`, which points at **staging**, so it verifies
+   staging by default. To check production, supply its credentials explicitly
+   (environment variables take precedence over the file):
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://<prod-ref>.supabase.co \
+   SUPABASE_SECRET_KEY=<prod secret> \
+   npm run auth:check-redirect -- --email=<a reserved account>
+   ```
+   Pull those values with `vercel env pull` rather than keeping them in a file.
 5. Set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel and redeploy. The
    sign-in screen then offers self-service password reset again.
 6. Send one invitation to yourself end to end before switching any employee over.
