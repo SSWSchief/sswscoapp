@@ -6,6 +6,10 @@ import { LogoFull } from "@/components/ui/Logo";
 import { Input, Label } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { createClient } from "@/lib/supabase/client";
+import {
+  emailDeliveryEnabled,
+  passwordRecoveryGuidance,
+} from "@/lib/email-delivery";
 
 function safeInternalPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
@@ -76,6 +80,13 @@ export default function LoginPage() {
   };
 
   const resetPassword = async () => {
+    // Without SMTP the reset mail is never delivered, so sending the request
+    // would only produce a promise the employee waits on forever.
+    if (!emailDeliveryEnabled()) {
+      setError("");
+      setMessage(passwordRecoveryGuidance(false));
+      return;
+    }
     const email = (
       document.querySelector<HTMLInputElement>('input[name="email"]')?.value ??
       ""
@@ -90,10 +101,7 @@ export default function LoginPage() {
         redirectTo: `${window.location.origin}/auth/confirm?next=/reset-password`,
       });
     if (resetError) setError(resetError.message);
-    else
-      setMessage(
-        "Password reset instructions were sent if that account exists.",
-      );
+    else setMessage(passwordRecoveryGuidance(true));
   };
 
   return (

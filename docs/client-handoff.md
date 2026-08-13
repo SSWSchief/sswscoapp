@@ -5,6 +5,39 @@ authenticated staging acceptance. Production starts with the two approved
 administrators, Company Announcements, Dispatch, and at most one controlled
 training dataset. Automated E2E identities never enter production.
 
+## State at handoff
+
+Read this section first; it is what is true on the day the system changes hands.
+
+**Working.** Sign-in, all three portals, jobs and dispatch, time clock, pre-trip,
+SOPs, messages, invoices, reports, exports, and audit history. Employees are
+onboarded with administrator-issued temporary passwords.
+
+**Deliberately deferred.** Three things are switched off by agreement, not by
+oversight:
+
+| Deferred | Consequence today | To enable |
+| --- | --- | --- |
+| Custom SMTP | No email is delivered. Onboarding uses temporary passwords; the sign-in screen tells people to ask an administrator rather than offering a reset it cannot send. | Connect SMTP (appendix below), then set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel. |
+| Administrator MFA | Administrator accounts are password-only. | A deliberate change with factor enrolment rehearsed first — see the accepted risks. |
+| 15-minute maintenance cron | Unassigned-job alerts run once daily instead of every 15 minutes. | A Vercel plan supporting sub-daily cron, or an external scheduler calling `/api/cron/maintenance` with `CRON_SECRET`. |
+
+**Accepted risks.** Both were reviewed and accepted; reconfirm them at each
+release.
+
+1. *Password-only administrator access.* MFA is not enforced. Compensating
+   controls: strong unique passwords, short administrator sessions, Auth and
+   application rate limits, immutable owner profiles, active-profile
+   enforcement, and audited administrator actions.
+2. *Permanent support administrator.* See "Protected administrator profiles"
+   below — this one has consequences worth understanding before signing.
+
+**Reserved development accounts** used during build
+(`tehronporter+ssws.dispatch@`, `tehronporter+ssws.driver@`) have had their
+sign-in deleted and their profiles deactivated. Their profile rows remain
+because audit history references them and that history is immutable by design.
+They cannot sign in and will not appear as active employees.
+
 ## Administrator setup order
 
 1. Confirm the company address, phone, email, Pacific time zone, invoice prefix,
@@ -13,12 +46,12 @@ training dataset. Automated E2E identities never enter production.
    passwords. Tehron is the approved indefinite support administrator. Add and
    verify a second client-controlled administrator before staff rollout.
 3. Enter real employees and verify role, access preset, individual overrides,
-   phone, and active status before giving anyone access. Each employee is
-   created either with an emailed invitation or with a temporary password shown
-   once for you to hand over; the temporary-password path sends no email and
-   works before SMTP is configured. Employees replace the temporary password
-   themselves from Change Password, and administrators can issue a replacement
-   from the employee page if one is lost.
+   phone, and active status before giving anyone access. **Until SMTP is
+   configured, use the temporary-password path** — it is shown once for you to
+   hand over and sends no email. Employees replace it themselves from Change
+   Password, and administrators can issue a replacement from the employee page
+   if one is lost. The emailed-invitation option only works once SMTP is
+   connected; before then its link is never delivered.
 4. Enter real trucks, dumpsters, mileage, maintenance information, and current
    assignments. Then enter initial customers and every open launch-day job.
 5. Publish only client-approved pre-trip and SOP content. Training or generic
@@ -40,9 +73,12 @@ history. Repeating either create or remove is safe.
 
 ## Staff launch
 
-- Send invitations only after each employee profile has been reviewed.
+- Issue temporary passwords only after each employee profile has been reviewed.
 - Have every user complete sign-in and password setup during the approved
   onboarding window. Do not share passwords or reuse staging credentials.
+- Hand each temporary password over in person or by a channel the employee
+  already controls. It is shown once and cannot be retrieved afterwards; issue a
+  replacement from the employee page instead of trying to recover it.
 - Administrators verify Settings, Employees, Management, exports, and audit
   access. Dispatchers verify customers, assets, jobs, assignments, messages,
   time review, and reports. Drivers verify assigned work, photos, notes, time,
@@ -71,3 +107,61 @@ Application administrator MFA is intentionally disabled and indefinite support
 administrator access is intentionally retained. These are accepted residual
 risks; strong unique passwords, short sessions, rate limits, protected-admin
 enforcement, and administrator audit records are mandatory compensating controls.
+
+## Protected administrator profiles
+
+Two email addresses are pinned in the database as permanently active
+administrators:
+
+- `amarshall@sswsco.com` — Austin Marshall, client owner
+- `tehronporter@gmail.com` — Tehron Porter, support administrator
+
+A database trigger (`enforce_owner_profile_access`, migration
+`202608060009_owner_profiles.sql`) forces both to `role=management`,
+`access_role=admin`, `status=active`, and empty permission overrides on every
+write. Understand what this means before signing off:
+
+- Neither account can be deactivated, downgraded, deleted, or have permissions
+  reduced **through the application**. The interface will appear to accept such
+  a change and the trigger will silently restore it.
+- Their email addresses cannot be changed; the trigger raises an error.
+- This is intentional. It prevents a misconfiguration or a single hostile
+  session from locking every administrator out of the system.
+- **Removing an address from this list requires a new database migration and a
+  deployment.** It is not a setting. If the support relationship ends, that
+  migration is the mechanism, and it should be treated as a normal change with
+  its own review.
+
+The client owner accepts, by signing this handoff, that the support
+administrator retains access to production data until such a migration is
+applied.
+
+## Appendix — connecting email later
+
+Email is not required to run the system, but connecting it restores emailed
+invitations and self-service password reset.
+
+Silver State already has Microsoft 365 (the domain's DNS resolves mail through
+Proofpoint to a Microsoft tenant), so **this needs no new vendor** — the
+existing mail service can send for the application.
+
+1. In Microsoft 365, enable **SMTP AUTH** on the mailbox that will send. It is
+   disabled by default on modern tenants, and security defaults may need
+   adjusting; this is the step most likely to need administrator help.
+2. In Supabase → Project Settings → Authentication → SMTP Settings, enable
+   custom SMTP with host `smtp.office365.com`, port `587`, STARTTLS, and that
+   mailbox's credentials.
+3. Set the sender to a real monitored address on `sswsco.com`. SPF, DKIM, and
+   DMARC already pass for that domain when sending through Microsoft 365; a
+   different provider would need new DNS records and the domain currently
+   publishes `p=quarantine`, so misaligned mail is quarantined rather than
+   delivered.
+4. Confirm the Site URL and redirect allowlist are correct:
+   ```
+   npm run auth:check-redirect -- --email=<a reserved account>
+   ```
+   This generates a link and sends nothing. It must report PASS before you rely
+   on email — a rewritten redirect means links will dead-end.
+5. Set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel and redeploy. The
+   sign-in screen then offers self-service password reset again.
+6. Send one invitation to yourself end to end before switching any employee over.

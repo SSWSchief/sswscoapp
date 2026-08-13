@@ -4,10 +4,14 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const execFileAsync = promisify(execFile);
-const script = new URL("./import-operations.mjs", import.meta.url).pathname;
+// `URL.pathname` stays percent-encoded, so a checkout under a directory with a
+// space or `~` in its name (iCloud Drive, for one) yields a path Node cannot
+// resolve. `fileURLToPath` decodes it.
+const script = fileURLToPath(new URL("./import-operations.mjs", import.meta.url));
 
 async function withManifest(payload, run) {
   const directory = await mkdtemp(join(tmpdir(), "sswsco-import-test-"));

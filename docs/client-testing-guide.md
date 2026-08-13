@@ -9,16 +9,16 @@ built yet, and how to report a problem.
 **https://sswscoapp.vercel.app**
 
 Sign in with the email and password issued to you. There is no public sign-up —
-accounts are created by an administrator, who will either email you an
-invitation or hand you a temporary password directly.
+an administrator creates your account and hands you a temporary password.
 
-If you were given a temporary password, sign in with it and then set your own
-from **Change Password** — it's in the menu at the bottom of the sidebar on a
-computer, and under **Profile** on a phone.
+Sign in with that temporary password, then set your own from **Change
+Password** — it's in the menu at the bottom of the sidebar on a computer, and
+under **Profile** on a phone.
 
-Forgotten your password? If company email sending is switched on, use
-**Forgot password?** on the sign-in screen. Otherwise ask an administrator to
-issue you a new temporary one.
+Forgotten your password? Ask an administrator for a new temporary one. Overwatch
+does not send email yet, so there is no self-service reset and no invitation
+email to look for — if you are waiting on one, you are waiting for something
+that isn't coming. The sign-in screen will tell you the same thing.
 
 Overwatch works in any modern browser and installs to a phone's Home Screen.
 Drivers should install it: open the site in Safari on iPhone, tap Share, then
@@ -28,9 +28,17 @@ Drivers should install it: open the site in Safari on iPhone, tap Share, then
 
 You are routed automatically to the right workspace after signing in.
 
+If your account can open more than one workspace, the menu starts with a
+**Portals** list — Management, Dispatch, Driver — and you can move between them
+at any time. Administrators have all three. Most people have one, and then the
+list does not appear.
+
 **Administrator** — everything below, plus **Management Overview** (live metrics
 and exceptions) and **Settings** (company details, employee access, SOP and
-pre-trip publishing, training data).
+pre-trip publishing, training data). Administrators can also open the Driver
+portal to see exactly what a driver sees when training them. Note that **My
+Jobs will be empty** there — work is only ever dispatched to driver accounts,
+so an office account has none of its own.
 
 **Dispatcher** — Operations Overview, Jobs, Locations, Messages, Customers,
 Trucks, Dumpsters, Employees, Time Clock, Absence, Invoices, and Reports. An
@@ -78,8 +86,8 @@ Work through these end to end and note anything confusing or wrong.
 7. Turn airplane mode on mid-task and watch how the app behaves, then reconnect.
 
 **Administrator**
-1. Add an employee, set their role and module access, and give them access
-   (temporary password or emailed invitation).
+1. Add an employee, set their role and module access, and issue their temporary
+   password. Hand it over and watch them change it from Change Password.
 2. Turn one module off for a dispatcher and confirm it disappears for them.
 3. Review Management Overview metrics against what you know is true.
 4. Change a company setting and confirm it is recorded.

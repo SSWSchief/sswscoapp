@@ -15,10 +15,15 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // The component tests render under jsdom with coverage instrumentation.
+    // They finish in well under a second each when the machine is idle, but the
+    // 5s default is close enough to trip spuriously when the suite runs in
+    // parallel on a loaded CI runner. A failing build should mean broken code.
+    testTimeout: 20000,
     coverage: {
       reporter: ["text", "html"],
       include: [
-        "src/lib/{client-api,client-download,csv,job-dates,job-transitions,logger,owners,permissions,portal-access,time-clock,utils,validation}.ts",
+        "src/lib/{client-api,client-download,csv,email-delivery,job-dates,job-transitions,logger,owners,permissions,portal-access,time-clock,utils,validation}.ts",
         "src/lib/operations/route-domains.ts",
         "src/lib/supabase/mappers.ts",
         "src/components/ui/{Modal,Button,Field}.tsx",
