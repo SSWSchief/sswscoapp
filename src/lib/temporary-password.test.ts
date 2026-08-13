@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateTemporaryPassword } from "./temporary-password";
+import { passwordProblem } from "./password-policy";
 import { employeeCreateSchema } from "./validation";
 
 describe("temporary passwords", () => {
@@ -25,6 +26,41 @@ describe("temporary passwords", () => {
       Array.from({ length: 200 }, () => generateTemporaryPassword()),
     );
     expect(generated.size).toBe(200);
+  });
+
+  // Dropping the ambiguous glyphs leaves six digits among forty-nine
+  // characters. Drawing every position freely therefore produced a password
+  // with no digit about one time in eight — invisible until someone enables the
+  // documented complexity requirement, at which point that share of employee
+  // onboardings would fail with nothing to point at.
+  it("always satisfies the password policy", () => {
+    for (let attempt = 0; attempt < 2000; attempt += 1) {
+      const password = generateTemporaryPassword();
+      expect(passwordProblem(password), password).toBeNull();
+    }
+  });
+
+  it("satisfies the policy at the shortest permitted length", () => {
+    for (let attempt = 0; attempt < 500; attempt += 1)
+      expect(passwordProblem(generateTemporaryPassword(12))).toBeNull();
+  });
+
+  it("does not leave the guaranteed characters in fixed positions", () => {
+    // A shuffle that never moved anything would still pass the policy check
+    // while making the first three positions predictable by class.
+    const classes = Array.from({ length: 400 }, () =>
+      /[A-Z]/.test(generateTemporaryPassword()[0]),
+    );
+    expect(classes.some(Boolean)).toBe(true);
+    expect(classes.some((isUpper) => !isUpper)).toBe(true);
+  });
+
+  it("uses the supplied randomness for the shuffle", () => {
+    // `randomInt(limit)` is exclusive, so 0 is always in range and forces every
+    // swap to target index 0 — a deterministic arrangement we can assert on.
+    const password = generateTemporaryPassword(12, () => 0);
+    expect(password).toHaveLength(12);
+    expect(passwordProblem(password)).toBeNull();
   });
 });
 

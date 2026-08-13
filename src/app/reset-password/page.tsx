@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Input, Label } from "@/components/ui/Field";
 import { LogoFull } from "@/components/ui/Logo";
+import { passwordPolicyHint, passwordProblem } from "@/lib/password-policy";
 export default function ResetPassword() {
   const router = useRouter();
   const [error, setError] = React.useState("");
@@ -14,12 +15,9 @@ export default function ResetPassword() {
     const form = new FormData(event.currentTarget);
     const password = String(form.get("password") ?? "");
     const confirm = String(form.get("confirm") ?? "");
-    if (password.length < 12 || password !== confirm) {
-      setError(
-        password.length < 12
-          ? "Use at least 12 characters."
-          : "Passwords do not match.",
-      );
+    const problem = passwordProblem(password);
+    if (problem || password !== confirm) {
+      setError(problem ?? "Passwords do not match.");
       setBusy(false);
       return;
     }
@@ -43,7 +41,7 @@ export default function ResetPassword() {
           Set new password
         </h1>
         <p className="mb-5 mt-1 text-sm text-brand-steel">
-          Use at least 12 characters.
+          {passwordPolicyHint}
         </p>
         <div className="space-y-4">
           <div>
