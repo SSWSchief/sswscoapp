@@ -18,10 +18,11 @@ export default defineConfig({
     coverage: {
       reporter: ["text", "html"],
       include: [
-        "src/lib/{client-api,client-download,csv,job-dates,job-transitions,logger,owners,permissions,time-clock,utils,validation}.ts",
+        "src/lib/{client-api,client-download,csv,job-dates,job-transitions,logger,owners,permissions,portal-access,time-clock,utils,validation}.ts",
         "src/lib/operations/route-domains.ts",
         "src/lib/supabase/mappers.ts",
         "src/components/ui/{Modal,Button,Field}.tsx",
+        "src/components/navigation/PortalSwitch.tsx",
         "src/components/dispatcher/TrainingDataPanel.tsx",
       ],
       thresholds: {

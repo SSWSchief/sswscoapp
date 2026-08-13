@@ -8,6 +8,7 @@ import { CommandPalette } from "./CommandPalette";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { DispatcherUIContext } from "./shell-context";
 import { staffNavSections } from "@/components/navigation/routes";
+import { PortalSwitch } from "@/components/navigation/PortalSwitch";
 import { Icon } from "@/components/ui/Icon";
 import { LogoFull } from "@/components/ui/Logo";
 import { useOperations } from "@/components/system/OperationsProvider";
@@ -89,6 +90,7 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
+              <PortalSwitch onNavigate={() => setDrawer(false)} />
               {visibleSections.map((section) => (
                 <div key={section.label} className="space-y-1">
                   <div className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-ice/55">

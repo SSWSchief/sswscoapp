@@ -9,8 +9,9 @@ import { Icon } from "@/components/ui/Icon";
 import { DriverNotificationsPanel } from "./DriverNotificationsPanel";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { DriverShellContext } from "./driver-context";
-import { effectivePermissions } from "@/lib/permissions";
+import { accessRoleLabel, effectivePermissions } from "@/lib/permissions";
 import { driverSecondaryNav } from "@/components/navigation/routes";
+import { PortalSwitch } from "@/components/navigation/PortalSwitch";
 import { createClient } from "@/lib/supabase/client";
 
 const STORAGE_KEY = "ssws-driver-theme";
@@ -98,6 +99,10 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
                   className="flex-1 overflow-y-auto p-3 space-y-1"
                   aria-label="More navigation"
                 >
+                  <PortalSwitch
+                    tone="light"
+                    onNavigate={() => setMenuOpen(false)}
+                  />
                   {visibleMenu.map((item) => (
                     <Link
                       key={item.href}
@@ -129,7 +134,8 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
                     <Icon name="logout" /> Log Out
                   </button>
                   <div className="px-3 pb-1 text-xs text-brand-steel">
-                    {currentUser?.fullName} · Driver
+                    {currentUser?.fullName} ·{" "}
+                    {currentUser ? accessRoleLabel[currentUser.accessRole] : ""}
                   </div>
                 </div>
               </aside>

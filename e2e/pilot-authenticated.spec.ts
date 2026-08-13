@@ -67,6 +67,24 @@ test.describe("authenticated production journeys", () => {
     }
     await page.goto("/management");
     await expectPage(page, "Management Overview");
+    // Owners drive too, so the driver portal must open for them as well.
+    for (const [path, heading] of [
+      ["/driver/jobs", "My Jobs"],
+      ["/driver/pre-trip", "Electronic Pre-Trip"],
+      ["/driver/time-clock", "Time Clock"],
+    ]) {
+      await page.goto(path);
+      await expect(page).toHaveURL(new RegExp(path));
+      await expectPage(page, heading);
+    }
+    // All three portals are named in the switcher. Asserted as attached rather
+    // than visible: the sidebar is `hidden md:flex`, and asserting visibility
+    // on it is what broke this suite on the mobile projects before.
+    await page.goto("/management");
+    for (const name of ["Management", "Dispatch", "Driver"])
+      await expect(
+        page.getByRole("link", { name, exact: true }).first(),
+      ).toBeAttached();
     await page.goto("/dispatcher/settings");
     await page.getByRole("tab", { name: "Training Data" }).click();
     const create = page.getByRole("button", { name: "Create Training Data" });
