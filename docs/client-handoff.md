@@ -19,7 +19,7 @@ oversight:
 | Deferred | Consequence today | To enable |
 | --- | --- | --- |
 | Custom SMTP | No email is delivered. Onboarding uses temporary passwords; the sign-in screen tells people to ask an administrator rather than offering a reset it cannot send. | Connect SMTP (appendix below), then set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel. |
-| Supabase Site URL | **Outstanding.** Production's Site URL still points at an SSO-protected Vercel alias, so any emailed link would dead-end even once SMTP exists. Harmless today because nothing is sent. | Fix it in the dashboard now — step 4 of the appendix — so it is already correct when email is switched on. |
+| Supabase email templates | **Unverified.** The redirect now works, but a link only redeems if the template carries `token_hash` in the query string. Supabase's default `{{ .ConfirmationURL }}` returns tokens in the URL *fragment*, which never reaches a server route, so it cannot work here. Harmless today because nothing is sent. | Set both templates to the form in step 2 of the appendix before enabling SMTP. |
 | Administrator MFA | Administrator accounts are password-only. | A deliberate change with factor enrolment rehearsed first — see the accepted risks. |
 | 15-minute maintenance cron | Unassigned-job alerts run once daily instead of every 15 minutes. | A Vercel plan supporting sub-daily cron, or an external scheduler calling `/api/cron/maintenance` with `CRON_SECRET`. |
 
@@ -38,6 +38,25 @@ release.
 sign-in deleted and their profiles deactivated. Their profile rows remain
 because audit history references them and that history is immutable by design.
 They cannot sign in and will not appear as active employees.
+
+## Rotate the development credentials first
+
+Do this before anything else. The build-phase workbook `ssw app data sheet and
+api.xlsx` holds **live production credentials** — the project secret key and the
+database password — and copies have been shared over chat and email during the
+project. Every copy must be treated as compromised.
+
+1. Supabase → Settings → Database → **Reset database password**.
+2. Supabase → Settings → API keys → **rotate the secret key**.
+3. Update `SUPABASE_SECRET_KEY` in the Vercel project for Production and
+   Preview, then redeploy. Keep it marked Sensitive so it cannot be read back.
+4. Confirm the application still works: `/api/health` reports `ok` with a
+   reachable database, and an administrator can sign in.
+5. Delete every copy of the workbook.
+
+Nothing else in this guide is safe to rely on until this is done: anyone holding
+the old secret key has full read and write access to all client data,
+bypassing every row-level security policy in the system.
 
 ## Administrator setup order
 
@@ -157,7 +176,10 @@ existing mail service can send for the application.
    different provider would need new DNS records and the domain currently
    publishes `p=quarantine`, so misaligned mail is quarantined rather than
    delivered.
-4. Confirm the Site URL and redirect allowlist are correct:
+4. Re-confirm the Site URL and redirect allowlist. Production was corrected and
+   verified on August 13, 2026 — Site URL `https://sswscoapp.vercel.app`, one
+   redirect entry `https://sswscoapp.vercel.app/**` — so this is a regression
+   check, not a fix:
    ```
    npm run auth:check-redirect -- --email=<a reserved account>
    ```
@@ -172,7 +194,8 @@ existing mail service can send for the application.
    SUPABASE_SECRET_KEY=<prod secret> \
    npm run auth:check-redirect -- --email=<a reserved account>
    ```
-   Pull those values with `vercel env pull` rather than keeping them in a file.
+   Take the secret key from the Supabase dashboard. Vercel marks it Sensitive,
+   so `vercel env pull` returns it empty — that is intended, not a fault.
 5. Set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel and redeploy. The
    sign-in screen then offers self-service password reset again.
 6. Send one invitation to yourself end to end before switching any employee over.
