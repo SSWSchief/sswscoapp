@@ -38,14 +38,29 @@ neither blocks handover, but both are one toggle each and both contradict what
 this documentation claims is in place. Verified against production on
 August 13, 2026.
 
-*Minimum password length is not enforced by the server.* `/reset-password`
-requires 12 characters, but that is browser-side only — the platform accepted a
-7-character password when set through the API directly. Since passwords are the
-sole authentication factor, this is the compensating control named above, and it
-is currently advisory rather than enforced. Fix in Authentication → Sign In /
-Providers → set minimum password length to 12. Note `supabase/config.toml`
-already specifies 12, but that file governs only local development and never
-touches a hosted project — which is why the mismatch went unnoticed.
+*Password strength — mostly closed in the application, one toggle left.* The
+password rule now lives in `src/lib/password-policy.ts` and is applied wherever
+this application sets or accepts a password: at least 12 characters with an
+uppercase letter, a lowercase letter, and a number. Previously only length was
+checked, so `aaaaaaaaaaaa` was accepted.
+
+The same change fixed a latent fault in the temporary-password generator.
+Removing the glyphs people misread leaves only six digits among forty-nine
+characters, so a free draw of sixteen produced no digit roughly **one time in
+eight**. Nothing failed while the platform accepted weak passwords — but the day
+anyone enabled the documented complexity requirement, about an eighth of
+employee onboardings would have started failing with nothing obvious to blame.
+The generator now guarantees one character of each class and verifies its own
+output against the policy.
+
+What remains is the platform floor: Supabase itself still accepts six
+characters, so a request sent straight to the API, bypassing this application,
+is not subject to the rule above. That only lets someone weaken their own
+account, but it is worth closing as defence in depth — Authentication → Sign In
+/ Providers → set minimum password length to 12 and require lower/upper/digits.
+Note `supabase/config.toml` already specifies exactly this; that file governs
+only local development and never touches a hosted project, which is how the
+mismatch survived unnoticed.
 
 *Public signup is enabled.* `disable_signup` reads `false` on production, so the
 signup endpoint accepts requests even though the application exposes no sign-up
