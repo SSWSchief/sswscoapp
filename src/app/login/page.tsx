@@ -79,14 +79,9 @@ export default function LoginPage() {
     router.refresh();
   };
 
+  // Only reachable while email delivery is on; the control is replaced with
+  // static guidance otherwise, so there is nothing here to short-circuit.
   const resetPassword = async () => {
-    // Without SMTP the reset mail is never delivered, so sending the request
-    // would only produce a promise the employee waits on forever.
-    if (!emailDeliveryEnabled()) {
-      setError("");
-      setMessage(passwordRecoveryGuidance(false));
-      return;
-    }
     const email = (
       document.querySelector<HTMLInputElement>('input[name="email"]')?.value ??
       ""
@@ -174,14 +169,23 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* A reset button that cannot send anything is worse than no button:
+            it looks like it acted, so the employee waits for mail that will
+            never arrive. Until SMTP is configured, say so plainly instead. */}
         <div className="text-center mt-4">
-          <button
-            type="button"
-            onClick={resetPassword}
-            className="inline-flex min-h-11 items-center text-sm font-medium text-brand-blue hover:underline"
-          >
-            Forgot password?
-          </button>
+          {emailDeliveryEnabled() ? (
+            <button
+              type="button"
+              onClick={resetPassword}
+              className="inline-flex min-h-11 items-center text-sm font-medium text-brand-blue hover:underline"
+            >
+              Forgot password?
+            </button>
+          ) : (
+            <p className="text-sm text-brand-steel">
+              Forgotten your password? {passwordRecoveryGuidance(false)}
+            </p>
+          )}
         </div>
         <p className="text-center text-xs text-brand-steel mt-6">
           Secure employee access powered by Supabase Auth.
