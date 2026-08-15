@@ -36,7 +36,7 @@ export function reviewBlockedReason(
  * access is still a dispatcher who works a shift, and gating on `accessRole`
  * would quietly take their time clock away.
  */
-export const clockableRoles: UserRole[] = ["driver", "dispatcher", "office"];
+const clockableRoles: UserRole[] = ["driver", "dispatcher", "office"];
 
 export function clocksIn(user: Pick<User, "role"> | null | undefined): boolean {
   return user ? clockableRoles.includes(user.role) : false;
@@ -134,7 +134,7 @@ export function applyTimeCorrections(
   }
   return projected.sort((a, b) => a.at.localeCompare(b.at));
 }
-export interface DaySummary {
+interface DaySummary {
   day: string;
   workedSeconds: number;
   /** The day ended while still on the clock — a missed clock-out. */
