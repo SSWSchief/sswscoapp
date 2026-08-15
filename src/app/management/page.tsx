@@ -6,6 +6,8 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { jobsForPacificDay } from "@/lib/job-dates";
+import { StaffHoursPanel } from "@/components/management/StaffHoursPanel";
+import { PtoQueue } from "@/components/management/PtoQueue";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -91,6 +93,11 @@ export default function Page() {
           {metrics.map((metric) => (
             <MetricLink key={metric.label} {...metric} />
           ))}
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          <StaffHoursPanel />
+          <PtoQueue />
         </div>
 
         <div className="grid gap-5 lg:grid-cols-2">

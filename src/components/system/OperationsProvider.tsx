@@ -17,7 +17,11 @@ import {
   mapTruck,
   mapUser,
 } from "@/lib/supabase/mappers";
-import { applyTimeCorrections } from "@/lib/time-clock";
+import {
+  applyTimeCorrections,
+  pacificDate,
+  pacificDayStart,
+} from "@/lib/time-clock";
 import type {
   AccessRole,
   AbsenceEvent,
@@ -466,17 +470,24 @@ export function OperationsProvider({
           patch.dumpsters = (dumpsters.data as DumpsterRow[]).map(mapDumpster);
         }
         if (domains.has("time")) {
+          // Scoped to the current Pacific day rather than a flat row cap. Every
+          // view built on these entries summarises today, and a bare `limit`
+          // silently drops whoever punched in earliest once enough people are
+          // on the clock — which adding dispatch and office staff does. The
+          // remaining limit is a runaway guard, not a working constraint.
+          const dayStart = pacificDayStart(pacificDate(new Date()));
           const [entries, corrections, requests, absences] = await Promise.all([
             db
               .from("time_entries")
               .select("*")
+              .gte("occurred_at", dayStart)
               .order("occurred_at", { ascending: false })
-              .limit(50),
+              .limit(500),
             db
               .from("time_entry_corrections")
               .select("*")
               .order("created_at", { ascending: false })
-              .limit(50),
+              .limit(500),
             db
               .from("time_requests")
               .select("*")

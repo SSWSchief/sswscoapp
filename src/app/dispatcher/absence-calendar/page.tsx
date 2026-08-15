@@ -5,6 +5,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/StatusBadge";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { formatDate } from "@/lib/utils";
+import { clocksIn } from "@/lib/time-clock";
 
 export default function AbsenceCalendarPage() {
   const {
@@ -12,24 +13,29 @@ export default function AbsenceCalendarPage() {
     absenceEvents: absences,
     timeRequests: requests,
   } = useOperations();
-  const drivers = users.filter((user) => user.accessRole === "driver");
+  // Everyone on the clock, not only drivers: dispatch and office accrue PTO
+  // too, and filtering them out here hid their approved time off from the one
+  // calendar the schedule is built from.
+  const staff = users.filter(
+    (user) => clocksIn(user) && user.status === "active",
+  );
 
   return (
     <>
       <Topbar title="Absence Calendar" />
       <div className="portal-content space-y-5">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {drivers.map((driver) => (
-            <Card key={driver.id} className="p-4">
+          {staff.map((member) => (
+            <Card key={member.id} className="p-4">
               <div className="font-heading text-xl font-semibold text-brand-charcoal">
-                {driver.initials}
+                {member.initials}
               </div>
               <div className="text-sm font-medium text-brand-charcoal">
-                {driver.fullName}
+                {member.fullName}
               </div>
               <div className="text-xs text-brand-steel mt-1">
-                PTO {driver.ptoBalanceHours ?? 0}h · Week{" "}
-                {driver.weeklyHours ?? 0}h
+                PTO {member.ptoBalanceHours ?? 0}h · Week{" "}
+                {member.weeklyHours ?? 0}h
               </div>
             </Card>
           ))}
