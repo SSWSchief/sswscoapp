@@ -7,6 +7,7 @@ import {
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateTemporaryPassword } from "@/lib/temporary-password";
+import { findAuthUserIdByEmail } from "@/lib/supabase/auth-users";
 
 const route = "/api/admin/employees/[id]/temporary-password";
 
@@ -82,17 +83,10 @@ export async function POST(
 
   // An employee created by invitation may have no Auth account yet, so this
   // both resets an existing account and provisions a missing one.
-  let existingId: string | null = null;
-  for (let page = 1; page <= 20 && !existingId; page += 1) {
-    const listed = await admin.auth.admin.listUsers({ page, perPage: 1000 });
-    if (listed.error)
-      return fail("account_lookup_failed", "The account could not be read.", 502);
-    existingId =
-      listed.data.users.find(
-        (candidate) => candidate.email?.toLowerCase() === email,
-      )?.id ?? null;
-    if (listed.data.users.length < 1000) break;
-  }
+  const existing = await findAuthUserIdByEmail(admin.auth.admin, email);
+  if (!existing.ok)
+    return fail("account_lookup_failed", "The account could not be read.", 502);
+  const existingId = existing.id;
 
   const result = existingId
     ? await admin.auth.admin.updateUserById(existingId, {

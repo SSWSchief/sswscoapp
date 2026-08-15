@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { apiFailure, logRequest, requestId } from "@/lib/api-response";
 import { toCsv } from "@/lib/csv";
 import { createClient } from "@/lib/supabase/server";
-import { pacificDate } from "@/lib/time-clock";
+import { pacificDate, pacificDayEnd, pacificDayStart } from "@/lib/time-clock";
 import { exportQuerySchema } from "@/lib/validation";
 
 const allowed = new Set(["jobs", "invoices", "time", "assets"]);
@@ -120,19 +120,38 @@ export async function GET(
         invoice.notes,
       ]);
     } else if (type === "time") {
-      const result = await db
-        .from("time_entries")
-        .select("*")
-        .order("occurred_at")
-        .limit(maximumRows + 1);
+      // Filtered in the query rather than after it. Taking the oldest
+      // `maximumRows` and then narrowing in JS returns steadily less of the
+      // requested range as the table grows, and eventually an empty file for
+      // any recent week — the exact range payroll asks for.
+      const [result, staff] = await Promise.all([
+        db
+          .from("time_entries")
+          .select("*")
+          .gte("occurred_at", pacificDayStart(from))
+          .lt("occurred_at", pacificDayEnd(to))
+          .order("occurred_at")
+          .limit(maximumRows + 1),
+        db.from("users").select("id,employee_id,full_name,role"),
+      ]);
       if (result.error) throw result.error;
-      headers = ["Employee ID", "Event", "Timestamp"];
-      rows = (result.data ?? [])
-        .filter((entry) => {
-          const date = pacificDate(entry.occurred_at);
-          return date >= from && date <= to;
-        })
-        .map((entry) => [entry.user_id, entry.entry_type, entry.occurred_at]);
+      if (staff.error) throw staff.error;
+      const byId = new Map(
+        (staff.data ?? []).map((person) => [person.id, person]),
+      );
+      // Named, because a payroll clerk cannot act on an internal row id. The
+      // old file's "Employee ID" column held exactly that.
+      headers = ["Employee ID", "Employee", "Role", "Event", "Timestamp"];
+      rows = (result.data ?? []).map((entry) => {
+        const person = byId.get(entry.user_id);
+        return [
+          person?.employee_id ?? entry.user_id,
+          person?.full_name ?? "",
+          person?.role ?? "",
+          entry.entry_type,
+          entry.occurred_at,
+        ];
+      });
     } else {
       const [trucks, dumpsters] = await Promise.all([
         db

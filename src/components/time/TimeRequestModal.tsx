@@ -67,7 +67,9 @@ export function TimeRequestModal({
     setSaving(false);
     toast(
       result.ok
-        ? "Request submitted for dispatcher review"
+        ? kind === "pto"
+          ? "PTO request submitted for management review"
+          : "Time correction submitted for review"
         : result.error.message,
       { tone: result.ok ? "success" : "error" },
     );

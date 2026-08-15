@@ -73,9 +73,12 @@ describe("employee delivery choice", () => {
     accessRole: "driver",
   };
 
-  it("defaults to invitation so existing callers are unchanged", () => {
+  it("defaults to the path that works without SMTP", () => {
+    // Previously defaulted to `invitation`, which silently failed on every
+    // deployment without custom SMTP — a caller that omits the field should
+    // land on the mode that always delivers.
     const parsed = employeeCreateSchema.parse(base);
-    expect(parsed.delivery).toBe("invitation");
+    expect(parsed.delivery).toBe("temporary_password");
   });
 
   it("accepts the no-email path", () => {
