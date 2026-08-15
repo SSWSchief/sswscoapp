@@ -8,6 +8,8 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { employeeCreateSchema, jsonBodySizeAllowed } from "@/lib/validation";
 import { generateTemporaryPassword } from "@/lib/temporary-password";
+import { emailDeliveryEnabled } from "@/lib/email-delivery";
+import { findAuthUserIdByEmail } from "@/lib/supabase/auth-users";
 
 const route = "/api/admin/employees";
 
@@ -62,6 +64,17 @@ export async function POST(request: Request) {
       400,
     );
   const input = parsed.data;
+  // Refused before anything is written. Supabase accepts `inviteUserByEmail`
+  // without SMTP but never delivers it, and the old behaviour was to create the
+  // profile, watch the send fail, then delete the profile again — leaving the
+  // administrator with an error code and no employee. The modal hides this
+  // option entirely; this covers a stale page or a direct call.
+  if (input.delivery === "invitation" && !emailDeliveryEnabled())
+    return fail(
+      "email_delivery_disabled",
+      "Email sending is not configured, so an invitation cannot be delivered. Create the employee with a temporary password instead.",
+      409,
+    );
   const admin = createAdminClient();
   const initials = input.fullName
     .split(/\s+/)
@@ -95,13 +108,33 @@ export async function POST(request: Request) {
   // way. If the Auth step fails the profile is rolled back so a half-created
   // employee never lingers.
   if (input.delivery === "temporary_password") {
+    const email = input.email.toLowerCase();
     const temporaryPassword = generateTemporaryPassword();
-    const created = await admin.auth.admin.createUser({
-      email: input.email.toLowerCase(),
-      password: temporaryPassword,
-      email_confirm: true,
-      user_metadata: { full_name: input.fullName },
-    });
+    // An earlier attempt can leave an Auth account with no profile behind it —
+    // a failed invitation, or an employee deleted and re-added. `createUser`
+    // rejects those as duplicates, which used to strand the administrator on
+    // "the account could not be created" with no way forward, so an orphan is
+    // adopted and given the new password instead.
+    const existing = await findAuthUserIdByEmail(admin.auth.admin, email);
+    if (!existing.ok) {
+      await admin.from("users").delete().eq("id", profile.data.id);
+      return fail(
+        "account_lookup_failed",
+        "The employee profile was rolled back because existing accounts could not be checked.",
+        502,
+      );
+    }
+    const created = existing.id
+      ? await admin.auth.admin.updateUserById(existing.id, {
+          password: temporaryPassword,
+          email_confirm: true,
+        })
+      : await admin.auth.admin.createUser({
+          email,
+          password: temporaryPassword,
+          email_confirm: true,
+          user_metadata: { full_name: input.fullName },
+        });
     if (created.error) {
       await admin.from("users").delete().eq("id", profile.data.id);
       return fail(
@@ -109,6 +142,24 @@ export async function POST(request: Request) {
         "The employee profile was rolled back because the account could not be created.",
         502,
       );
+    }
+    // `link_auth_user` only fires when an Auth row is inserted, so an adopted
+    // account has to be attached to the profile here. An unchecked failure here
+    // would hand over a working password for an account that reaches no
+    // profile, so it is rolled back rather than reported as success.
+    if (existing.id) {
+      const linked = await admin
+        .from("users")
+        .update({ auth_user_id: existing.id })
+        .eq("id", profile.data.id);
+      if (linked.error) {
+        await admin.from("users").delete().eq("id", profile.data.id);
+        return fail(
+          "account_link_failed",
+          "The employee profile was rolled back because an existing account for that email could not be attached to it.",
+          502,
+        );
+      }
     }
     await access.client.rpc("audit_admin_action", {
       target_user_id: profile.data.id,

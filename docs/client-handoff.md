@@ -256,7 +256,12 @@ existing mail service can send for the application.
    Take the secret key from the Supabase dashboard. Vercel marks it Sensitive,
    so `vercel env pull` returns it empty — that is intended, not a fault.
 6. Set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel and redeploy. The
-   sign-in screen then offers self-service password reset again.
+   sign-in screen then offers self-service password reset again, and Add
+   Employee grows a "How they get in" choice. Until this is set, Add Employee
+   shows no such choice and always issues a temporary password — that is
+   deliberate. Supabase accepts an invitation request without SMTP and simply
+   never delivers it, so offering the option before this step only produced a
+   failed creation.
 7. Send one invitation to yourself end to end before switching any employee over.
    Click the link from a real inbox. If it lands on `/login?error=auth_confirm`,
    step 4 was missed or mistyped.

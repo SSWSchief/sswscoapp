@@ -8,6 +8,7 @@ import { useOperations } from "@/components/system/OperationsProvider";
 import { useToast } from "@/components/system/ToastProvider";
 import type { AccessRole, UserRole } from "@/lib/types";
 import { apiErrorMessage } from "@/lib/client-api";
+import { emailDeliveryEnabled } from "@/lib/email-delivery";
 
 export function EmployeeModal({
   open,
@@ -18,6 +19,7 @@ export function EmployeeModal({
 }) {
   const { canMutate, refresh } = useOperations();
   const { toast } = useToast();
+  const canEmail = emailDeliveryEnabled();
   const [saving, setSaving] = React.useState(false);
   const [issued, setIssued] = React.useState<{
     name: string;
@@ -200,22 +202,30 @@ export function EmployeeModal({
             <option value="admin">Administrator</option>
           </Select>
         </FormField>
-        <FormField label="How they get in">
-          <Select
-            value={form.delivery}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                delivery: e.target.value as typeof form.delivery,
-              })
-            }
-          >
-            <option value="temporary_password">
-              Give them a temporary password
-            </option>
-            <option value="invitation">Email them an invitation</option>
-          </Select>
-        </FormField>
+        {/*
+          The invitation option is hidden rather than merely captioned when
+          email sending is off. Offering a choice that always fails is how an
+          administrator ends up staring at an error reference instead of a new
+          employee; the one mode that works needs no decision from them.
+        */}
+        {canEmail ? (
+          <FormField label="How they get in">
+            <Select
+              value={form.delivery}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  delivery: e.target.value as typeof form.delivery,
+                })
+              }
+            >
+              <option value="temporary_password">
+                Give them a temporary password
+              </option>
+              <option value="invitation">Email them an invitation</option>
+            </Select>
+          </FormField>
+        ) : null}
         <p className="text-xs text-brand-steel">
           {form.delivery === "temporary_password"
             ? "No email is sent. A password is shown once for you to pass on, and they change it after signing in."

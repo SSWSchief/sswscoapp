@@ -12,12 +12,14 @@ export const employeeCreateSchema = z
     /**
      * How the employee first gets in. `temporary_password` sends no email at
      * all, so onboarding works before SMTP is configured and for staff who do
-     * not read email during the working day.
+     * not read email during the working day. It is the default because it is
+     * the mode that works in every deployment; an invitation depends on SMTP
+     * being connected and is rejected outright when it is not.
      */
     delivery: z
       .enum(["invitation", "temporary_password"])
       .optional()
-      .default("invitation"),
+      .default("temporary_password"),
   })
   .strict()
   .refine(
