@@ -20,6 +20,7 @@ import { isProtectedAdministrator } from "@/lib/owners";
 import type { AccessRole, UserRole } from "@/lib/types";
 import { useToast } from "@/components/system/ToastProvider";
 import { apiErrorMessage } from "@/lib/client-api";
+import { emailDeliveryEnabled } from "@/lib/email-delivery";
 
 export default function EmployeeAccessPage({
   params,
@@ -392,30 +393,48 @@ export default function EmployeeAccessPage({
                   >
                     Issue Temporary Password
                   </Button>
-                  <Button
-                    className="w-full"
-                    variant="secondary"
-                    disabled={!canMutate || pending}
-                    onClick={async () => {
-                      setPending(true);
-                      const response = await fetch(
-                        `/api/admin/employees/${employee.id}/invite`,
-                        { method: "POST" },
-                      );
-                      setPending(false);
-                      toast(
-                        response.ok
-                          ? "Password reset email initiated"
-                          : await apiErrorMessage(
-                              response,
-                              "Reset could not be initiated",
-                            ),
-                        { tone: response.ok ? "success" : "error" },
-                      );
-                    }}
-                  >
-                    Send Password Reset Email
-                  </Button>
+                  {/*
+                    Supabase reports resetPasswordForEmail as successful with
+                    no SMTP connected — it just never delivers anything — so
+                    this button used to toast "Password reset email
+                    initiated" while sending nothing. Matthew is that failure:
+                    an administrator clicked it, believed it, and he never
+                    heard anything. The login page already treats this
+                    correctly (see the "Forgot password?" link there); this
+                    button gets the same treatment now.
+                  */}
+                  {emailDeliveryEnabled() ? (
+                    <Button
+                      className="w-full"
+                      variant="secondary"
+                      disabled={!canMutate || pending}
+                      onClick={async () => {
+                        setPending(true);
+                        const response = await fetch(
+                          `/api/admin/employees/${employee.id}/invite`,
+                          { method: "POST" },
+                        );
+                        setPending(false);
+                        toast(
+                          response.ok
+                            ? "Password reset email initiated"
+                            : await apiErrorMessage(
+                                response,
+                                "Reset could not be initiated",
+                              ),
+                          { tone: response.ok ? "success" : "error" },
+                        );
+                      }}
+                    >
+                      Send Password Reset Email
+                    </Button>
+                  ) : (
+                    <p className="rounded bg-brand-mist p-3 text-xs text-brand-steel">
+                      Email is not configured, so no reset email can be sent.
+                      Use Issue Temporary Password above and hand it to them
+                      directly.
+                    </p>
+                  )}
                   {owner ? (
                     <p className="rounded bg-brand-mist p-3 text-xs text-brand-steel">
                       Protected administrators cannot be deactivated or
