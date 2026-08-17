@@ -1,0 +1,166 @@
+{
+  "capturedAt": "2026-08-13T22:59:48.561Z",
+  "baseUrl": "http://localhost:3100",
+  "screenshots": [
+    {
+      "name": "01-sign-in-desktop.png",
+      "url": "http://localhost:3100/login"
+    },
+    {
+      "name": "02-sign-in-phone.png",
+      "url": "http://localhost:3100/login"
+    },
+    {
+      "name": "03-change-password.png",
+      "url": "http://localhost:3100/reset-password"
+    },
+    {
+      "name": "04-portals-sidebar.png",
+      "url": "http://localhost:3100/management"
+    },
+    {
+      "name": "05-driver-my-jobs.png",
+      "url": "http://localhost:3100/driver/jobs"
+    },
+    {
+      "name": "06-driver-job-details.png",
+      "url": "http://localhost:3100/driver/jobs/training-v1-job"
+    },
+    {
+      "name": "07-driver-job-en-route.png",
+      "url": "http://localhost:3100/driver/jobs/training-v1-job"
+    },
+    {
+      "name": "08-driver-job-arrived.png",
+      "url": "http://localhost:3100/driver/jobs/training-v1-job"
+    },
+    {
+      "name": "09-driver-job-photo.png",
+      "url": "http://localhost:3100/driver/jobs/training-v1-job"
+    },
+    {
+      "name": "10-driver-job-note.png",
+      "url": "http://localhost:3100/driver/jobs/training-v1-job"
+    },
+    {
+      "name": "11-driver-dry-run.png",
+      "url": "http://localhost:3100/driver/jobs/training-v1-job"
+    },
+    {
+      "name": "12-driver-time-clock.png",
+      "url": "http://localhost:3100/driver/time-clock"
+    },
+    {
+      "name": "13-driver-time-request.png",
+      "url": "http://localhost:3100/driver/time-clock"
+    },
+    {
+      "name": "14-driver-pre-trip.png",
+      "url": "http://localhost:3100/driver/pre-trip"
+    },
+    {
+      "name": "15-driver-sops.png",
+      "url": "http://localhost:3100/driver/sops"
+    },
+    {
+      "name": "16-driver-messages.png",
+      "url": "http://localhost:3100/driver/messages"
+    },
+    {
+      "name": "17-driver-profile.png",
+      "url": "http://localhost:3100/driver/profile"
+    },
+    {
+      "name": "18-dispatch-overview.png",
+      "url": "http://localhost:3100/dispatcher/dashboard"
+    },
+    {
+      "name": "19-dispatch-jobs.png",
+      "url": "http://localhost:3100/dispatcher/jobs"
+    },
+    {
+      "name": "20-dispatch-new-job.png",
+      "url": "http://localhost:3100/dispatcher/jobs"
+    },
+    {
+      "name": "21-dispatch-job-details.png",
+      "url": "http://localhost:3100/dispatcher/jobs/training-v1-job"
+    },
+    {
+      "name": "22-dispatch-cancel-job.png",
+      "url": "http://localhost:3100/dispatcher/jobs/training-v1-job"
+    },
+    {
+      "name": "23-dispatch-customers.png",
+      "url": "http://localhost:3100/dispatcher/customers"
+    },
+    {
+      "name": "24-dispatch-add-customer.png",
+      "url": "http://localhost:3100/dispatcher/customers"
+    },
+    {
+      "name": "25-dispatch-trucks.png",
+      "url": "http://localhost:3100/dispatcher/trucks"
+    },
+    {
+      "name": "26-dispatch-dumpsters.png",
+      "url": "http://localhost:3100/dispatcher/dumpsters"
+    },
+    {
+      "name": "27-dispatch-locations.png",
+      "url": "http://localhost:3100/dispatcher/map"
+    },
+    {
+      "name": "28-dispatch-time-clock.png",
+      "url": "http://localhost:3100/dispatcher/time-clock"
+    },
+    {
+      "name": "29-dispatch-absence.png",
+      "url": "http://localhost:3100/dispatcher/absence-calendar"
+    },
+    {
+      "name": "30-dispatch-invoices.png",
+      "url": "http://localhost:3100/dispatcher/invoices"
+    },
+    {
+      "name": "31-dispatch-reports.png",
+      "url": "http://localhost:3100/dispatcher/reports"
+    },
+    {
+      "name": "32-dispatch-messages.png",
+      "url": "http://localhost:3100/dispatcher/messages"
+    },
+    {
+      "name": "33-admin-management.png",
+      "url": "http://localhost:3100/management"
+    },
+    {
+      "name": "34-admin-employees.png",
+      "url": "http://localhost:3100/dispatcher/employees"
+    },
+    {
+      "name": "35-admin-add-employee.png",
+      "url": "http://localhost:3100/dispatcher/employees"
+    },
+    {
+      "name": "36-admin-employee-access.png",
+      "url": "http://localhost:3100/dispatcher/employees/training-v1-driver"
+    },
+    {
+      "name": "37-admin-settings-company.png",
+      "url": "http://localhost:3100/dispatcher/settings"
+    },
+    {
+      "name": "38-admin-settings-checklist.png",
+      "url": "http://localhost:3100/dispatcher/settings"
+    },
+    {
+      "name": "39-admin-settings-sops.png",
+      "url": "http://localhost:3100/dispatcher/settings"
+    },
+    {
+      "name": "40-admin-settings-training.png",
+      "url": "http://localhost:3100/dispatcher/settings"
+    }
+  ]
+}
