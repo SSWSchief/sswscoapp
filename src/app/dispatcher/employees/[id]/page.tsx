@@ -271,11 +271,20 @@ export default function EmployeeAccessPage({
             <CardHeader
               title="Module Permissions"
               action={
+                // Was "Reset to {role}" at variant="secondary" — a bordered
+                // button the same visual weight as the section title, for an
+                // action that wipes every override rather than one anyone
+                // reaches for often. At that weight it also wrapped onto its
+                // own line below the title on narrow screens, since a long
+                // title plus a long button rarely both fit one row. Smaller
+                // and text-only fixes both: it reads as secondary, and it is
+                // short enough to usually stay on the header's row.
                 <Button
                   disabled={
                     owner || !canMutate || currentUser?.accessRole !== "admin"
                   }
-                  variant="secondary"
+                  variant="ghost"
+                  size="sm"
                   onClick={async () => {
                     const result = await resetPermissionOverrides(employee.id);
                     toast(
@@ -284,10 +293,7 @@ export default function EmployeeAccessPage({
                     );
                   }}
                 >
-                  Reset to{" "}
-                  {owner
-                    ? "Protected Admin"
-                    : accessRoleLabel[employee.accessRole]}
+                  Reset Overrides
                 </Button>
               }
             />
@@ -299,9 +305,18 @@ export default function EmployeeAccessPage({
               times in a row — noise, since the role is already named above.
               Only a row that actually differs from the preset gets a label
               now, so an override finally stands out instead of blending in.
+
+              The role name moved here instead of disappearing outright: on
+              mobile this list can run past a thousand pixels of toggles, and
+              the Role Preset field naming it lives at the very top of the
+              page, off screen by the time anyone is deep in Finance &
+              Reporting. Restating it here — where "Reset Overrides" also
+              needs it dropped from its own label — keeps that context in
+              view without bringing back the per-row repetition just removed.
             */}
             <p className="px-5 pt-3 text-xs text-brand-steel">
-              Changes apply immediately.
+              {owner ? "Protected Admin" : accessRoleLabel[employee.accessRole]}{" "}
+              preset. Changes apply immediately.
             </p>
             <div className="divide-y divide-brand-ice/60">
               {permissionGroups.map((group) => (
