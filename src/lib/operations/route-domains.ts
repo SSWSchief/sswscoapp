@@ -56,6 +56,8 @@ export function coreDomainsForPath(pathname: string): Set<CoreDomain> {
     domains.add("jobs");
     domains.add("customers");
     domains.add("fleet");
+    // Location checks name who confirmed them, which needs the people domain.
+    domains.add("people");
   }
   if (pathname.includes("time-clock") || pathname.includes("absence-calendar"))
     ["time", "people"].forEach((domain) => domains.add(domain as CoreDomain));
@@ -116,6 +118,7 @@ export const coreTableDomain: Record<string, CoreDomain> = {
   customers: "customers",
   trucks: "fleet",
   dumpsters: "fleet",
+  asset_location_checks: "fleet",
   time_entries: "time",
   time_entry_corrections: "time",
   time_requests: "time",

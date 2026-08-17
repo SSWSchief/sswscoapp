@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   mapAbsence,
   mapActivity,
+  mapAssetLocationCheck,
   mapCustomer,
   mapDumpster,
   mapJob,
@@ -26,6 +27,7 @@ import type {
   AccessRole,
   AbsenceEvent,
   AppNotification,
+  AssetLocationCheck,
   Customer,
   Dumpster,
   DumpsterSize,
@@ -43,6 +45,7 @@ import type {
   User,
 } from "@/lib/types";
 import type {
+  AssetLocationCheckRow,
   CorrectionRow,
   CustomerRow,
   DumpsterRow,
@@ -82,6 +85,7 @@ interface State {
   customers: Customer[];
   trucks: Truck[];
   dumpsters: Dumpster[];
+  assetLocationChecks: AssetLocationCheck[];
   jobNotes: JobNote[];
   timeEntries: TimeEntry[];
   timeEntryCorrections: TimeEntryCorrection[];
@@ -97,6 +101,7 @@ const emptyState: State = {
   customers: [],
   trucks: [],
   dumpsters: [],
+  assetLocationChecks: [],
   jobNotes: [],
   timeEntries: [],
   timeEntryCorrections: [],
@@ -131,6 +136,13 @@ interface TruckInput {
   licensePlate: string;
   assignedDriverId: string | null;
   notes: string;
+}
+interface LocationCheckInput {
+  truckId?: string;
+  dumpsterId?: string;
+  source: AssetLocationCheck["source"];
+  location: string;
+  note: string;
 }
 interface DumpsterInput {
   code: string;
@@ -208,6 +220,9 @@ interface Value extends State {
   ) => Promise<MutationResult<void>>;
   deactivateCustomer: (id: string) => Promise<MutationResult<void>>;
   saveTruck: (input: TruckInput, id?: string) => Promise<MutationResult<void>>;
+  recordLocationCheck: (
+    input: LocationCheckInput,
+  ) => Promise<MutationResult<void>>;
   saveDumpster: (
     input: DumpsterInput,
     id?: string,
@@ -345,12 +360,18 @@ export function OperationsProvider({
                 .eq("job_id", activeJobId)
                 .limit(50)
             : Promise.resolve({ data: [], error: null });
+          // `job_events` records when each step happened in `occurred_at` and
+          // has no `created_at`. Ordering by the latter returned 42703 from
+          // PostgREST, which failed the whole refresh — so opening any job put
+          // the app into read-only "live data unavailable" mode and disabled
+          // every action on the screen. Steps that have not happened yet carry
+          // a null and sort last.
           const eventsQuery = activeJobId
             ? db
                 .from("job_events")
                 .select("*")
                 .eq("job_id", activeJobId)
-                .order("created_at")
+                .order("occurred_at", { nullsFirst: false })
                 .limit(50)
             : Promise.resolve({ data: [], error: null });
           const notesQuery = activeJobId
@@ -438,36 +459,60 @@ export function OperationsProvider({
           );
         }
         if (domains.has("fleet")) {
-          const [trucks, truckDetail, dumpsters] = await Promise.all([
-            db
-              .from("trucks")
-              .select("*")
-              .is("deleted_at", null)
-              .order("number")
-              .limit(50),
-            activeTruckId
-              ? db
-                  .from("trucks")
-                  .select("*")
-                  .eq("id", activeTruckId)
-                  .is("deleted_at", null)
-                  .maybeSingle()
-              : Promise.resolve({ data: null, error: null }),
-            db
-              .from("dumpsters")
-              .select("*")
-              .is("deleted_at", null)
-              .order("code")
-              .limit(50),
-          ]);
-          if (trucks.error || truckDetail.error || dumpsters.error)
-            throw trucks.error ?? truckDetail.error ?? dumpsters.error;
+          const [trucks, truckDetail, dumpsters, locationChecks] =
+            await Promise.all([
+              db
+                .from("trucks")
+                .select("*")
+                .is("deleted_at", null)
+                .order("number")
+                .limit(50),
+              activeTruckId
+                ? db
+                    .from("trucks")
+                    .select("*")
+                    .eq("id", activeTruckId)
+                    .is("deleted_at", null)
+                    .maybeSingle()
+                : Promise.resolve({ data: null, error: null }),
+              db
+                .from("dumpsters")
+                .select("*")
+                .is("deleted_at", null)
+                .order("code")
+                .limit(50),
+              // Only staff can read the check log; drivers get an empty set
+              // from RLS rather than an error, so this stays in the batch.
+              db
+                .from("asset_location_checks")
+                .select("*")
+                .order("checked_at", { ascending: false })
+                .limit(200),
+            ]);
+          if (
+            trucks.error ||
+            truckDetail.error ||
+            dumpsters.error ||
+            locationChecks.error
+          )
+            throw trucks.error ??
+              truckDetail.error ??
+              dumpsters.error ??
+              locationChecks.error;
           const truckRows = trucks.data as TruckRow[];
           const detailRow = truckDetail.data as TruckRow | null;
           if (detailRow && !truckRows.some((row) => row.id === detailRow.id))
             truckRows.push(detailRow);
           patch.trucks = truckRows.map(mapTruck);
           patch.dumpsters = (dumpsters.data as DumpsterRow[]).map(mapDumpster);
+          const checkerNames = new Map(
+            users.map((user) => [user.id, user.fullName]),
+          );
+          patch.assetLocationChecks = (
+            (locationChecks.data ?? []) as AssetLocationCheckRow[]
+          ).map((row) =>
+            mapAssetLocationCheck(row, checkerNames.get(row.checked_by_id)),
+          );
         }
         if (domains.has("time")) {
           // Scoped to the current Pacific day rather than a flat row cap. Every
@@ -916,6 +961,39 @@ export function OperationsProvider({
                 .eq("id", id)
                 .select()
             : createClient().from("trucks").insert(payload).select(),
+        );
+        return r.ok ? { ok: true, data: undefined } : r;
+      },
+      recordLocationCheck: async (input) => {
+        const location = input.location.trim();
+        if (!location)
+          return {
+            ok: false,
+            error: {
+              code: "invalid_location",
+              message: "A location is required to record a check.",
+            },
+          };
+        if (!currentUser)
+          return {
+            ok: false,
+            error: {
+              code: "no_profile",
+              message: "Your employee profile could not be identified.",
+            },
+          };
+        const r = await run(() =>
+          createClient()
+            .from("asset_location_checks")
+            .insert({
+              truck_id: input.truckId ?? null,
+              dumpster_id: input.dumpsterId ?? null,
+              source: input.source,
+              location,
+              note: input.note.trim(),
+              checked_by_id: currentUser.id,
+            })
+            .select(),
         );
         return r.ok ? { ok: true, data: undefined } : r;
       },

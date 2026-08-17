@@ -94,6 +94,17 @@ export interface DumpsterRow extends Record<string, unknown> {
   updated_at: string;
   deleted_at: string | null;
 }
+export interface AssetLocationCheckRow extends Record<string, unknown> {
+  id: string;
+  truck_id: string | null;
+  dumpster_id: string | null;
+  source: "airtag" | "driver_report" | "visual";
+  location: string;
+  note: string;
+  checked_by_id: string;
+  checked_at: string;
+  created_at: string;
+}
 export interface JobRow extends Record<string, unknown> {
   id: string;
   reference: string;
@@ -339,6 +350,7 @@ export interface Database {
       customers: Table<CustomerRow>;
       trucks: Table<TruckRow>;
       dumpsters: Table<DumpsterRow>;
+      asset_location_checks: Table<AssetLocationCheckRow>;
       jobs: Table<JobRow>;
       job_events: Table<JobEventRow>;
       job_photos: Table<JobPhotoRow>;

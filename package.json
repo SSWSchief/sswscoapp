@@ -22,7 +22,10 @@
     "staging:bootstrap": "node scripts/bootstrap-staging-e2e.mjs",
     "admin:invite": "node scripts/invite-administrator.mjs",
     "auth:check-redirect": "node scripts/check-auth-redirect.mjs",
-    "identities:retire": "node scripts/retire-test-identities.mjs"
+    "identities:retire": "node scripts/retire-test-identities.mjs",
+    "docs:guide": "node scripts/capture-guide-screenshots.mjs && node scripts/build-guide.mjs",
+    "docs:guide:prepare": "node scripts/prepare-guide-fixtures.mjs",
+    "docs:guide:build": "node scripts/build-guide.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -49,6 +52,7 @@
     "jsdom": "^26.1.0",
     "knip": "^5.64.2",
     "postcss": "^8.5.26",
+    "sharp": "0.35.3",
     "tailwindcss": "^3.4.6",
     "typescript": "^5.5.3",
     "vitest": "^3.2.7"

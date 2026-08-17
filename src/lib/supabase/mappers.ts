@@ -1,6 +1,7 @@
 import type {
   AcknowledgementEntry,
   AppNotification,
+  AssetLocationCheck,
   CompanySettings,
   Customer,
   Dumpster,
@@ -24,6 +25,7 @@ import type {
 import type {
   AbsenceRow,
   AcknowledgementRow,
+  AssetLocationCheckRow,
   CompanySettingsRow,
   CorrectionRow,
   PriceListRow,
@@ -113,6 +115,22 @@ export function mapDumpster(row: DumpsterRow): Dumpster {
     currentJobId: row.current_job_id,
     airTagId: row.air_tag_id,
     notes: row.notes,
+  };
+}
+export function mapAssetLocationCheck(
+  row: AssetLocationCheckRow,
+  checkedByName?: string,
+): AssetLocationCheck {
+  return {
+    id: row.id,
+    truckId: row.truck_id,
+    dumpsterId: row.dumpster_id,
+    source: row.source,
+    location: row.location,
+    note: row.note,
+    checkedById: row.checked_by_id,
+    checkedByName,
+    checkedAt: row.checked_at,
   };
 }
 export function mapJob(

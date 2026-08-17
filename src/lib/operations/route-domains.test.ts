@@ -48,7 +48,10 @@ describe("route domain selection", () => {
   it.each([
     ["/dispatcher/trucks", ["notifications", "fleet", "jobs", "people"]],
     ["/dispatcher/dumpsters", ["notifications", "fleet"]],
-    ["/dispatcher/map", ["notifications", "jobs", "customers", "fleet"]],
+    [
+      "/dispatcher/map",
+      ["notifications", "jobs", "customers", "fleet", "people"],
+    ],
     ["/dispatcher/time-clock", ["notifications", "time", "people"]],
     ["/dispatcher/absence-calendar", ["notifications", "time", "people"]],
     ["/dispatcher/employees", ["notifications", "people"]],

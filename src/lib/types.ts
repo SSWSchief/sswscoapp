@@ -119,6 +119,22 @@ export interface Dumpster {
   notes: string;
 }
 
+/** How a location check was obtained. Apple exposes no AirTag API, so even an
+ *  `airtag` check is a person reading the Find My app and typing what they saw. */
+export type LocationCheckSource = "airtag" | "driver_report" | "visual";
+
+export interface AssetLocationCheck {
+  id: string;
+  truckId: string | null;
+  dumpsterId: string | null;
+  source: LocationCheckSource;
+  location: string;
+  note: string;
+  checkedById: string;
+  checkedByName?: string;
+  checkedAt: string; // ISO
+}
+
 export interface JobNote {
   id: string;
   jobId: string;
