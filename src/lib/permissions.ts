@@ -1,4 +1,4 @@
-import type { AccessRole, PermissionKey, User } from "./types";
+import type { AccessRole, PermissionKey, User, UserRole } from "./types";
 
 export const permissionLabels: Record<PermissionKey, string> = {
   management: "Management portal",
@@ -71,3 +71,15 @@ export const accessRoleLabel: Record<AccessRole, string> = {
   dispatcher: "Dispatcher",
   driver: "Driver",
 };
+
+/**
+ * The access an operational role normally carries. Adding an employee asks what
+ * they do and derives this, so access is a separate question only where it
+ * genuinely differs from the job. The pairing is also a database constraint:
+ * drivers and management cannot be given anything else.
+ */
+export function defaultAccessRole(role: UserRole): AccessRole {
+  if (role === "driver") return "driver";
+  if (role === "management") return "admin";
+  return "dispatcher";
+}

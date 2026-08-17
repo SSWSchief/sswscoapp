@@ -7,6 +7,10 @@ import {
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { employeePatchSchema, jsonBodySizeAllowed } from "@/lib/validation";
+import {
+  employeeWriteFailure,
+  writeErrorDetail,
+} from "@/lib/employee-conflicts";
 
 const route = "/api/admin/employees/[id]";
 
@@ -16,7 +20,12 @@ export async function PATCH(
 ) {
   const startedAt = Date.now();
   const requestIdValue = requestId(request);
-  const fail = (code: string, message: string, status: number) => {
+  const fail = (
+    code: string,
+    message: string,
+    status: number,
+    detail?: Record<string, unknown>,
+  ) => {
     logRequest(
       status >= 500 ? "error" : "warn",
       "admin_employee_update_failed",
@@ -27,6 +36,7 @@ export async function PATCH(
         startedAt,
         status,
         code,
+        detail,
       },
     );
     return apiFailure(code, message, status, requestIdValue);
@@ -218,17 +228,20 @@ export async function PATCH(
     .single();
   if (result.error) {
     for (const rollback of rollbacks.reverse()) await rollback();
-    if (emailChanged && result.error.code === "23505")
-      return fail(
-        "email_taken",
-        "That email address is already in use by another employee.",
-        409,
-      );
-    return fail(
-      "profile_update_failed",
-      "The employee profile could not be updated and authentication changes were rolled back.",
-      400,
-    );
+    // Employee IDs are editable, so a rejected update collides on the same two
+    // unique columns a rejected insert does and is reported the same way.
+    const conflict = employeeWriteFailure(result.error, {
+      employeeId: input.employeeId,
+    });
+    const detail = writeErrorDetail(result.error);
+    return conflict
+      ? fail(conflict.code, conflict.message, conflict.status, detail)
+      : fail(
+          "profile_update_failed",
+          "The employee profile could not be updated and authentication changes were rolled back.",
+          400,
+          detail,
+        );
   }
   const auditActions = [
     input.status ? `status_${input.status}` : null,

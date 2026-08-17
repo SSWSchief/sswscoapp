@@ -10,17 +10,30 @@ import { employeeCreateSchema, jsonBodySizeAllowed } from "@/lib/validation";
 import { generateTemporaryPassword } from "@/lib/temporary-password";
 import { emailDeliveryEnabled } from "@/lib/email-delivery";
 import { findAuthUserIdByEmail } from "@/lib/supabase/auth-users";
+import {
+  employeeWriteFailure,
+  writeErrorDetail,
+} from "@/lib/employee-conflicts";
+import {
+  deriveEmployeeId,
+  nextAvailableEmployeeId,
+} from "@/lib/employee-id";
 
 const route = "/api/admin/employees";
 
 export async function POST(request: Request) {
   const startedAt = Date.now();
   const id = requestId(request);
-  const fail = (code: string, message: string, status: number) => {
+  const fail = (
+    code: string,
+    message: string,
+    status: number,
+    detail?: Record<string, unknown>,
+  ) => {
     logRequest(
       status >= 500 ? "error" : "warn",
       "admin_employee_create_failed",
-      { requestId: id, route, method: "POST", startedAt, status, code },
+      { requestId: id, route, method: "POST", startedAt, status, code, detail },
     );
     return apiFailure(code, message, status, id);
   };
@@ -82,27 +95,83 @@ export async function POST(request: Request) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  const profile = await admin
-    .from("users")
-    .insert({
-      employee_id: input.employeeId,
-      full_name: input.fullName,
-      email: input.email.toLowerCase(),
-      phone: input.phone,
-      role: input.role,
-      access_role: input.accessRole,
-      initials,
-      status: "active",
-      permission_overrides: {},
-    })
-    .select()
-    .single();
-  if (profile.error)
-    return fail(
-      "employee_conflict",
-      "An employee with those details already exists.",
-      409,
+  // Assigned here rather than in the browser because only this side can see
+  // soft-deleted employees, who keep their ID while appearing on no screen an
+  // administrator can reach.
+  const assignEmployeeId = async () => {
+    const base = deriveEmployeeId(input.fullName);
+    const siblings = await admin
+      .from("users")
+      .select("employee_id")
+      .ilike("employee_id", `${base}%`);
+    if (siblings.error) return null;
+    return nextAvailableEmployeeId(
+      base,
+      siblings.data.map((row) => row.employee_id),
     );
+  };
+  const insertProfile = (employeeId: string) =>
+    admin
+      .from("users")
+      .insert({
+        employee_id: employeeId,
+        full_name: input.fullName,
+        email: input.email.toLowerCase(),
+        phone: input.phone,
+        role: input.role,
+        access_role: input.accessRole,
+        initials,
+        status: "active",
+        permission_overrides: {},
+      })
+      .select()
+      .single();
+  const firstId = input.employeeId ?? (await assignEmployeeId());
+  if (!firstId)
+    return fail(
+      "employee_id_unavailable",
+      "An Employee ID could not be assigned. Try again.",
+      503,
+    );
+  let profile = await insertProfile(firstId);
+  // Two administrators adding staff in the same moment can be handed the same
+  // derived ID. Only a generated one is retried — a typed ID that collides is
+  // the administrator's to resolve, and quietly changing it would be worse.
+  const lostTheRace = () =>
+    !input.employeeId &&
+    employeeWriteFailure(profile.error)?.code === "employee_id_taken";
+  for (let attempt = 0; attempt < 3 && lostTheRace(); attempt += 1) {
+    const retryId = await assignEmployeeId();
+    if (!retryId) break;
+    profile = await insertProfile(retryId);
+  }
+  // Every rejected insert used to be reported as a duplicate, which named
+  // neither the field that collided nor the possibility that the row holding it
+  // was removed and is no longer on screen. The cause is also logged, so a
+  // reported reference ID can be answered.
+  if (profile.error) {
+    const conflict = employeeWriteFailure(profile.error, {
+      employeeId: input.employeeId,
+    });
+    const detail = writeErrorDetail(profile.error);
+    // A generated ID that survives the retries is our problem, not something to
+    // hand back as though the administrator had chosen it.
+    if (!input.employeeId && conflict?.code === "employee_id_taken")
+      return fail(
+        "employee_id_unavailable",
+        "An Employee ID could not be assigned. Try again.",
+        503,
+        detail,
+      );
+    return conflict
+      ? fail(conflict.code, conflict.message, conflict.status, detail)
+      : fail(
+          "profile_create_failed",
+          "The employee could not be created.",
+          500,
+          detail,
+        );
+  }
   // The profile is created first in both paths. `link_auth_user` attaches the
   // Auth account to it by email on insert, so the account lands linked either
   // way. If the Auth step fails the profile is rolled back so a half-created

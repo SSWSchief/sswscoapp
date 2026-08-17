@@ -246,7 +246,7 @@ export default function EmployeeAccessPage({
                 <option value="driver">Driver</option>
                 <option value="dispatcher">Dispatcher</option>
                 <option value="office">Office</option>
-                <option value="management">Management</option>
+                <option value="management">Owner / Management</option>
               </Select>
             </FormField>
           </div>
