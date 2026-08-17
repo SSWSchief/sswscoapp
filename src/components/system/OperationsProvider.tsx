@@ -7,6 +7,7 @@ import {
   mapAbsence,
   mapActivity,
   mapCustomer,
+  mapVendor,
   mapDumpster,
   mapJob,
   mapJobNote,
@@ -27,6 +28,7 @@ import type {
   AbsenceEvent,
   AppNotification,
   Customer,
+  Vendor,
   Dumpster,
   DumpsterSize,
   Job,
@@ -46,6 +48,7 @@ import type {
 import type {
   CorrectionRow,
   CustomerRow,
+  VendorRow,
   DumpsterRow,
   JobActivityRow,
   JobEventRow,
@@ -81,6 +84,7 @@ interface State {
   activities: JobActivity[];
   users: User[];
   customers: Customer[];
+  vendors: Vendor[];
   trucks: Truck[];
   dumpsters: Dumpster[];
   jobNotes: JobNote[];
@@ -96,6 +100,7 @@ const emptyState: State = {
   activities: [],
   users: [],
   customers: [],
+  vendors: [],
   trucks: [],
   dumpsters: [],
   jobNotes: [],
@@ -124,6 +129,13 @@ interface CustomerInput {
   email: string;
   address: string;
   group?: Customer["group"];
+}
+interface VendorInput {
+  name: string;
+  category: string;
+  phone: string;
+  email: string;
+  notes: string;
 }
 interface TruckInput {
   number: string;
@@ -218,6 +230,8 @@ interface Value extends State {
     id?: string,
   ) => Promise<MutationResult<void>>;
   deactivateCustomer: (id: string) => Promise<MutationResult<void>>;
+  saveVendor: (input: VendorInput, id?: string) => Promise<MutationResult<void>>;
+  deactivateVendor: (id: string) => Promise<MutationResult<void>>;
   saveTruck: (input: TruckInput, id?: string) => Promise<MutationResult<void>>;
   saveDumpster: (
     input: DumpsterInput,
@@ -447,6 +461,16 @@ export function OperationsProvider({
           patch.customers = (result.data as CustomerRow[]).map((row) =>
             mapCustomer(row, counts.get(row.id) ?? 0),
           );
+        }
+        if (domains.has("vendors")) {
+          const result = await db
+            .from("vendors")
+            .select("*")
+            .is("deleted_at", null)
+            .order("name")
+            .limit(200);
+          if (result.error) throw result.error;
+          patch.vendors = (result.data as VendorRow[]).map(mapVendor);
         }
         if (domains.has("fleet")) {
           const [trucks, truckDetail, dumpsters] = await Promise.all([
@@ -925,6 +949,32 @@ export function OperationsProvider({
         const r = await run(() =>
           createClient()
             .from("customers")
+            .update({ is_active: false, deleted_at: new Date().toISOString() })
+            .eq("id", id)
+            .select(),
+        );
+        return r.ok ? { ok: true, data: undefined } : r;
+      },
+      saveVendor: async (input, id) => {
+        const payload = {
+          name: input.name.trim(),
+          category: input.category.trim(),
+          phone: input.phone.trim(),
+          email: input.email.trim(),
+          notes: input.notes.trim(),
+          is_active: true,
+        };
+        const r = await run(() =>
+          id
+            ? createClient().from("vendors").update(payload).eq("id", id).select()
+            : createClient().from("vendors").insert(payload).select(),
+        );
+        return r.ok ? { ok: true, data: undefined } : r;
+      },
+      deactivateVendor: async (id) => {
+        const r = await run(() =>
+          createClient()
+            .from("vendors")
             .update({ is_active: false, deleted_at: new Date().toISOString() })
             .eq("id", id)
             .select(),
