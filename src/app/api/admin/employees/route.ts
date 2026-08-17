@@ -46,23 +46,6 @@ export async function POST(request: Request) {
       access.error,
       access.status,
     );
-  const limited = await access.client.rpc("consume_api_rate_limit", {
-    rate_bucket: "admin:employee:create",
-    maximum_attempts: 10,
-    window_seconds: 3600,
-  });
-  if (limited.error)
-    return fail(
-      "rate_limit_unavailable",
-      "The request could not be safely processed.",
-      503,
-    );
-  if (!limited.data)
-    return fail(
-      "rate_limited",
-      "Too many employee changes. Try again later.",
-      429,
-    );
   let raw: unknown;
   try {
     raw = await request.json();
@@ -170,6 +153,32 @@ export async function POST(request: Request) {
           "The employee could not be created.",
           500,
           detail,
+        );
+  }
+  // Checked here rather than at the top of the request: this is the first
+  // point a request has actually done something — a real profile row now
+  // exists. Counting invalid JSON, failed validation, or a rejected duplicate
+  // against the budget meant an administrator fixing a typo could exhaust it
+  // before creating anyone, which is what happened when two owners were both
+  // typed in as Employee ID "Owner." The budget still limits the same thing
+  // it always did: how many employee accounts can be minted per hour.
+  const limited = await access.client.rpc("consume_api_rate_limit", {
+    rate_bucket: "admin:employee:create",
+    maximum_attempts: 10,
+    window_seconds: 3600,
+  });
+  if (limited.error || !limited.data) {
+    await admin.from("users").delete().eq("id", profile.data.id);
+    return limited.error
+      ? fail(
+          "rate_limit_unavailable",
+          "The request could not be safely processed.",
+          503,
+        )
+      : fail(
+          "rate_limited",
+          "Too many employees created this hour. Try again later.",
+          429,
         );
   }
   // The profile is created first in both paths. `link_auth_user` attaches the
