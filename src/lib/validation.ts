@@ -36,6 +36,11 @@ export const employeePatchSchema = z
     permissionOverrides: z
       .record(z.enum(permissionKeys), z.boolean())
       .optional(),
+    employeeId: z.string().trim().min(1).max(50).optional(),
+    fullName: z.string().trim().min(2).max(120).optional(),
+    email: z.email().max(254).optional(),
+    phone: z.string().trim().max(30).optional(),
+    role: z.enum(["dispatcher", "driver", "office", "management"]).optional(),
   })
   .strict()
   .refine((input) => Object.keys(input).length > 0, {

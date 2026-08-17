@@ -41,6 +41,7 @@ import type {
   TimeRequest,
   Truck,
   User,
+  UserRole,
 } from "@/lib/types";
 import type {
   CorrectionRow,
@@ -191,6 +192,16 @@ interface Value extends State {
     value: boolean,
   ) => Promise<MutationResult<void>>;
   resetPermissionOverrides: (id: string) => Promise<MutationResult<void>>;
+  updateEmployeeDetails: (
+    id: string,
+    input: {
+      employeeId?: string;
+      fullName?: string;
+      email?: string;
+      phone?: string;
+      role?: UserRole;
+    },
+  ) => Promise<MutationResult<void>>;
   recordTimeEntry: (type: TimeEntryType) => Promise<MutationResult<TimeEntry>>;
   createTimeRequest: (input: TimeRequestInput) => Promise<MutationResult<void>>;
   reviewTimeRequest: (
@@ -773,6 +784,27 @@ export function OperationsProvider({
                   message: await apiErrorMessage(
                     response,
                     "Permission overrides could not be reset.",
+                  ),
+                },
+          };
+        });
+        return r.ok ? { ok: true, data: undefined } : r;
+      },
+      updateEmployeeDetails: async (id, patch) => {
+        const r = await run(async () => {
+          const response = await fetch(`/api/admin/employees/${id}`, {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(patch),
+          });
+          return {
+            data: null,
+            error: response.ok
+              ? null
+              : {
+                  message: await apiErrorMessage(
+                    response,
+                    "Employee details could not be updated.",
                   ),
                 },
           };

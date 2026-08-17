@@ -9,7 +9,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
-import { Select } from "@/components/ui/Field";
+import { FormField, Input, Select } from "@/components/ui/Field";
 import {
   accessRoleLabel,
   effectivePermissions,
@@ -17,7 +17,7 @@ import {
   permissionLabels,
 } from "@/lib/permissions";
 import { isProtectedAdministrator } from "@/lib/owners";
-import type { AccessRole } from "@/lib/types";
+import type { AccessRole, UserRole } from "@/lib/types";
 import { useToast } from "@/components/system/ToastProvider";
 import { apiErrorMessage } from "@/lib/client-api";
 
@@ -36,6 +36,7 @@ export default function EmployeeAccessPage({
     setUserAccessRole,
     setPermissionOverride,
     resetPermissionOverrides,
+    updateEmployeeDetails,
     protectedAdministratorIds,
   } = useOperations();
   const { toast } = useToast();
@@ -43,13 +44,64 @@ export default function EmployeeAccessPage({
   const [issuedPassword, setIssuedPassword] = React.useState<string | null>(
     null,
   );
+  const [detailsForm, setDetailsForm] = React.useState({
+    employeeId: "",
+    fullName: "",
+    email: "",
+    phone: "",
+    role: "driver" as UserRole,
+  });
+  const [savingDetails, setSavingDetails] = React.useState(false);
   const employee = users.find((user) => user.id === id);
+  React.useEffect(() => {
+    if (employee)
+      setDetailsForm({
+        employeeId: employee.employeeId,
+        fullName: employee.fullName,
+        email: employee.email,
+        phone: employee.phone,
+        role: employee.role,
+      });
+    // Re-seeds only when navigating to a different employee, not on every
+    // background refresh — otherwise a save-in-flight would clobber
+    // whatever the administrator is mid-typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee?.id]);
   if (!hydrated) return <div className="flex-1 bg-surface" />;
   if (!employee) return notFound();
   const effective = effectivePermissions(employee);
   const owner = isProtectedAdministrator(employee, protectedAdministratorIds);
   const visible = permissionKeys.filter((key) => effective[key]);
   const hidden = permissionKeys.filter((key) => !effective[key]);
+  const detailsEditable = canMutate && currentUser?.accessRole === "admin";
+  const detailsDirty =
+    detailsForm.employeeId !== employee.employeeId ||
+    detailsForm.fullName !== employee.fullName ||
+    detailsForm.email !== employee.email ||
+    detailsForm.phone !== employee.phone ||
+    detailsForm.role !== employee.role;
+  const saveDetails = async () => {
+    setSavingDetails(true);
+    const patch: {
+      employeeId?: string;
+      fullName?: string;
+      email?: string;
+      phone?: string;
+      role?: UserRole;
+    } = {};
+    if (detailsForm.employeeId !== employee.employeeId)
+      patch.employeeId = detailsForm.employeeId;
+    if (detailsForm.fullName !== employee.fullName)
+      patch.fullName = detailsForm.fullName;
+    if (detailsForm.email !== employee.email) patch.email = detailsForm.email;
+    if (detailsForm.phone !== employee.phone) patch.phone = detailsForm.phone;
+    if (detailsForm.role !== employee.role) patch.role = detailsForm.role;
+    const result = await updateEmployeeDetails(employee.id, patch);
+    toast(result.ok ? "Employee details updated" : result.error.message, {
+      tone: result.ok ? "success" : "error",
+    });
+    setSavingDetails(false);
+  };
 
   return (
     <>
@@ -112,6 +164,91 @@ export default function EmployeeAccessPage({
                 )}
               </Select>
             </div>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Employee Details"
+            action={
+              <Button
+                disabled={!detailsEditable || !detailsDirty || savingDetails}
+                onClick={() => void saveDetails()}
+              >
+                {savingDetails ? "Saving…" : "Save Changes"}
+              </Button>
+            }
+          />
+          <div className="grid gap-4 p-5 sm:grid-cols-2">
+            <FormField label="Employee ID" required>
+              <Input
+                disabled={!detailsEditable}
+                value={detailsForm.employeeId}
+                onChange={(e) =>
+                  setDetailsForm({ ...detailsForm, employeeId: e.target.value })
+                }
+              />
+            </FormField>
+            <FormField label="Full Name" required>
+              <Input
+                disabled={!detailsEditable}
+                value={detailsForm.fullName}
+                onChange={(e) =>
+                  setDetailsForm({ ...detailsForm, fullName: e.target.value })
+                }
+              />
+            </FormField>
+            <FormField
+              label="Email"
+              hint={
+                owner
+                  ? "Protected administrator email cannot be changed."
+                  : "Also updates their sign-in email if they already have an account."
+              }
+            >
+              <Input
+                type="email"
+                disabled={!detailsEditable || owner}
+                value={detailsForm.email}
+                onChange={(e) =>
+                  setDetailsForm({ ...detailsForm, email: e.target.value })
+                }
+              />
+            </FormField>
+            <FormField label="Phone">
+              <Input
+                type="tel"
+                disabled={!detailsEditable}
+                value={detailsForm.phone}
+                onChange={(e) =>
+                  setDetailsForm({ ...detailsForm, phone: e.target.value })
+                }
+              />
+            </FormField>
+            <FormField
+              label="Operational Role"
+              hint={
+                owner
+                  ? "Protected administrators stay Management."
+                  : "Must stay compatible with the Role Preset below — driver operational role requires the Driver access preset, and vice versa."
+              }
+            >
+              <Select
+                disabled={!detailsEditable || owner}
+                value={detailsForm.role}
+                onChange={(e) =>
+                  setDetailsForm({
+                    ...detailsForm,
+                    role: e.target.value as UserRole,
+                  })
+                }
+              >
+                <option value="driver">Driver</option>
+                <option value="dispatcher">Dispatcher</option>
+                <option value="office">Office</option>
+                <option value="management">Management</option>
+              </Select>
+            </FormField>
           </div>
         </Card>
 
