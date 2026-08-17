@@ -10,17 +10,27 @@ training dataset. Automated E2E identities never enter production.
 Read this section first; it is what is true on the day the system changes hands.
 
 **Working.** Sign-in, all three portals, jobs and dispatch, time clock, pre-trip,
-SOPs, messages, invoices, reports, exports, and audit history. Employees are
-onboarded with administrator-issued temporary passwords.
+SOPs, messages, invoices, reports, exports, and audit history. Employees can be
+onboarded with an administrator-issued temporary password or an emailed
+invitation — see the email delivery note below.
 
-**Deliberately deferred.** Three things are switched off by agreement, not by
-oversight:
+**Update — August 17, 2026.** Email delivery is no longer deferred; see below.
+The other two remain switched off by agreement, not oversight:
 
 | Deferred | Consequence today | To enable |
 | --- | --- | --- |
-| Email delivery | **Not planned.** No SMTP, so the system sends no mail at all. Onboarding and password recovery run entirely on administrator-issued temporary passwords, and the sign-in screen says so rather than offering a reset it cannot send. This is a deliberate choice for a small team, not an unfinished feature. | Nothing. If the company later outgrows manual passwords, the optional appendix explains how to switch email on. |
 | Administrator MFA | Administrator accounts are password-only. | A deliberate change with factor enrolment rehearsed first — see the accepted risks. |
 | 15-minute maintenance cron | Unassigned-job alerts run once daily instead of every 15 minutes. | A Vercel plan supporting sub-daily cron, or an external scheduler calling `/api/cron/maintenance` with `CRON_SECRET`. |
+
+**Email delivery — live since August 16, 2026, through Resend.** Onboarding no
+longer runs exclusively on administrator-issued temporary passwords; emailed
+invitations and self-service password reset work. That path was not exercised
+against a real employee until August 17, 2026, when a gap was found and closed:
+two buttons that emailed a reset link (`/dispatcher/employees/[id]` and
+Settings → Users & Roles) had never been wired to check whether delivery was
+configured, so before this date they reported success while sending nothing
+whenever it was not. See the appendix for the current configuration and what
+that incident actually turned out to be.
 
 **Accepted risks.** Both were reviewed and accepted; reconfirm them at each
 release.
@@ -95,12 +105,14 @@ They cannot sign in and will not appear as active employees.
    passwords. Tehron is the approved indefinite support administrator. Add and
    verify a second client-controlled administrator before staff rollout.
 3. Enter real employees and verify role, access preset, individual overrides,
-   phone, and active status before giving anyone access. **Until SMTP is
-   configured, use the temporary-password path** — it is shown once for you to
-   hand over and sends no email. Employees replace it themselves from Change
-   Password, and administrators can issue a replacement from the employee page
-   if one is lost. The emailed-invitation option only works once SMTP is
-   connected; before then its link is never delivered.
+   phone, and active status before giving anyone access. Either onboarding path
+   works now that email delivery is connected (see the appendix): issue a
+   temporary password directly — shown once for you to hand over, sends no
+   email — or email an invitation. If you use the temporary-password path,
+   hand the password over; an account with no password ever delivered is
+   indistinguishable, from the system's point of view, from one waiting on
+   email that was never sent. Administrators can issue a replacement from the
+   employee page if one is lost either way.
 4. Enter real trucks, dumpsters, mileage, maintenance information, and current
    assignments. Then enter initial customers and every open launch-day job.
 5. Publish only client-approved pre-trip and SOP content. Training or generic
@@ -185,38 +197,68 @@ The client owner accepts, by signing this handoff, that the support
 administrator retains access to production data until such a migration is
 applied.
 
-## Appendix — connecting email later (optional, not planned)
+## Appendix — email delivery (live, connected August 16, 2026)
 
-**Skip this section.** The company runs on administrator-issued temporary
-passwords by choice, and with a small team that is a complete and reasonable
-onboarding method — nothing here is required for the system to work.
+This originally planned to route mail through the company's existing
+Microsoft 365 tenant. It shipped through **Resend** instead — that needed a
+new vendor after all, but avoided touching Microsoft 365's SMTP AUTH setting,
+which is disabled by default on modern tenants and would have needed IT help
+to change. What follows documents what is actually configured, not the
+original plan; the steps still generalize to any future provider change.
 
-Keep it only for the day handing out passwords by hand stops being practical.
-Connecting email restores emailed invitations and self-service password reset.
+**Current configuration**
 
-Silver State already has Microsoft 365 (the domain's DNS resolves mail through
-Proofpoint to a Microsoft tenant), so **this needs no new vendor** — the
-existing mail service can send for the application.
+- Resend account `sswsco`, domain `sswsco.com` — added and verified
+  August 16, 2026. Domain identity (DKIM) is published at
+  `resend._domainkey.sswsco.com`, on the apex domain. The sending SPF/MX pair
+  lives on Resend's own `send.sswsco.com` subdomain, not on `sswsco.com`'s own
+  SPF record — this is Resend's standard isolation pattern, added
+  automatically when the domain was added, and it does not touch or risk the
+  company's existing Microsoft 365 / Proofpoint mail flow. `dig MX sswsco.com`
+  should still return the `ppe-hosted.com` (Proofpoint) hosts; if it ever
+  doesn't, something touched the wrong record.
+- Supabase → Authentication → SMTP Settings: custom SMTP via
+  `smtp.resend.com`, sender `notifications@sswsco.com`.
+- Invite user and Reset Password templates are repointed to the `token_hash`
+  form below. **Confirm sign up still uses the default `{{ .ConfirmationURL }}`**
+  — harmless only because public signup is disabled (reconfirm that toggle
+  before ever changing this); fix it the same way if signup is ever turned on.
+- `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel production, set
+  August 16, 2026.
+- Redirect handling verified against production with
+  `npm run auth:check-redirect -- --email=tehronporter@gmail.com` on
+  August 17, 2026: **PASS**.
 
-0. **Disable public signup first.** Authentication → Sign In / Providers →
-   turn off "Allow new users to sign up". Until email exists, an unconfirmed
-   self-signup cannot sign in; once mail is delivered it can, and
-   `link_auth_user` would attach it to any employee profile with a matching
-   address that has no account yet. Doing this after enabling SMTP leaves a
-   window open.
-1. In Microsoft 365, enable **SMTP AUTH** on the mailbox that will send. It is
-   disabled by default on modern tenants, and security defaults may need
-   adjusting; this is the step most likely to need administrator help.
+**What actually went wrong on day one, for the record.** An employee
+(Matthew Hicks) was reported as never receiving an email. Resend's own send
+log showed the true cause: nothing had ever been sent to him — his account
+already existed from an earlier temporary-password creation, and no one had
+handed him the password. Separately, and worth fixing regardless of that
+specific case, two buttons that trigger a reset email (`/dispatcher/employees/
+[id]` and Settings → Users & Roles) had no check for whether delivery was
+configured at all, so before this fix they would have reported success while
+silently sending nothing on any deployment where the flag above is `false`.
+Both now hide behind it, matching how the sign-in page's reset link already
+behaved.
+
+**If this ever needs to be redone** — a new domain, a new provider, or a
+second look because something broke:
+
+0. **Disable public signup first**, if it is not already. Authentication →
+   Sign In / Providers → turn off "Allow new users to sign up". Until email
+   exists, an unconfirmed self-signup cannot sign in; once mail is delivered
+   it can, and `link_auth_user` would attach it to any employee profile with a
+   matching address that has no account yet. Doing this after enabling SMTP
+   leaves a window open.
+1. Add the sending domain in the provider's dashboard and verify its DNS.
+   Prefer a provider that isolates its records on their own subdomain rather
+   than merging into the company's existing SPF/DMARC on the apex — Resend
+   does this automatically; not every provider does, and a badly merged SPF
+   record can break the company's real mail, not just the new integration.
 2. In Supabase → Project Settings → Authentication → SMTP Settings, enable
-   custom SMTP with host `smtp.office365.com`, port `587`, STARTTLS, and that
-   mailbox's credentials.
-3. Set the sender to a real monitored address on `sswsco.com`. SPF, DKIM, and
-   DMARC already pass for that domain when sending through Microsoft 365; a
-   different provider would need new DNS records and the domain currently
-   publishes `p=quarantine`, so misaligned mail is quarantined rather than
-   delivered.
-4. **Repoint the two email templates.** Authentication → Emails, then set the
-   link `href` in each. Leave the rest of the HTML alone.
+   custom SMTP with the provider's host and credentials.
+3. **Repoint the two credential-issuing email templates.** Authentication →
+   Emails, then set the link `href` in each. Leave the rest of the HTML alone.
 
    *Invite user*
    ```
@@ -235,15 +277,13 @@ existing mail service can send for the application.
 
    Hardcode `type` as shown. Do not use `{{ .Type }}`: it is not a documented
    Supabase variable, and an empty value makes the route reject the link.
-5. Re-confirm the Site URL and redirect allowlist. Production was corrected and
-   verified on August 13, 2026 — Site URL `https://sswscoapp.vercel.app`, one
-   redirect entry `https://sswscoapp.vercel.app/**` — so this is a regression
-   check, not a fix:
+4. Re-confirm the Site URL and redirect allowlist:
    ```
    npm run auth:check-redirect -- --email=<a reserved account>
    ```
    This generates a link and sends nothing. It must report PASS before you rely
-   on email — a rewritten redirect means links will dead-end.
+   on email — a rewritten redirect means links will dead-end. Never point this
+   at a real employee address.
 
    The check reads `.env.local`, which points at **staging**, so it verifies
    staging by default. To check production, supply its credentials explicitly
@@ -255,13 +295,19 @@ existing mail service can send for the application.
    ```
    Take the secret key from the Supabase dashboard. Vercel marks it Sensitive,
    so `vercel env pull` returns it empty — that is intended, not a fault.
-6. Set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel and redeploy. The
-   sign-in screen then offers self-service password reset again, and Add
-   Employee grows a "How they get in" choice. Until this is set, Add Employee
-   shows no such choice and always issues a temporary password — that is
-   deliberate. Supabase accepts an invitation request without SMTP and simply
-   never delivers it, so offering the option before this step only produced a
-   failed creation.
-7. Send one invitation to yourself end to end before switching any employee over.
-   Click the link from a real inbox. If it lands on `/login?error=auth_confirm`,
-   step 4 was missed or mistyped.
+   Treat that key as sensitive once it has been typed anywhere: clear terminal
+   scrollback afterward, and rotate it in Supabase → Project Settings → API if
+   it is ever visible in a screenshot, chat log, or shared screen.
+5. Set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel and redeploy if it
+   is not already. The sign-in screen then offers self-service password reset
+   again, and Add Employee grows a "How they get in" choice. While this is
+   `false`, Add Employee shows no such choice and always issues a temporary
+   password, and every button elsewhere that would email a reset link hides
+   itself rather than reporting a success it cannot deliver — that is
+   deliberate on both counts.
+6. Send one invitation or reset to a reserved account — never a real
+   employee — and open the email in a real inbox. Click the link. If it lands
+   on `/login?error=auth_confirm`, step 3 was missed or mistyped. A `200` from
+   the provider's send API only proves the message left their servers, not
+   that it reached an inbox; a real click-through is the only step that
+   confirms delivery, not just dispatch.
