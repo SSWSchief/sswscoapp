@@ -11,12 +11,13 @@ import { Badge } from "@/components/ui/StatusBadge";
 import { Input } from "@/components/ui/Field";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { ListFooter } from "@/components/ui/ListFooter";
 import { accessRoleLabel } from "@/lib/permissions";
 import { isProtectedAdministrator } from "@/lib/owners";
 import { EmployeeModal } from "@/components/dispatcher/EmployeeModal";
 
 export default function EmployeesPage() {
-  const { users, currentUser, canMutate, protectedAdministratorIds } =
+  const { users, currentUser, canMutate, protectedAdministratorIds, totals } =
     useOperations();
   const [query, setQuery] = React.useState("");
   const [open, setOpen] = React.useState(false);
@@ -161,9 +162,12 @@ export default function EmployeesPage() {
               </li>
             ))}
           </ul>
-          <div className="px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">
-            Showing {employees.length} of {users.length} employees
-          </div>
+          <ListFooter
+            shown={employees.length}
+            loaded={users.length}
+            total={totals.users}
+            noun="employees"
+          />
         </Card>
       </div>
       <EmployeeModal open={open} onClose={() => setOpen(false)} />

@@ -16,6 +16,7 @@ import { cn, formatTime, jobStatusLabel } from "@/lib/utils";
 import type { JobStatus } from "@/lib/types";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { jobsForPacificDay } from "@/lib/job-dates";
+import { ListFooter } from "@/components/ui/ListFooter";
 
 const filters: { label: string; value: JobStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -54,6 +55,7 @@ function JobsPageContent() {
     dumpsters,
     trucks,
     users,
+    totals,
   } = useOperations();
   const todayOnly =
     searchParams.get("window") === "today" ||
@@ -281,12 +283,24 @@ function JobsPageContent() {
             </>
           )}
 
-          <div className="flex items-center justify-between px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">
-            <span>
-              Showing {jobs.length} of {allJobs.length} jobs
-              {filter !== "all" && ` · ${jobStatusLabel[filter as JobStatus]}`}
-            </span>
-          </div>
+          {/*
+            The loaded set is a window around today, not the whole history, so
+            the footer says which span it covers — otherwise an owner looking
+            for last quarter's job would read its absence as data loss.
+          */}
+          <ListFooter
+            shown={jobs.length}
+            loaded={allJobs.length}
+            total={totals.jobs}
+            noun="jobs"
+            note={
+              <>
+                {filter !== "all" &&
+                  `${jobStatusLabel[filter as JobStatus]} · `}
+                last 30 days through next 90. Older work is in Reports.
+              </>
+            }
+          />
         </Card>
       </div>
 

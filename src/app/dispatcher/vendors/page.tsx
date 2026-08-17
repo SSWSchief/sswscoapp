@@ -12,9 +12,10 @@ import { VendorModal } from "@/components/dispatcher/VendorModal";
 import type { Vendor } from "@/lib/types";
 import { useToast } from "@/components/system/ToastProvider";
 import { useConfirm } from "@/components/system/ConfirmProvider";
+import { ListFooter } from "@/components/ui/ListFooter";
 
 export default function VendorsPage() {
-  const { vendors, deactivateVendor, canMutate } = useOperations();
+  const { vendors, deactivateVendor, canMutate, totals } = useOperations();
   const { toast } = useToast();
   const confirm = useConfirm();
   const [query, setQuery] = React.useState("");
@@ -186,9 +187,12 @@ export default function VendorsPage() {
             ))}
           </ul>
 
-          <div className="px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">
-            Showing {visible.length} of {vendors.length} vendors
-          </div>
+          <ListFooter
+            shown={visible.length}
+            loaded={vendors.length}
+            total={totals.vendors}
+            noun="vendors"
+          />
         </Card>
       </div>
       <VendorModal open={open} onClose={() => setOpen(false)} vendor={editing} />
