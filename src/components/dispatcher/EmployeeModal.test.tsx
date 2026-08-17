@@ -4,8 +4,22 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EmployeeModal } from "./EmployeeModal";
 
+// The modal reads the loaded employee list to catch duplicates before it asks
+// the server. Tests append to this rather than re-mocking the provider.
+const employees: {
+  id: string;
+  employeeId: string;
+  fullName: string;
+  email: string;
+  status: "active" | "inactive";
+}[] = [];
+
 vi.mock("@/components/system/OperationsProvider", () => ({
-  useOperations: () => ({ canMutate: true, refresh: async () => {} }),
+  useOperations: () => ({
+    canMutate: true,
+    refresh: async () => {},
+    users: employees,
+  }),
 }));
 vi.mock("@/components/system/ToastProvider", () => ({
   useToast: () => ({ toast: vi.fn() }),
@@ -14,6 +28,7 @@ vi.mock("@/components/system/ToastProvider", () => ({
 // Vitest runs without `globals`, so Testing Library never registers its own
 // automatic cleanup and rendered trees would otherwise leak between tests.
 afterEach(() => {
+  employees.length = 0;
   cleanup();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -73,5 +88,65 @@ describe("EmployeeModal onboarding delivery", () => {
     // Shown once and never retrievable, so it has to survive on screen rather
     // than the modal closing on success.
     expect(screen.getByText("Swift-Otter-4821")).toBeInTheDocument();
+  });
+});
+
+describe("EmployeeModal duplicate handling", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "");
+  });
+
+  it("names the employee holding a duplicate Employee ID before asking the server", async () => {
+    employees.push({
+      id: "u1",
+      employeeId: "Owner",
+      fullName: "Eli Montoya",
+      email: "eli@sswsco.com",
+      status: "active",
+    });
+    const user = userEvent.setup();
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<EmployeeModal open onClose={() => {}} />);
+    await user.type(screen.getByLabelText(/^Employee ID/), "Owner");
+    await user.type(screen.getByLabelText(/^Full Name/), "Fred Dakake");
+    await user.type(screen.getByLabelText(/^Email/), "fdakake@sswsco.com");
+    await user.click(screen.getByRole("button", { name: "Create Employee" }));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("alert").textContent,
+    ).toContain("already used by Eli Montoya");
+  });
+
+  it("pins a server conflict to its field without the support reference", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 409,
+        headers: new Headers(),
+        json: async () => ({
+          error: {
+            code: "employee_id_taken",
+            message:
+              "Employee ID “Owner” still belongs to a removed record for Fred Dakake.",
+            requestId: "sfo1::abc",
+          },
+        }),
+      })),
+    );
+    render(<EmployeeModal open onClose={() => {}} />);
+    await fillRequiredFields(user);
+    await user.click(screen.getByRole("button", { name: "Create Employee" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("removed record for Fred Dakake");
+    expect(alert.textContent).not.toContain("Reference");
+    // The message survives on screen, so it can be read while the field is
+    // corrected — and clears as soon as it is.
+    await user.type(screen.getByLabelText(/^Employee ID/), "9");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

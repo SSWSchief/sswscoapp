@@ -10,6 +10,14 @@ import { employeeCreateSchema, jsonBodySizeAllowed } from "@/lib/validation";
 import { generateTemporaryPassword } from "@/lib/temporary-password";
 import { emailDeliveryEnabled } from "@/lib/email-delivery";
 import { findAuthUserIdByEmail } from "@/lib/supabase/auth-users";
+import {
+  employeeConflictMessage,
+  escapeLikePattern,
+  isUniqueViolation,
+  uniqueViolationField,
+  type EmployeeConflictField,
+  type EmployeeConflictHolder,
+} from "@/lib/employee-conflict";
 
 const route = "/api/admin/employees";
 
@@ -76,6 +84,57 @@ export async function POST(request: Request) {
       409,
     );
   const admin = createAdminClient();
+  const email = input.email.toLowerCase();
+  // Read back whoever already holds a value, soft-deleted rows included: a
+  // removed record still occupies the employee ID and the email address while
+  // appearing nowhere on screen, which is exactly the collision an administrator
+  // cannot diagnose on their own.
+  const conflictHolder = async (
+    field: EmployeeConflictField,
+    value: string,
+  ): Promise<EmployeeConflictHolder | null> => {
+    const found = await admin
+      .from("users")
+      .select("full_name,status,deleted_at")
+      .eq(field, value)
+      .limit(1)
+      .maybeSingle();
+    if (!found.data) return null;
+    return {
+      fullName: found.data.full_name,
+      removed: Boolean(found.data.deleted_at),
+      inactive: found.data.status === "inactive",
+    };
+  };
+  // `users.email` is unique but case-sensitive, so `Fred@` and `fred@` are two
+  // rows to Postgres and one mailbox to everyone else — and the two profiles
+  // would then compete for a single Auth account. The constraint cannot catch
+  // that, so it is checked here; every other collision is left to the database
+  // and explained from its error.
+  const variants = await admin
+    .from("users")
+    .select("full_name,email,status,deleted_at")
+    .ilike("email", escapeLikePattern(email))
+    .limit(5);
+  if (variants.error)
+    return fail(
+      "employee_lookup_failed",
+      "Existing employees could not be checked, so nothing was created. Try again.",
+      503,
+    );
+  const variant = (variants.data ?? []).find(
+    (row) => row.email.toLowerCase() === email,
+  );
+  if (variant)
+    return fail(
+      "email_taken",
+      employeeConflictMessage("email", email, {
+        fullName: variant.full_name,
+        removed: Boolean(variant.deleted_at),
+        inactive: variant.status === "inactive",
+      }),
+      409,
+    );
   const initials = input.fullName
     .split(/\s+/)
     .map((part) => part[0])
@@ -87,7 +146,7 @@ export async function POST(request: Request) {
     .insert({
       employee_id: input.employeeId,
       full_name: input.fullName,
-      email: input.email.toLowerCase(),
+      email,
       phone: input.phone,
       role: input.role,
       access_role: input.accessRole,
@@ -97,18 +156,40 @@ export async function POST(request: Request) {
     })
     .select()
     .single();
-  if (profile.error)
-    return fail(
-      "employee_conflict",
-      "An employee with those details already exists.",
-      409,
-    );
+  if (profile.error) {
+    const field = uniqueViolationField(profile.error);
+    if (field) {
+      const value = field === "employee_id" ? input.employeeId : email;
+      return fail(
+        field === "employee_id" ? "employee_id_taken" : "email_taken",
+        employeeConflictMessage(
+          field,
+          value,
+          await conflictHolder(field, value),
+        ),
+        409,
+      );
+    }
+    // Reported as what it is. Answering a dropped connection or a rejected
+    // value with "already exists" sends the administrator off editing details
+    // that were never the problem.
+    return isUniqueViolation(profile.error)
+      ? fail(
+          "employee_conflict",
+          "These employee details collide with an existing record.",
+          409,
+        )
+      : fail(
+          "profile_create_failed",
+          "The employee could not be saved. Nothing was created, so it is safe to try again.",
+          502,
+        );
+  }
   // The profile is created first in both paths. `link_auth_user` attaches the
   // Auth account to it by email on insert, so the account lands linked either
   // way. If the Auth step fails the profile is rolled back so a half-created
   // employee never lingers.
   if (input.delivery === "temporary_password") {
-    const email = input.email.toLowerCase();
     const temporaryPassword = generateTemporaryPassword();
     // An earlier attempt can leave an Auth account with no profile behind it —
     // a failed invitation, or an employee deleted and re-added. `createUser`
@@ -177,12 +258,22 @@ export async function POST(request: Request) {
     return apiSuccess({ id: profile.data.id, temporaryPassword }, id, 201);
   }
 
-  const invite = await admin.auth.admin.inviteUserByEmail(
-    input.email.toLowerCase(),
-    { data: { full_name: input.fullName } },
-  );
+  const invite = await admin.auth.admin.inviteUserByEmail(email, {
+    data: { full_name: input.fullName },
+  });
   if (invite.error) {
     await admin.from("users").delete().eq("id", profile.data.id);
+    // The common cause is an Auth account left behind by an earlier attempt or
+    // by an employee who was removed and is now being re-added: GoTrue refuses
+    // to invite an address it already knows. Saying so points at the way
+    // through — the temporary-password path adopts that account.
+    const existing = await findAuthUserIdByEmail(admin.auth.admin, email);
+    if (existing.ok && existing.id)
+      return fail(
+        "account_exists",
+        "A sign-in account already exists for that email address, so an invitation cannot be sent. Create the employee with a temporary password instead. Nothing was created.",
+        409,
+      );
     return fail(
       "invite_failed",
       "The employee profile was rolled back because the invitation could not be sent.",

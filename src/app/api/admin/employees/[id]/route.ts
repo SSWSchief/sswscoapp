@@ -7,6 +7,10 @@ import {
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { employeePatchSchema, jsonBodySizeAllowed } from "@/lib/validation";
+import {
+  employeeConflictMessage,
+  uniqueViolationField,
+} from "@/lib/employee-conflict";
 
 const route = "/api/admin/employees/[id]";
 
@@ -218,12 +222,35 @@ export async function PATCH(
     .single();
   if (result.error) {
     for (const rollback of rollbacks.reverse()) await rollback();
-    if (emailChanged && result.error.code === "23505")
+    // Same reasoning as the create route: name the field that collided and the
+    // employee holding it, including the removed records that hold a value
+    // while appearing in no list.
+    const field = uniqueViolationField(result.error);
+    const value = field === "employee_id" ? input.employeeId : newEmail;
+    if (field && value) {
+      const holder = await admin
+        .from("users")
+        .select("full_name,status,deleted_at")
+        .eq(field, value)
+        .neq("id", id)
+        .limit(1)
+        .maybeSingle();
       return fail(
-        "email_taken",
-        "That email address is already in use by another employee.",
+        field === "employee_id" ? "employee_id_taken" : "email_taken",
+        employeeConflictMessage(
+          field,
+          value,
+          holder.data
+            ? {
+                fullName: holder.data.full_name,
+                removed: Boolean(holder.data.deleted_at),
+                inactive: holder.data.status === "inactive",
+              }
+            : null,
+        ),
         409,
       );
+    }
     return fail(
       "profile_update_failed",
       "The employee profile could not be updated and authentication changes were rolled back.",

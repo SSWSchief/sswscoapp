@@ -7,7 +7,8 @@ import { FormField, Input, Select } from "@/components/ui/Field";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useToast } from "@/components/system/ToastProvider";
 import type { AccessRole, UserRole } from "@/lib/types";
-import { apiErrorMessage } from "@/lib/client-api";
+import { apiErrorDetail } from "@/lib/client-api";
+import { employeeConflictMessage } from "@/lib/employee-conflict";
 import { emailDeliveryEnabled } from "@/lib/email-delivery";
 
 export function EmployeeModal({
@@ -17,10 +18,17 @@ export function EmployeeModal({
   open: boolean;
   onClose: () => void;
 }) {
-  const { canMutate, refresh } = useOperations();
+  const { canMutate, refresh, users } = useOperations();
   const { toast } = useToast();
   const canEmail = emailDeliveryEnabled();
   const [saving, setSaving] = React.useState(false);
+  // Kept beside the field rather than only in a toast: a duplicate Employee ID
+  // is fixed by editing that field, and a message that has already faded is no
+  // help while doing it.
+  const [fieldErrors, setFieldErrors] = React.useState<{
+    employeeId?: string;
+    email?: string;
+  }>({});
   const [issued, setIssued] = React.useState<{
     name: string;
     password: string;
@@ -37,6 +45,7 @@ export function EmployeeModal({
   React.useEffect(() => {
     if (open) {
       setIssued(null);
+      setFieldErrors({});
       setForm({
         employeeId: "",
         fullName: "",
@@ -49,25 +58,85 @@ export function EmployeeModal({
     }
   }, [open]);
   const save = async () => {
-    if (
-      !form.employeeId.trim() ||
-      !form.fullName.trim() ||
-      !form.email.trim()
-    ) {
+    const trimmed = {
+      employeeId: form.employeeId.trim(),
+      fullName: form.fullName.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+    };
+    if (!trimmed.employeeId || !trimmed.fullName || !trimmed.email) {
       toast("Employee ID, name, and email are required.", { tone: "error" });
       return;
     }
+    // Caught before the round trip where the list on screen already proves it.
+    // The server stays authoritative — it also sees inactive and removed
+    // employees, which never reach this list.
+    const takenId = users.find(
+      (employee) => employee.employeeId === trimmed.employeeId,
+    );
+    const takenEmail = users.find(
+      (employee) =>
+        employee.email.toLowerCase() === trimmed.email.toLowerCase(),
+    );
+    if (takenId || takenEmail) {
+      // Worded by the same helper the routes use, so the sentence does not
+      // change depending on which side noticed.
+      setFieldErrors({
+        employeeId: takenId
+          ? employeeConflictMessage("employee_id", trimmed.employeeId, {
+              fullName: takenId.fullName,
+              removed: false,
+              inactive: takenId.status === "inactive",
+            })
+          : undefined,
+        email: takenEmail
+          ? employeeConflictMessage("email", trimmed.email, {
+              fullName: takenEmail.fullName,
+              removed: false,
+              inactive: takenEmail.status === "inactive",
+            })
+          : undefined,
+      });
+      toast("That employee could not be created — see the highlighted field.", {
+        tone: "error",
+      });
+      return;
+    }
+    setFieldErrors({});
     setSaving(true);
     try {
       const response = await fetch("/api/admin/employees", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, ...trimmed }),
       });
-      if (!response.ok)
-        throw new Error(
-          await apiErrorMessage(response, "The employee could not be created."),
+      if (!response.ok) {
+        const failure = await apiErrorDetail(
+          response,
+          "The employee could not be created.",
         );
+        // A conflict is the administrator's to resolve, so it is pinned to the
+        // field it belongs to and shown without the support reference. Anything
+        // else keeps the reference: it is the only handle on a server fault.
+        const field =
+          failure.code === "employee_id_taken"
+            ? "employeeId"
+            : failure.code === "email_taken" || failure.code === "account_exists"
+              ? "email"
+              : null;
+        if (field) {
+          setFieldErrors(
+            field === "employeeId"
+              ? { employeeId: failure.message }
+              : { email: failure.message },
+          );
+          toast(failure.message, { tone: "error" });
+          return;
+        }
+        throw new Error(
+          `${failure.message}${failure.requestId ? ` (Reference ${failure.requestId})` : ""}`,
+        );
+      }
       const body = (await response.json()) as {
         data?: { temporaryPassword?: string };
       };
@@ -76,7 +145,7 @@ export function EmployeeModal({
         // Held on screen rather than closing: this is the only time the
         // password is ever shown.
         setIssued({
-          name: form.fullName,
+          name: trimmed.fullName,
           password: body.data.temporaryPassword,
         });
         toast("Employee created.", { tone: "success" });
@@ -141,10 +210,18 @@ export function EmployeeModal({
       }
     >
       <div className="space-y-4">
-        <FormField label="Employee ID" required>
+        <FormField
+          label="Employee ID"
+          required
+          hint="Their own unique label — a number, initials, or a title nobody else has."
+          error={fieldErrors.employeeId}
+        >
           <Input
             value={form.employeeId}
-            onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
+            onChange={(e) => {
+              setFieldErrors({ ...fieldErrors, employeeId: undefined });
+              setForm({ ...form, employeeId: e.target.value });
+            }}
           />
         </FormField>
         <FormField label="Full Name" required>
@@ -153,11 +230,14 @@ export function EmployeeModal({
             onChange={(e) => setForm({ ...form, fullName: e.target.value })}
           />
         </FormField>
-        <FormField label="Email" required>
+        <FormField label="Email" required error={fieldErrors.email}>
           <Input
             type="email"
             value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            onChange={(e) => {
+              setFieldErrors({ ...fieldErrors, email: undefined });
+              setForm({ ...form, email: e.target.value });
+            }}
           />
         </FormField>
         <FormField label="Phone">
