@@ -16,6 +16,13 @@
  *   node scripts/check-auth-redirect.mjs --app-url=https://sswscoapp.vercel.app
  *
  * Exits non-zero when the redirect was rewritten, so CI can gate on it.
+ *
+ * This guards *production*, but it reads `.env.local`, which points at staging
+ * on purpose so `npm run dev` cannot touch the client's live database. Run
+ * as-is and it would check staging while its output read like a verdict on
+ * production — which is exactly how a live misconfiguration survived a passing
+ * check once already. So the project is named on every run and has to match
+ * before anything is generated.
  */
 import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync } from "node:fs";
@@ -46,6 +53,39 @@ const required = (name) => {
 };
 
 const supabaseUrl = required("NEXT_PUBLIC_SUPABASE_URL");
+
+// The project this check is *meant* to guard. Not a secret: it is the hostname
+// every browser already receives in `NEXT_PUBLIC_SUPABASE_URL`.
+const productionProject = "doofdntdobpixqmcqfnm";
+const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+const expectedProject =
+  options.project ??
+  process.env.AUTH_REDIRECT_EXPECTED_PROJECT ??
+  productionProject;
+
+// Checked before the secret key is even required, so pointing at the wrong
+// project fails on the mismatch rather than on some unrelated credential.
+if (projectRef !== expectedProject) {
+  console.error(
+    [
+      `Refusing to run: this would check ${projectRef}, not ${expectedProject}.`,
+      "",
+      `  configured (NEXT_PUBLIC_SUPABASE_URL) : ${projectRef}`,
+      `  expected                              : ${expectedProject}`,
+      "",
+      ".env.local points at the staging project by design, so running this",
+      "from a checkout checks staging while reporting what looks like a",
+      "production result. Supply production credentials for one run instead:",
+      "",
+      "  NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SECRET_KEY=... \\",
+      "    node scripts/check-auth-redirect.mjs --email=<reserved account>",
+      "",
+      `To check a different project deliberately, name it: --project=${projectRef}`,
+    ].join("\n"),
+  );
+  process.exit(1);
+}
+
 const secretKey = required("SUPABASE_SECRET_KEY");
 const email = options.email ?? process.env.AUTH_REDIRECT_CHECK_EMAIL;
 if (!email)
@@ -78,7 +118,7 @@ const link = new URL(data.properties.action_link);
 const actual = link.searchParams.get("redirect_to");
 const matches = actual === requested;
 
-console.log(`project    : ${new URL(supabaseUrl).hostname.split(".")[0]}`);
+console.log(`project    : ${projectRef}${projectRef === productionProject ? " (production)" : ""}`);
 console.log(`requested  : ${requested}`);
 console.log(`redirect_to: ${actual}`);
 
