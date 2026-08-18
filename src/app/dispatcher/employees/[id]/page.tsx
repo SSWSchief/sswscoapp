@@ -20,6 +20,7 @@ import { isProtectedAdministrator } from "@/lib/owners";
 import type { AccessRole, UserRole } from "@/lib/types";
 import { useToast } from "@/components/system/ToastProvider";
 import { apiErrorMessage } from "@/lib/client-api";
+import { emailDeliveryEnabled } from "@/lib/email-delivery";
 
 export default function EmployeeAccessPage({
   params,
@@ -40,6 +41,7 @@ export default function EmployeeAccessPage({
     protectedAdministratorIds,
   } = useOperations();
   const { toast } = useToast();
+  const canEmail = emailDeliveryEnabled();
   const [pending, setPending] = React.useState(false);
   const [issuedPassword, setIssuedPassword] = React.useState<string | null>(
     null,
@@ -392,30 +394,40 @@ export default function EmployeeAccessPage({
                   >
                     Issue Temporary Password
                   </Button>
-                  <Button
-                    className="w-full"
-                    variant="secondary"
-                    disabled={!canMutate || pending}
-                    onClick={async () => {
-                      setPending(true);
-                      const response = await fetch(
-                        `/api/admin/employees/${employee.id}/invite`,
-                        { method: "POST" },
-                      );
-                      setPending(false);
-                      toast(
-                        response.ok
-                          ? "Password reset email initiated"
-                          : await apiErrorMessage(
-                              response,
-                              "Reset could not be initiated",
-                            ),
-                        { tone: response.ok ? "success" : "error" },
-                      );
-                    }}
-                  >
-                    Send Password Reset Email
-                  </Button>
+                  {/*
+                    Hidden rather than merely disabled when email sending is
+                    off: Supabase resolves `resetPasswordForEmail` successfully
+                    with no SMTP connected, so the button used to report
+                    "initiated" for a message that never left the project and
+                    an administrator had no way to tell the difference. Issue
+                    Temporary Password is the one path that actually works.
+                  */}
+                  {canEmail && (
+                    <Button
+                      className="w-full"
+                      variant="secondary"
+                      disabled={!canMutate || pending}
+                      onClick={async () => {
+                        setPending(true);
+                        const response = await fetch(
+                          `/api/admin/employees/${employee.id}/invite`,
+                          { method: "POST" },
+                        );
+                        setPending(false);
+                        toast(
+                          response.ok
+                            ? "Password reset email initiated"
+                            : await apiErrorMessage(
+                                response,
+                                "Reset could not be initiated",
+                              ),
+                          { tone: response.ok ? "success" : "error" },
+                        );
+                      }}
+                    >
+                      Send Password Reset Email
+                    </Button>
+                  )}
                   {owner ? (
                     <p className="rounded bg-brand-mist p-3 text-xs text-brand-steel">
                       Protected administrators cannot be deactivated or

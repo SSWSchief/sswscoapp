@@ -6,6 +6,7 @@ import {
 } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { emailDeliveryEnabled } from "@/lib/email-delivery";
 
 const route = "/api/admin/employees/[id]/invite";
 
@@ -32,6 +33,16 @@ export async function POST(
       access.status === 401 ? "unauthorized" : "forbidden",
       access.error,
       access.status,
+    );
+  // Supabase accepts `resetPasswordForEmail` without custom SMTP and resolves
+  // it successfully regardless — it just delivers nothing. Refused here rather
+  // than reporting "initiated" for a message that never leaves the project, the
+  // same reasoning already applied to invitation delivery at employee creation.
+  if (!emailDeliveryEnabled())
+    return fail(
+      "email_delivery_disabled",
+      "Email sending is not configured, so a reset email cannot be delivered. Issue a temporary password instead.",
+      409,
     );
   const limited = await access.client.rpc("consume_api_rate_limit", {
     rate_bucket: "admin:invite",

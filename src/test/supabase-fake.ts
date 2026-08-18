@@ -119,6 +119,7 @@ export function fakeAdminClient(tables: Tables, options: Options = {}) {
         error: null,
       }),
       auth: {
+        resetPasswordForEmail: async () => ({ data: {}, error: null }),
         admin: {
           listUsers: async () => ({ data: { users: [] }, error: null }),
           createUser: async () => ({ data: { user: { id: "auth-new" } }, error: null }),
