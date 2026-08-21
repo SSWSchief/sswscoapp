@@ -282,13 +282,33 @@ Resend is equally fine and needs no Microsoft tenant changes.
    Take the secret key from the Supabase dashboard. Vercel marks it Sensitive,
    so `vercel env pull` returns it empty — that is intended, not a fault.
 
-   For belt and braces, set Supabase → Authentication → URL Configuration →
-   Site URL to `https://sswscoapp.vercel.app` and keep one redirect entry,
-   `https://sswscoapp.vercel.app/**`. Nothing depends on the Site URL any more,
-   but a correct value costs nothing and the check will tell you if it drifts.
+   **Do not try to fix this by correcting the Site URL.** That was attempted
+   four times and reverted every time, because the Site URL is not a setting
+   anyone owns: the Vercel–Supabase integration rewrites it on every
+   deployment, to the team-scoped alias
+   `https://sswscoapp-silver-state-waste-solutions.vercel.app/`. It also
+   re-adds the allowlist entries shaped
+   `https://sswscoapp-*-silver-state-waste-solutions.vercel.app/**` — seeing
+   those is how you recognise it. Correcting the field by hand looks like it
+   works and silently comes undone the next time anything ships.
+
+   Nothing depends on the Site URL any more, so let it drift. What does matter
+   is that `https://sswscoapp.vercel.app/**` stays in the redirect allowlist:
+   Supabase discards a `redirect_to` that is not on it and falls back to the
+   Site URL, which is the broken alias. That single entry is the load-bearing
+   one, and step 6's check is what tells you if it disappears.
 
 8. Send one invitation to yourself end to end before switching any employee
    over. Click the link from a real inbox. It should open the application's
-   "Set new password" screen. A Vercel login page means step 4 was missed;
+   "Set new password" screen. This was verified on August 21, 2026 with a real
+   reset delivered to a Gmail inbox.
+
+   One thing to expect: Gmail shows "This message might be dangerous" on these
+   emails and strips the link, even though SPF, DKIM and DMARC all pass. It is
+   a phishing heuristic, not an authentication failure — the sender is
+   `sswsco.com` while the only link points at `doofdntdobpixqmcqfnm.supabase.co`,
+   which is the shape of a credential-phishing email. Giving the application a
+   custom domain on `sswsco.com` would align the two and is the real fix. Until
+   then, employees on Gmail may need to click through the warning. A Vercel login page means step 4 was missed;
    `/login` with "that sign-in link is invalid or has expired" means the link
    was genuinely stale — send a fresh one and click it promptly.
