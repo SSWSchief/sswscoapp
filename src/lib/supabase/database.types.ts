@@ -53,6 +53,18 @@ export interface CustomerRow extends Record<string, unknown> {
   updated_at: string;
   deleted_at: string | null;
 }
+export interface VendorRow extends Record<string, unknown> {
+  id: string;
+  name: string;
+  category: string;
+  phone: string;
+  email: string;
+  notes: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
 export interface TruckRow extends Record<string, unknown> {
   id: string;
   number: string;
@@ -337,6 +349,7 @@ export interface Database {
     Tables: {
       users: Table<UserRow>;
       customers: Table<CustomerRow>;
+      vendors: Table<VendorRow>;
       trucks: Table<TruckRow>;
       dumpsters: Table<DumpsterRow>;
       jobs: Table<JobRow>;

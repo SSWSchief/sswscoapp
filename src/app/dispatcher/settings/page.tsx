@@ -13,6 +13,7 @@ import { effectivePermissions, permissionLabels } from "@/lib/permissions";
 import { isProtectedAdministrator } from "@/lib/owners";
 import { cn } from "@/lib/utils";
 import { apiErrorMessage } from "@/lib/client-api";
+import { emailDeliveryEnabled } from "@/lib/email-delivery";
 import type {
   AcknowledgementEntry,
   CompanySettings,
@@ -609,18 +610,34 @@ export default function Page() {
                             ? "Protected Admin"
                             : "Admin"}
                         </span>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={resettingUserId === admin.id || !canMutate}
-                          onClick={() =>
-                            void sendPasswordReset(admin.id, admin.fullName)
-                          }
-                        >
-                          {resettingUserId === admin.id
-                            ? "Sending..."
-                            : "Send Reset"}
-                        </Button>
+                        {/*
+                          Reports success with no SMTP connected without
+                          sending anything — see the matching note on the
+                          employee page. Hidden rather than captioned for the
+                          same reason the Add Employee delivery choice is
+                          hidden: a working path needs no decision from them.
+                        */}
+                        {emailDeliveryEnabled() ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={resettingUserId === admin.id || !canMutate}
+                            onClick={() =>
+                              void sendPasswordReset(admin.id, admin.fullName)
+                            }
+                          >
+                            {resettingUserId === admin.id
+                              ? "Sending..."
+                              : "Send Reset"}
+                          </Button>
+                        ) : (
+                          <Link
+                            href={`/dispatcher/employees/${admin.id}`}
+                            className="text-xs font-semibold text-brand-blue hover:underline"
+                          >
+                            Issue temporary password →
+                          </Link>
+                        )}
                       </div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">

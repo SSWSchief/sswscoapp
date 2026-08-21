@@ -10,6 +10,8 @@ import type { AccessRole, UserRole } from "@/lib/types";
 import { apiErrorDetail } from "@/lib/client-api";
 import { employeeConflictMessage } from "@/lib/employee-conflict";
 import { emailDeliveryEnabled } from "@/lib/email-delivery";
+import { deriveEmployeeId } from "@/lib/employee-id";
+import { accessRoleLabel, defaultAccessRole } from "@/lib/permissions";
 
 export function EmployeeModal({
   open,
@@ -25,10 +27,11 @@ export function EmployeeModal({
   // Kept beside the field rather than only in a toast: a duplicate Employee ID
   // is fixed by editing that field, and a message that has already faded is no
   // help while doing it.
-  const [fieldErrors, setFieldErrors] = React.useState<{
+  const [errors, setErrors] = React.useState<{
     employeeId?: string;
     email?: string;
   }>({});
+  const [accessOpen, setAccessOpen] = React.useState(false);
   const [issued, setIssued] = React.useState<{
     name: string;
     password: string;
@@ -45,7 +48,8 @@ export function EmployeeModal({
   React.useEffect(() => {
     if (open) {
       setIssued(null);
-      setFieldErrors({});
+      setErrors({});
+      setAccessOpen(false);
       setForm({
         employeeId: "",
         fullName: "",
@@ -57,43 +61,45 @@ export function EmployeeModal({
       });
     }
   }, [open]);
+  // Shown rather than silently applied: the administrator should recognise the
+  // ID on a report later without having been quizzed about it now.
+  const suggestedId = form.fullName.trim()
+    ? deriveEmployeeId(form.fullName)
+    : "";
   const save = async () => {
-    const trimmed = {
-      employeeId: form.employeeId.trim(),
-      fullName: form.fullName.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-    };
-    if (!trimmed.employeeId || !trimmed.fullName || !trimmed.email) {
-      toast("Employee ID, name, and email are required.", { tone: "error" });
+    if (!form.fullName.trim() || !form.email.trim()) {
+      toast("Name and email are required.", { tone: "error" });
       return;
     }
+    // Only a typed ID is checked. A blank one is assigned by the server, which
+    // is the only side that can see soft-deleted employees still holding one.
+    const employeeId = form.employeeId.trim();
+    const email = form.email.trim().toLowerCase();
     // Caught before the round trip where the list on screen already proves it.
     // The server stays authoritative — it also sees inactive and removed
     // employees, which never reach this list.
-    const takenId = users.find(
-      (employee) => employee.employeeId === trimmed.employeeId,
+    const idHolder = employeeId
+      ? users.find((user) => user.employeeId === employeeId)
+      : undefined;
+    const emailHolder = users.find(
+      (user) => user.email.toLowerCase() === email,
     );
-    const takenEmail = users.find(
-      (employee) =>
-        employee.email.toLowerCase() === trimmed.email.toLowerCase(),
-    );
-    if (takenId || takenEmail) {
+    if (idHolder || emailHolder) {
       // Worded by the same helper the routes use, so the sentence does not
       // change depending on which side noticed.
-      setFieldErrors({
-        employeeId: takenId
-          ? employeeConflictMessage("employee_id", trimmed.employeeId, {
-              fullName: takenId.fullName,
+      setErrors({
+        employeeId: idHolder
+          ? employeeConflictMessage("employee_id", employeeId, {
+              fullName: idHolder.fullName,
               removed: false,
-              inactive: takenId.status === "inactive",
+              inactive: idHolder.status === "inactive",
             })
           : undefined,
-        email: takenEmail
-          ? employeeConflictMessage("email", trimmed.email, {
-              fullName: takenEmail.fullName,
+        email: emailHolder
+          ? employeeConflictMessage("email", email, {
+              fullName: emailHolder.fullName,
               removed: false,
-              inactive: takenEmail.status === "inactive",
+              inactive: emailHolder.status === "inactive",
             })
           : undefined,
       });
@@ -102,13 +108,16 @@ export function EmployeeModal({
       });
       return;
     }
-    setFieldErrors({});
+    setErrors({});
     setSaving(true);
     try {
       const response = await fetch("/api/admin/employees", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...form, ...trimmed }),
+        body: JSON.stringify({
+          ...form,
+          employeeId: employeeId || undefined,
+        }),
       });
       if (!response.ok) {
         const failure = await apiErrorDetail(
@@ -125,7 +134,7 @@ export function EmployeeModal({
               ? "email"
               : null;
         if (field) {
-          setFieldErrors(
+          setErrors(
             field === "employeeId"
               ? { employeeId: failure.message }
               : { email: failure.message },
@@ -145,7 +154,7 @@ export function EmployeeModal({
         // Held on screen rather than closing: this is the only time the
         // password is ever shown.
         setIssued({
-          name: trimmed.fullName,
+          name: form.fullName.trim(),
           password: body.data.temporaryPassword,
         });
         toast("Employee created.", { tone: "success" });
@@ -210,32 +219,19 @@ export function EmployeeModal({
       }
     >
       <div className="space-y-4">
-        <FormField
-          label="Employee ID"
-          required
-          hint="Their own unique label — a number, initials, or a title nobody else has."
-          error={fieldErrors.employeeId}
-        >
-          <Input
-            value={form.employeeId}
-            onChange={(e) => {
-              setFieldErrors({ ...fieldErrors, employeeId: undefined });
-              setForm({ ...form, employeeId: e.target.value });
-            }}
-          />
-        </FormField>
+        {/* The name leads: it is the thing the administrator actually knows. */}
         <FormField label="Full Name" required>
           <Input
             value={form.fullName}
             onChange={(e) => setForm({ ...form, fullName: e.target.value })}
           />
         </FormField>
-        <FormField label="Email" required error={fieldErrors.email}>
+        <FormField label="Email" required error={errors.email}>
           <Input
             type="email"
             value={form.email}
             onChange={(e) => {
-              setFieldErrors({ ...fieldErrors, email: undefined });
+              setErrors((current) => ({ ...current, email: undefined }));
               setForm({ ...form, email: e.target.value });
             }}
           />
@@ -247,7 +243,7 @@ export function EmployeeModal({
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
         </FormField>
-        <FormField label="Operational Role">
+        <FormField label="What do they do?">
           <Select
             value={form.role}
             onChange={(e) => {
@@ -255,32 +251,68 @@ export function EmployeeModal({
               setForm({
                 ...form,
                 role,
-                accessRole:
-                  role === "driver"
-                    ? "driver"
-                    : role === "management"
-                      ? "admin"
-                      : "dispatcher",
+                accessRole: defaultAccessRole(role),
               });
             }}
           >
             <option value="driver">Driver</option>
             <option value="dispatcher">Dispatcher</option>
             <option value="office">Office</option>
-            <option value="management">Management</option>
+            <option value="management">Owner / Management</option>
           </Select>
         </FormField>
-        <FormField label="Access Role">
-          <Select
-            value={form.accessRole}
-            onChange={(e) =>
-              setForm({ ...form, accessRole: e.target.value as AccessRole })
-            }
+        <p className="text-xs text-brand-steel">
+          They get {accessRoleLabel[form.accessRole].toLowerCase()} access.{" "}
+          <button
+            type="button"
+            onClick={() => setAccessOpen((open) => !open)}
+            aria-expanded={accessOpen}
+            className="font-semibold text-brand-blue underline"
           >
-            <option value="driver">Driver</option>
-            <option value="dispatcher">Dispatcher</option>
-            <option value="admin">Administrator</option>
-          </Select>
+            {accessOpen ? "Use the usual access" : "Change what they can see"}
+          </button>
+        </p>
+        {/*
+          Access role is a separate question only when someone's permissions do
+          not follow their job — a rare enough case that leading with it made
+          every ordinary employee look like a decision to be reasoned about.
+        */}
+        {accessOpen ? (
+          <FormField
+            label="Access Role"
+            hint="Sets which parts of the app they can open. Reset by changing what they do."
+          >
+            <Select
+              value={form.accessRole}
+              onChange={(e) =>
+                setForm({ ...form, accessRole: e.target.value as AccessRole })
+              }
+            >
+              <option value="driver">Driver</option>
+              <option value="dispatcher">Dispatcher</option>
+              <option value="admin">Administrator</option>
+            </Select>
+          </FormField>
+        ) : null}
+        <FormField
+          label="Employee ID"
+          hint={
+            form.employeeId.trim()
+              ? undefined
+              : `Assigned automatically${
+                  suggestedId ? ` — ${suggestedId}` : ""
+                }. Set one only if you use staff numbers.`
+          }
+          error={errors.employeeId}
+        >
+          <Input
+            value={form.employeeId}
+            placeholder={suggestedId}
+            onChange={(e) => {
+              setErrors((current) => ({ ...current, employeeId: undefined }));
+              setForm({ ...form, employeeId: e.target.value });
+            }}
+          />
         </FormField>
         {/*
           The invitation option is hidden rather than merely captioned when

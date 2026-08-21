@@ -7,6 +7,7 @@ import {
   mapAbsence,
   mapActivity,
   mapCustomer,
+  mapVendor,
   mapDumpster,
   mapJob,
   mapJobNote,
@@ -22,11 +23,13 @@ import {
   pacificDate,
   pacificDayStart,
 } from "@/lib/time-clock";
+import { loadedJobWindow } from "@/lib/job-dates";
 import type {
   AccessRole,
   AbsenceEvent,
   AppNotification,
   Customer,
+  Vendor,
   Dumpster,
   DumpsterSize,
   Job,
@@ -46,6 +49,7 @@ import type {
 import type {
   CorrectionRow,
   CustomerRow,
+  VendorRow,
   DumpsterRow,
   JobActivityRow,
   JobEventRow,
@@ -70,6 +74,15 @@ import {
 import { log } from "@/lib/logger";
 import { apiErrorMessage } from "@/lib/client-api";
 
+/**
+ * Row caps for the two shapes of list the app loads. Both are far above what
+ * this company holds today, so the caps are a backstop rather than a working
+ * limit — and every capped list reports its true total alongside, so reaching
+ * one is visible instead of silent.
+ */
+const JOB_WINDOW_LIMIT = 1000;
+const DIRECTORY_LIMIT = 500;
+
 type ConnectionState =
   "loading" | "ready" | "stale" | "offline" | "unauthorized" | "error";
 export type MutationResult<T> =
@@ -81,6 +94,7 @@ interface State {
   activities: JobActivity[];
   users: User[];
   customers: Customer[];
+  vendors: Vendor[];
   trucks: Truck[];
   dumpsters: Dumpster[];
   jobNotes: JobNote[];
@@ -89,6 +103,17 @@ interface State {
   timeRequests: TimeRequest[];
   absenceEvents: AbsenceEvent[];
   protectedAdministratorIds: string[];
+  /**
+   * Rows matching each list's query, which is not the same as the rows loaded.
+   * Screens report both so a capped list reads as a capped list rather than as
+   * the company's entire records.
+   */
+  totals: {
+    jobs: number;
+    customers: number;
+    users: number;
+    vendors: number;
+  };
 }
 const emptyState: State = {
   jobs: [],
@@ -96,6 +121,7 @@ const emptyState: State = {
   activities: [],
   users: [],
   customers: [],
+  vendors: [],
   trucks: [],
   dumpsters: [],
   jobNotes: [],
@@ -104,6 +130,7 @@ const emptyState: State = {
   timeRequests: [],
   absenceEvents: [],
   protectedAdministratorIds: [],
+  totals: { jobs: 0, customers: 0, users: 0, vendors: 0 },
 };
 interface CreateJobInput {
   customerId: string;
@@ -124,6 +151,13 @@ interface CustomerInput {
   email: string;
   address: string;
   group?: Customer["group"];
+}
+interface VendorInput {
+  name: string;
+  category: string;
+  phone: string;
+  email: string;
+  notes: string;
 }
 interface TruckInput {
   number: string;
@@ -218,6 +252,8 @@ interface Value extends State {
     id?: string,
   ) => Promise<MutationResult<void>>;
   deactivateCustomer: (id: string) => Promise<MutationResult<void>>;
+  saveVendor: (input: VendorInput, id?: string) => Promise<MutationResult<void>>;
+  deactivateVendor: (id: string) => Promise<MutationResult<void>>;
   saveTruck: (input: TruckInput, id?: string) => Promise<MutationResult<void>>;
   saveDumpster: (
     input: DumpsterInput,
@@ -302,15 +338,18 @@ export function OperationsProvider({
         }
         const profile = mapUser(profileResult.data as UserRow);
         const patch: Partial<State> = {};
+        // How many rows exist behind each capped list, so a screen can say so
+        // instead of presenting the slice it received as the whole table.
+        const totals: Partial<State["totals"]> = {};
         let users: User[] = [profile];
         if (domains.has("people")) {
           const [result, detail, protectedAdministrators] = await Promise.all([
             db
               .from("users")
-              .select("*")
+              .select("*", { count: "exact" })
               .is("deleted_at", null)
               .order("full_name")
-              .limit(50),
+              .limit(DIRECTORY_LIMIT),
             activeEmployeeId
               ? db
                   .from("users")
@@ -329,18 +368,25 @@ export function OperationsProvider({
             rows.push(detailRow);
           users = rows.map(mapUser);
           patch.users = users;
+          totals.users = result.count ?? users.length;
           patch.protectedAdministratorIds = (
             (protectedAdministrators.data ?? []) as { user_id: string }[]
           ).map((row) => row.user_id);
         }
         let jobs: Job[] = [];
         if (domains.has("jobs")) {
+          // Bounded by date rather than by row count alone. Ascending order
+          // inside the window means that if the cap is ever reached it drops
+          // the furthest-out scheduling, never today's work.
+          const jobWindow = loadedJobWindow();
           const jobsQuery = db
             .from("jobs")
-            .select("*")
+            .select("*", { count: "exact" })
             .is("deleted_at", null)
+            .gte("scheduled_for", jobWindow.start)
+            .lt("scheduled_for", jobWindow.end)
             .order("scheduled_for")
-            .limit(50);
+            .limit(JOB_WINDOW_LIMIT);
           const jobDetailQuery = activeJobId
             ? db
                 .from("jobs")
@@ -408,6 +454,7 @@ export function OperationsProvider({
           );
           const names = new Map(users.map((user) => [user.id, user.fullName]));
           patch.jobs = jobs;
+          totals.jobs = jr.count ?? jobs.length;
           patch.activities = ((ar.data ?? []) as JobActivityRow[]).map(
             mapActivity,
           );
@@ -430,10 +477,10 @@ export function OperationsProvider({
           const [result, activeCounts] = await Promise.all([
             db
               .from("customers")
-              .select("*")
+              .select("*", { count: "exact" })
               .is("deleted_at", null)
               .order("name")
-              .limit(50),
+              .limit(DIRECTORY_LIMIT),
             db.rpc("customer_active_job_counts"),
           ]);
           if (result.error || activeCounts.error)
@@ -447,6 +494,18 @@ export function OperationsProvider({
           patch.customers = (result.data as CustomerRow[]).map((row) =>
             mapCustomer(row, counts.get(row.id) ?? 0),
           );
+          totals.customers = result.count ?? patch.customers.length;
+        }
+        if (domains.has("vendors")) {
+          const result = await db
+            .from("vendors")
+            .select("*", { count: "exact" })
+            .is("deleted_at", null)
+            .order("name")
+            .limit(DIRECTORY_LIMIT);
+          if (result.error) throw result.error;
+          patch.vendors = (result.data as VendorRow[]).map(mapVendor);
+          totals.vendors = result.count ?? patch.vendors.length;
         }
         if (domains.has("fleet")) {
           const [trucks, truckDetail, dumpsters] = await Promise.all([
@@ -523,7 +582,11 @@ export function OperationsProvider({
           );
           patch.absenceEvents = (absences.data as AbsenceRow[]).map(mapAbsence);
         }
-        setState((previous) => ({ ...previous, ...patch }));
+        setState((previous) => ({
+          ...previous,
+          ...patch,
+          totals: { ...previous.totals, ...totals },
+        }));
         setCurrentUser(profile);
         loaded.current = true;
         setConnectionState("ready");
@@ -925,6 +988,32 @@ export function OperationsProvider({
         const r = await run(() =>
           createClient()
             .from("customers")
+            .update({ is_active: false, deleted_at: new Date().toISOString() })
+            .eq("id", id)
+            .select(),
+        );
+        return r.ok ? { ok: true, data: undefined } : r;
+      },
+      saveVendor: async (input, id) => {
+        const payload = {
+          name: input.name.trim(),
+          category: input.category.trim(),
+          phone: input.phone.trim(),
+          email: input.email.trim(),
+          notes: input.notes.trim(),
+          is_active: true,
+        };
+        const r = await run(() =>
+          id
+            ? createClient().from("vendors").update(payload).eq("id", id).select()
+            : createClient().from("vendors").insert(payload).select(),
+        );
+        return r.ok ? { ok: true, data: undefined } : r;
+      },
+      deactivateVendor: async (id) => {
+        const r = await run(() =>
+          createClient()
+            .from("vendors")
             .update({ is_active: false, deleted_at: new Date().toISOString() })
             .eq("id", id)
             .select(),

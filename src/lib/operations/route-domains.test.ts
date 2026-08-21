@@ -24,7 +24,7 @@ describe("route domain selection", () => {
   });
 
   it("loads dashboard summary domains", () => {
-    expect(coreDomainsForPath("/dispatcher/dashboard").size).toBe(6);
+    expect(coreDomainsForPath("/dispatcher/dashboard").size).toBe(7);
     expect(expandedDomainsForPath("/dispatcher/dashboard")).toEqual(
       new Set(["finance", "compliance"]),
     );

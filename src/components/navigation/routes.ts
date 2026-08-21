@@ -75,6 +75,18 @@ export const staffNavSections: AppNavSection[] = [
     ],
   },
   {
+    label: "Contacts",
+    items: [
+      {
+        href: "/dispatcher/vendors",
+        label: "Vendors",
+        icon: "vendors",
+        permission: "vendors",
+        keywords: "contacts subcontractors towing locksmith suppliers",
+      },
+    ],
+  },
+  {
     label: "Team",
     items: [
       {

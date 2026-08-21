@@ -1,5 +1,11 @@
 export type CoreDomain =
-  "jobs" | "notifications" | "people" | "customers" | "fleet" | "time";
+  | "jobs"
+  | "notifications"
+  | "people"
+  | "customers"
+  | "vendors"
+  | "fleet"
+  | "time";
 
 export type ExpandedDomain =
   "finance" | "messaging" | "compliance" | "settings";
@@ -9,6 +15,7 @@ const allCore: CoreDomain[] = [
   "notifications",
   "people",
   "customers",
+  "vendors",
   "fleet",
   "time",
 ];
@@ -38,6 +45,7 @@ export function coreDomainsForPath(pathname: string): Set<CoreDomain> {
     );
   }
   if (pathname.startsWith("/dispatcher/customers")) domains.add("customers");
+  if (pathname.startsWith("/dispatcher/vendors")) domains.add("vendors");
   if (pathname.startsWith("/dispatcher/employees")) domains.add("people");
   if (pathname.startsWith("/dispatcher/invoices")) domains.add("customers");
   if (pathname.startsWith("/dispatcher/settings")) domains.add("people");
@@ -114,6 +122,7 @@ export const coreTableDomain: Record<string, CoreDomain> = {
   notifications: "notifications",
   users: "people",
   customers: "customers",
+  vendors: "vendors",
   trucks: "fleet",
   dumpsters: "fleet",
   time_entries: "time",

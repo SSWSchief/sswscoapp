@@ -13,6 +13,7 @@ import { FormField, Input, Select } from "@/components/ui/Field";
 import {
   accessRoleLabel,
   effectivePermissions,
+  permissionGroups,
   permissionKeys,
   permissionLabels,
 } from "@/lib/permissions";
@@ -128,9 +129,13 @@ export default function EmployeeAccessPage({
               <h2 className="font-heading text-2xl font-bold uppercase tracking-wide text-brand-charcoal">
                 {employee.fullName}
               </h2>
-              <p className="text-sm text-brand-steel">
-                {employee.employeeId} · {employee.email}
-              </p>
+              {/*
+                Employee ID and email used to repeat here as read-only text,
+                immediately above the same two fields shown editable in the
+                Employee Details card below — redundant on every visit and
+                doubly costly on mobile, where it added a full extra screen
+                of scrolling before anything new appeared.
+              */}
               {owner && (
                 <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-brand-blue">
                   Protected administrator · full administrator access
@@ -165,6 +170,14 @@ export default function EmployeeAccessPage({
                   ),
                 )}
               </Select>
+              {/*
+                Unlike Employee Details below, this saves on change rather
+                than behind a Save button — the two patterns living on one
+                page needs a signal, not just a difference in behavior.
+              */}
+              <p className="mt-1 text-xs text-brand-steel">
+                Applies immediately.
+              </p>
             </div>
           </div>
         </Card>
@@ -248,7 +261,7 @@ export default function EmployeeAccessPage({
                 <option value="driver">Driver</option>
                 <option value="dispatcher">Dispatcher</option>
                 <option value="office">Office</option>
-                <option value="management">Management</option>
+                <option value="management">Owner / Management</option>
               </Select>
             </FormField>
           </div>
@@ -259,11 +272,20 @@ export default function EmployeeAccessPage({
             <CardHeader
               title="Module Permissions"
               action={
+                // Was "Reset to {role}" at variant="secondary" — a bordered
+                // button the same visual weight as the section title, for an
+                // action that wipes every override rather than one anyone
+                // reaches for often. At that weight it also wrapped onto its
+                // own line below the title on narrow screens, since a long
+                // title plus a long button rarely both fit one row. Smaller
+                // and text-only fixes both: it reads as secondary, and it is
+                // short enough to usually stay on the header's row.
                 <Button
                   disabled={
                     owner || !canMutate || currentUser?.accessRole !== "admin"
                   }
-                  variant="secondary"
+                  variant="ghost"
+                  size="sm"
                   onClick={async () => {
                     const result = await resetPermissionOverrides(employee.id);
                     toast(
@@ -272,85 +294,124 @@ export default function EmployeeAccessPage({
                     );
                   }}
                 >
-                  Reset to{" "}
-                  {owner
-                    ? "Protected Admin"
-                    : accessRoleLabel[employee.accessRole]}
+                  Reset Overrides
                 </Button>
               }
             />
+            {/*
+              Stated once here rather than repeated per row: every toggle used
+              to carry a subtitle naming the current role's preset even when
+              nothing about that row was unusual, which meant a Dispatcher's
+              ten default-on permissions repeated "Dispatcher preset" ten
+              times in a row — noise, since the role is already named above.
+              Only a row that actually differs from the preset gets a label
+              now, so an override finally stands out instead of blending in.
+
+              The role name moved here instead of disappearing outright: on
+              mobile this list can run past a thousand pixels of toggles, and
+              the Role Preset field naming it lives at the very top of the
+              page, off screen by the time anyone is deep in Finance &
+              Reporting. Restating it here — where "Reset Overrides" also
+              needs it dropped from its own label — keeps that context in
+              view without bringing back the per-row repetition just removed.
+            */}
+            <p className="px-5 pt-3 text-xs text-brand-steel">
+              {owner ? "Protected Admin" : accessRoleLabel[employee.accessRole]}{" "}
+              preset. Changes apply immediately.
+            </p>
             <div className="divide-y divide-brand-ice/60">
-              {permissionKeys.map((permission) => {
-                const overridden = permission in employee.permissionOverrides;
-                return (
-                  <div
-                    key={permission}
-                    className="flex items-center gap-4 px-5 py-3.5"
-                  >
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-brand-charcoal">
-                        {permissionLabels[permission]}
-                      </div>
-                      <div className="text-xs text-brand-steel">
-                        {overridden
-                          ? "Individual override"
-                          : `${accessRoleLabel[employee.accessRole]} preset`}
-                      </div>
-                    </div>
-                    <button
-                      disabled={
-                        owner ||
-                        !canMutate ||
-                        currentUser?.accessRole !== "admin"
-                      }
-                      role="switch"
-                      aria-checked={effective[permission]}
-                      onClick={async () => {
-                        const result = await setPermissionOverride(
-                          employee.id,
-                          permission,
-                          !effective[permission],
-                        );
-                        toast(
-                          result.ok
-                            ? "Permission updated"
-                            : result.error.message,
-                          { tone: result.ok ? "success" : "error" },
-                        );
-                      }}
-                      className={`relative h-7 w-12 rounded-full transition-colors disabled:opacity-50 ${effective[permission] ? "bg-brand-blue" : "bg-brand-silver"}`}
-                      aria-label={`Toggle ${permissionLabels[permission]}`}
-                    >
-                      <span
-                        className={`absolute left-0 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${effective[permission] ? "translate-x-6" : "translate-x-1"}`}
-                      />
-                    </button>
+              {permissionGroups.map((group) => (
+                <div key={group.label}>
+                  <div className="bg-brand-mist/60 px-5 py-1.5 font-heading text-[11px] font-semibold uppercase tracking-wide text-brand-steel">
+                    {group.label}
                   </div>
-                );
-              })}
+                  {group.keys.map((permission) => {
+                    const overridden =
+                      permission in employee.permissionOverrides;
+                    return (
+                      <div
+                        key={permission}
+                        className="flex items-center gap-4 px-5 py-3.5"
+                      >
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-brand-charcoal">
+                            {permissionLabels[permission]}
+                          </div>
+                          {overridden && (
+                            <div className="text-xs font-semibold text-brand-blue">
+                              Individual override
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          disabled={
+                            owner ||
+                            !canMutate ||
+                            currentUser?.accessRole !== "admin"
+                          }
+                          role="switch"
+                          aria-checked={effective[permission]}
+                          onClick={async () => {
+                            const result = await setPermissionOverride(
+                              employee.id,
+                              permission,
+                              !effective[permission],
+                            );
+                            toast(
+                              result.ok
+                                ? "Permission updated"
+                                : result.error.message,
+                              { tone: result.ok ? "success" : "error" },
+                            );
+                          }}
+                          className={`relative h-7 w-12 rounded-full transition-colors disabled:opacity-50 ${effective[permission] ? "bg-brand-blue" : "bg-brand-silver"}`}
+                          aria-label={`Toggle ${permissionLabels[permission]}`}
+                        >
+                          <span
+                            className={`absolute left-0 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${effective[permission] ? "translate-x-6" : "translate-x-1"}`}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </Card>
 
-          <Card className="self-start">
-            <CardHeader title="Effective Access Preview" />
-            <div className="p-5 space-y-5">
-              <AccessList
-                title={`Visible (${visible.length})`}
-                items={visible.map((key) => permissionLabels[key])}
-                enabled
-              />
-              <AccessList
-                title={`Hidden (${hidden.length})`}
-                items={hidden.map((key) => permissionLabels[key])}
-              />
-              <p className="text-xs leading-5 text-brand-steel">
-                Role defaults come from the{" "}
-                {accessRoleLabel[employee.accessRole]} preset. Individual
-                overrides take priority and are enforced by the live
-                authorization policy.
-              </p>
-              {currentUser?.accessRole === "admin" && (
-                <div className="space-y-2 border-t border-brand-ice pt-4">
+          {/*
+            Previously one card doing two jobs: a read-only permissions
+            summary, plus credential and deactivation actions bolted onto its
+            bottom under the same "Effective Access Preview" title, which
+            promised less than it delivered. Split so each card's title
+            actually describes everything inside it.
+          */}
+          <div className="space-y-5 self-start">
+            <Card>
+              <CardHeader title="Effective Access Preview" />
+              <div className="p-5 space-y-5">
+                <AccessList
+                  title={`Visible (${visible.length})`}
+                  items={visible.map((key) => permissionLabels[key])}
+                  enabled
+                />
+                <AccessList
+                  title={`Hidden (${hidden.length})`}
+                  items={hidden.map((key) => permissionLabels[key])}
+                />
+                <p className="text-xs leading-5 text-brand-steel">
+                  Role defaults come from the{" "}
+                  {accessRoleLabel[employee.accessRole]} preset. Individual
+                  overrides take priority and are enforced by the live
+                  authorization policy.
+                </p>
+              </div>
+            </Card>
+
+            {currentUser?.accessRole === "admin" && (
+              <Card>
+                <CardHeader title="Account Actions" />
+                <div className="p-5 space-y-2">
                   {issuedPassword && (
                     <div className="rounded border border-brand-ice bg-brand-mist p-3">
                       <p className="text-xs text-brand-steel">
@@ -395,14 +456,17 @@ export default function EmployeeAccessPage({
                     Issue Temporary Password
                   </Button>
                   {/*
-                    Hidden rather than merely disabled when email sending is
+                    Replaced rather than merely disabled when email sending is
                     off: Supabase resolves `resetPasswordForEmail` successfully
                     with no SMTP connected, so the button used to report
-                    "initiated" for a message that never left the project and
-                    an administrator had no way to tell the difference. Issue
-                    Temporary Password is the one path that actually works.
+                    "initiated" for a message that never left the project.
+                    Matthew is that failure — an administrator clicked it,
+                    believed it, and he never heard anything. Saying so beats
+                    hiding the control, which leaves an administrator looking
+                    for an option they remember being there. The login page
+                    treats "Forgot password?" the same way.
                   */}
-                  {canEmail && (
+                  {canEmail ? (
                     <Button
                       className="w-full"
                       variant="secondary"
@@ -427,6 +491,12 @@ export default function EmployeeAccessPage({
                     >
                       Send Password Reset Email
                     </Button>
+                  ) : (
+                    <p className="rounded bg-brand-mist p-3 text-xs text-brand-steel">
+                      Email is not configured, so no reset email can be sent.
+                      Use Issue Temporary Password above and hand it to them
+                      directly.
+                    </p>
                   )}
                   {owner ? (
                     <p className="rounded bg-brand-mist p-3 text-xs text-brand-steel">
@@ -471,9 +541,9 @@ export default function EmployeeAccessPage({
                     </Button>
                   )}
                 </div>
-              )}
-            </div>
-          </Card>
+              </Card>
+            )}
+          </div>
         </div>
       </div>
     </>

@@ -14,22 +14,33 @@ import { findAuthUserIdByEmail } from "@/lib/supabase/auth-users";
 import {
   employeeConflictMessage,
   escapeLikePattern,
+  isIncompatibleRole,
   isUniqueViolation,
   uniqueViolationField,
+  writeErrorDetail,
   type EmployeeConflictField,
   type EmployeeConflictHolder,
 } from "@/lib/employee-conflict";
+import {
+  deriveEmployeeId,
+  nextAvailableEmployeeId,
+} from "@/lib/employee-id";
 
 const route = "/api/admin/employees";
 
 export async function POST(request: Request) {
   const startedAt = Date.now();
   const id = requestId(request);
-  const fail = (code: string, message: string, status: number) => {
+  const fail = (
+    code: string,
+    message: string,
+    status: number,
+    detail?: Record<string, unknown>,
+  ) => {
     logRequest(
       status >= 500 ? "error" : "warn",
       "admin_employee_create_failed",
-      { requestId: id, route, method: "POST", startedAt, status, code },
+      { requestId: id, route, method: "POST", startedAt, status, code, detail },
     );
     return apiFailure(code, message, status, id);
   };
@@ -41,23 +52,6 @@ export async function POST(request: Request) {
       access.status === 401 ? "unauthorized" : "forbidden",
       access.error,
       access.status,
-    );
-  const limited = await access.client.rpc("consume_api_rate_limit", {
-    rate_bucket: "admin:employee:create",
-    maximum_attempts: 10,
-    window_seconds: 3600,
-  });
-  if (limited.error)
-    return fail(
-      "rate_limit_unavailable",
-      "The request could not be safely processed.",
-      503,
-    );
-  if (!limited.data)
-    return fail(
-      "rate_limited",
-      "Too many employee changes. Try again later.",
-      429,
     );
   let raw: unknown;
   try {
@@ -142,25 +136,83 @@ export async function POST(request: Request) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  const profile = await admin
-    .from("users")
-    .insert({
-      employee_id: input.employeeId,
-      full_name: input.fullName,
-      email,
-      phone: input.phone,
-      role: input.role,
-      access_role: input.accessRole,
-      initials,
-      status: "active",
-      permission_overrides: {},
-    })
-    .select()
-    .single();
+  // Assigned here rather than in the browser because only this side can see
+  // soft-deleted employees, who keep their ID while appearing on no screen an
+  // administrator can reach.
+  const assignEmployeeId = async () => {
+    const base = deriveEmployeeId(input.fullName);
+    const siblings = await admin
+      .from("users")
+      .select("employee_id")
+      .ilike("employee_id", `${escapeLikePattern(base)}%`);
+    if (siblings.error) return null;
+    return nextAvailableEmployeeId(
+      base,
+      siblings.data.map((row) => row.employee_id),
+    );
+  };
+  const insertProfile = (employeeId: string) =>
+    admin
+      .from("users")
+      .insert({
+        employee_id: employeeId,
+        full_name: input.fullName,
+        email,
+        phone: input.phone,
+        role: input.role,
+        access_role: input.accessRole,
+        initials,
+        status: "active",
+        permission_overrides: {},
+      })
+      .select()
+      .single();
+  const firstId = input.employeeId ?? (await assignEmployeeId());
+  if (!firstId)
+    return fail(
+      "employee_id_unavailable",
+      "An Employee ID could not be assigned. Try again.",
+      503,
+    );
+  let profile = await insertProfile(firstId);
+  // Two administrators adding staff in the same moment can be handed the same
+  // derived ID. Only a generated one is retried — a typed ID that collides is
+  // the administrator's to resolve, and quietly changing it would be worse.
+  const lostTheRace = () =>
+    !input.employeeId &&
+    uniqueViolationField(profile.error) === "employee_id";
+  for (let attempt = 0; attempt < 3 && lostTheRace(); attempt += 1) {
+    const retryId = await assignEmployeeId();
+    if (!retryId) break;
+    profile = await insertProfile(retryId);
+  }
   if (profile.error) {
+    // Logged for every failure here: the client-facing message is deliberately
+    // broad for anything that is not a named collision, so without the cause a
+    // reported reference ID leads nowhere.
+    const detail = writeErrorDetail(profile.error);
+    // Not a collision at all — nothing already holds these details, and saying
+    // otherwise sends the administrator hunting for an employee who does not
+    // exist.
+    if (isIncompatibleRole(profile.error))
+      return fail(
+        "incompatible_role",
+        "That operational role and access role cannot be combined. Choose a different access role.",
+        400,
+        detail,
+      );
     const field = uniqueViolationField(profile.error);
+    // A generated ID that survives the retries is our problem, not something to
+    // hand back as though the administrator had chosen it.
+    if (!input.employeeId && field === "employee_id")
+      return fail(
+        "employee_id_unavailable",
+        "An Employee ID could not be assigned. Try again.",
+        503,
+        detail,
+      );
     if (field) {
-      const value = field === "employee_id" ? input.employeeId : email;
+      const value = field === "employee_id" ? firstId : email;
       return fail(
         field === "employee_id" ? "employee_id_taken" : "email_taken",
         employeeConflictMessage(
@@ -169,6 +221,7 @@ export async function POST(request: Request) {
           await conflictHolder(field, value),
         ),
         409,
+        detail,
       );
     }
     // Reported as what it is. Answering a dropped connection or a rejected
@@ -179,11 +232,39 @@ export async function POST(request: Request) {
           "employee_conflict",
           "These employee details collide with an existing record.",
           409,
+          detail,
         )
       : fail(
           "profile_create_failed",
           "The employee could not be saved. Nothing was created, so it is safe to try again.",
           502,
+          detail,
+        );
+  }
+  // Checked here rather than at the top of the request: this is the first point
+  // a request has actually done something — a real profile row now exists.
+  // Counting invalid JSON, failed validation, or a rejected duplicate against
+  // the budget meant an administrator fixing a typo could exhaust it before
+  // creating anyone, which is what happened when two owners were both typed in
+  // as Employee ID "Owner." The budget still limits the same thing it always
+  // did: how many employee accounts can be minted per hour.
+  const limited = await access.client.rpc("consume_api_rate_limit", {
+    rate_bucket: "admin:employee:create",
+    maximum_attempts: 10,
+    window_seconds: 3600,
+  });
+  if (limited.error || !limited.data) {
+    await admin.from("users").delete().eq("id", profile.data.id);
+    return limited.error
+      ? fail(
+          "rate_limit_unavailable",
+          "The request could not be safely processed.",
+          503,
+        )
+      : fail(
+          "rate_limited",
+          "Too many employees created this hour. Try again later.",
+          429,
         );
   }
   // The profile is created first in both paths. `link_auth_user` attaches the

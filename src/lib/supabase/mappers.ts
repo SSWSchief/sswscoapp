@@ -3,6 +3,7 @@ import type {
   AppNotification,
   CompanySettings,
   Customer,
+  Vendor,
   Dumpster,
   InvoiceRecord,
   Job,
@@ -29,6 +30,7 @@ import type {
   PriceListRow,
   ReadReceiptRow,
   CustomerRow,
+  VendorRow,
   DumpsterRow,
   InvoiceRow,
   JobActivityRow,
@@ -74,6 +76,17 @@ export function mapCustomer(row: CustomerRow, activeJobs = 0): Customer {
     address: row.address,
     activeJobs,
     group: row.customer_group ?? undefined,
+  };
+}
+export function mapVendor(row: VendorRow): Vendor {
+  return {
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    phone: row.phone,
+    email: row.email,
+    notes: row.notes,
+    isActive: row.is_active,
   };
 }
 export function mapTruck(row: TruckRow): Truck {

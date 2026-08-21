@@ -41,6 +41,12 @@ export function logRequest(
     startedAt: number;
     status: number;
     code?: string;
+    /**
+     * Cause of the failure, for entries where the client-facing message is
+     * deliberately broad. Passed through the logger's redaction like any other
+     * context, so it must never be relied on to carry secrets.
+     */
+    detail?: Record<string, unknown>;
   },
 ) {
   log(level, event, {
@@ -50,5 +56,6 @@ export function logRequest(
     status: context.status,
     code: context.code,
     durationMs: Date.now() - context.startedAt,
+    ...(context.detail ? { detail: context.detail } : {}),
   });
 }

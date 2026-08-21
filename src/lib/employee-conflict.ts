@@ -7,6 +7,11 @@
  * the two fields to change, and the sentence is simply untrue when the write
  * failed for some other reason. These helpers name the field, name the employee
  * already holding it, and say why that employee may not be visible in the list.
+ *
+ * The same table also carries a check constraint on the role/access-role pair,
+ * which is not a collision at all and must not be described as one, and every
+ * rejected write leaves a Postgres error worth keeping in the request log —
+ * both handled at the bottom of this file.
  */
 
 /** The unique column behind a rejected write. */
@@ -27,6 +32,8 @@ interface DatabaseError {
 }
 
 const uniqueViolation = "23505";
+/** On `public.users` the only check constraint is the role/access-role pair. */
+const checkViolation = "23514";
 const duplicateWording = /duplicate key|already exists/i;
 
 /**
@@ -91,4 +98,35 @@ export function employeeConflictMessage(
  */
 export function escapeLikePattern(value: string) {
   return value.replace(/[\\%_]/g, (character) => `\\${character}`);
+}
+
+/**
+ * Whether the write was refused because the operational role and the access
+ * role cannot go together.
+ *
+ * Reported separately because it is not a duplicate: nothing already holds
+ * these details, and telling an administrator otherwise sends them hunting for
+ * a employee who does not exist.
+ */
+export function isIncompatibleRole(error: DatabaseError | null | undefined) {
+  return error?.code === checkViolation;
+}
+
+/**
+ * The parts of a Postgres error worth keeping in the request log.
+ *
+ * The client-facing message is deliberately broad for anything that is not a
+ * named collision, so without this a reported reference ID leads to a log entry
+ * that says no more than the administrator already saw. The logger redacts
+ * email addresses inside these strings; what survives is the constraint and the
+ * non-sensitive key that collided.
+ */
+export function writeErrorDetail(
+  error: DatabaseError,
+): Record<string, unknown> {
+  return {
+    pgCode: error.code ?? null,
+    pgMessage: error.message ?? null,
+    pgDetails: error.details ?? null,
+  };
 }
