@@ -6,6 +6,8 @@ import {
 } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { emailDeliveryEnabled } from "@/lib/email-delivery";
+import { emailRedirectUrl } from "@/lib/app-url";
 
 const route = "/api/admin/employees/[id]/invite";
 
@@ -33,6 +35,16 @@ export async function POST(
       access.error,
       access.status,
     );
+  // Supabase accepts `resetPasswordForEmail` without custom SMTP and resolves
+  // it successfully regardless — it just delivers nothing. Refused here rather
+  // than reporting "initiated" for a message that never leaves the project, the
+  // same reasoning already applied to invitation delivery at employee creation.
+  if (!emailDeliveryEnabled())
+    return fail(
+      "email_delivery_disabled",
+      "Email sending is not configured, so a reset email cannot be delivered. Issue a temporary password instead.",
+      409,
+    );
   const limited = await access.client.rpc("consume_api_rate_limit", {
     rate_bucket: "admin:invite",
     maximum_attempts: 10,
@@ -59,8 +71,22 @@ export async function POST(
     .maybeSingle();
   if (!profile.data)
     return fail("employee_not_found", "Employee not found.", 404);
+  // Deliberately not `new URL(request.url).origin`. That is whichever host the
+  // administrator happened to be signed in on, and the team-scoped Vercel alias
+  // is SSO-protected — a reset issued from there emailed the employee a link to
+  // a Vercel login page. The public address is resolved from configuration.
+  let redirectTo: string;
+  try {
+    redirectTo = emailRedirectUrl("/reset-password");
+  } catch {
+    return fail(
+      "app_url_unconfigured",
+      "The application has no public address configured, so a reset link would be undeliverable. Nothing was sent.",
+      500,
+    );
+  }
   const result = await admin.auth.resetPasswordForEmail(profile.data.email, {
-    redirectTo: `${new URL(request.url).origin}/auth/confirm?next=/reset-password`,
+    redirectTo,
   });
   if (result.error)
     return fail(

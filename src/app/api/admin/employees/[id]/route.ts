@@ -8,9 +8,11 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { employeePatchSchema, jsonBodySizeAllowed } from "@/lib/validation";
 import {
-  employeeWriteFailure,
+  employeeConflictMessage,
+  isIncompatibleRole,
+  uniqueViolationField,
   writeErrorDetail,
-} from "@/lib/employee-conflicts";
+} from "@/lib/employee-conflict";
 
 const route = "/api/admin/employees/[id]";
 
@@ -228,20 +230,51 @@ export async function PATCH(
     .single();
   if (result.error) {
     for (const rollback of rollbacks.reverse()) await rollback();
-    // Employee IDs are editable, so a rejected update collides on the same two
-    // unique columns a rejected insert does and is reported the same way.
-    const conflict = employeeWriteFailure(result.error, {
-      employeeId: input.employeeId,
-    });
+    // Same reasoning as the create route: name the field that collided and the
+    // employee holding it, including the removed records that hold a value
+    // while appearing in no list. The cause is logged either way, so a reported
+    // reference ID can be answered.
     const detail = writeErrorDetail(result.error);
-    return conflict
-      ? fail(conflict.code, conflict.message, conflict.status, detail)
-      : fail(
-          "profile_update_failed",
-          "The employee profile could not be updated and authentication changes were rolled back.",
-          400,
-          detail,
-        );
+    if (isIncompatibleRole(result.error))
+      return fail(
+        "incompatible_role",
+        "That operational role and access role cannot be combined. Choose a different access role.",
+        400,
+        detail,
+      );
+    const field = uniqueViolationField(result.error);
+    const value = field === "employee_id" ? input.employeeId : newEmail;
+    if (field && value) {
+      const holder = await admin
+        .from("users")
+        .select("full_name,status,deleted_at")
+        .eq(field, value)
+        .neq("id", id)
+        .limit(1)
+        .maybeSingle();
+      return fail(
+        field === "employee_id" ? "employee_id_taken" : "email_taken",
+        employeeConflictMessage(
+          field,
+          value,
+          holder.data
+            ? {
+                fullName: holder.data.full_name,
+                removed: Boolean(holder.data.deleted_at),
+                inactive: holder.data.status === "inactive",
+              }
+            : null,
+        ),
+        409,
+        detail,
+      );
+    }
+    return fail(
+      "profile_update_failed",
+      "The employee profile could not be updated and authentication changes were rolled back.",
+      400,
+      detail,
+    );
   }
   const auditActions = [
     input.status ? `status_${input.status}` : null,

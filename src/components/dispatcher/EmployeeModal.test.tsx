@@ -4,19 +4,21 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EmployeeModal } from "./EmployeeModal";
 
-const existingEmployees = [
-  {
-    id: "user-1",
-    employeeId: "Owner",
-    fullName: "Austin Marshall",
-    email: "amarshall@sswsco.com",
-  },
-];
+// The modal reads the loaded employee list to catch duplicates before it asks
+// the server. Tests append to this rather than re-mocking the provider.
+const employees: {
+  id: string;
+  employeeId: string;
+  fullName: string;
+  email: string;
+  status: "active" | "inactive";
+}[] = [];
+
 vi.mock("@/components/system/OperationsProvider", () => ({
   useOperations: () => ({
     canMutate: true,
     refresh: async () => {},
-    users: existingEmployees,
+    users: employees,
   }),
 }));
 vi.mock("@/components/system/ToastProvider", () => ({
@@ -26,6 +28,7 @@ vi.mock("@/components/system/ToastProvider", () => ({
 // Vitest runs without `globals`, so Testing Library never registers its own
 // automatic cleanup and rendered trees would otherwise leak between tests.
 afterEach(() => {
+  employees.length = 0;
   cleanup();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -116,8 +119,9 @@ describe("EmployeeModal employee ID", () => {
     const user = userEvent.setup();
     render(<EmployeeModal open onClose={() => {}} />);
     await user.type(screen.getByLabelText(/^Full Name/), "Norberto Angulo");
-    expect(screen.getByText(/Assigned automatically — NANGULO/)).
-      toBeInTheDocument();
+    expect(
+      screen.getByText(/Assigned automatically — NANGULO/),
+    ).toBeInTheDocument();
   });
 
   it("still sends an ID that was entered by hand", async () => {
@@ -180,9 +184,16 @@ describe("EmployeeModal roles", () => {
 describe("EmployeeModal duplicate details", () => {
   beforeEach(() => {
     vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "");
+    employees.push({
+      id: "u1",
+      employeeId: "Owner",
+      fullName: "Eli Montoya",
+      email: "eli@sswsco.com",
+      status: "active",
+    });
   });
 
-  it("names the employee already holding a reused Employee ID", async () => {
+  it("names the employee holding a duplicate Employee ID before asking the server", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
@@ -194,10 +205,10 @@ describe("EmployeeModal duplicate details", () => {
     await user.type(screen.getByLabelText(/^Email/), "nangulo@sswsco.com");
     await user.click(screen.getByRole("button", { name: "Create Employee" }));
 
-    expect(
-      screen.getByText(/already belongs to Austin Marshall/),
-    ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toContain(
+      "already used by Eli Montoya",
+    );
   });
 
   it("names the employee already holding a reused email address", async () => {
@@ -205,16 +216,15 @@ describe("EmployeeModal duplicate details", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     render(<EmployeeModal open onClose={() => {}} />);
-    await user.type(screen.getByLabelText(/^Employee ID/), "EMP-9");
-    await user.type(screen.getByLabelText(/^Full Name/), "Austin Marshall");
+    await user.type(screen.getByLabelText(/^Full Name/), "Norberto Angulo");
     // Stored lowercase, so a differently-cased retype is the same address.
-    await user.type(screen.getByLabelText(/^Email/), "AMarshall@sswsco.com");
+    await user.type(screen.getByLabelText(/^Email/), "Eli@sswsco.com");
     await user.click(screen.getByRole("button", { name: "Create Employee" }));
 
-    expect(
-      screen.getByText(/Austin Marshall already uses this email address/),
-    ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toContain(
+      "already used by Eli Montoya",
+    );
   });
 
   it("clears the conflict once the Employee ID is edited", async () => {
@@ -225,13 +235,42 @@ describe("EmployeeModal duplicate details", () => {
     await user.type(screen.getByLabelText(/^Full Name/), "Norberto Angulo");
     await user.type(screen.getByLabelText(/^Email/), "nangulo@sswsco.com");
     await user.click(screen.getByRole("button", { name: "Create Employee" }));
-    expect(
-      screen.getByText(/already belongs to Austin Marshall/),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("alert").textContent).toContain(
+      "already used by Eli Montoya",
+    );
 
     await user.type(screen.getByLabelText(/^Employee ID/), "-2");
-    expect(
-      screen.queryByText(/already belongs to Austin Marshall/),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("pins a server conflict to its field without the support reference", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 409,
+        headers: new Headers(),
+        json: async () => ({
+          error: {
+            code: "employee_id_taken",
+            message:
+              "Employee ID \u201cOwner\u201d still belongs to a removed record for Fred Dakake.",
+            requestId: "sfo1::abc",
+          },
+        }),
+      })),
+    );
+    render(<EmployeeModal open onClose={() => {}} />);
+    await fillRequiredFields(user);
+    await user.click(screen.getByRole("button", { name: "Create Employee" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("removed record for Fred Dakake");
+    expect(alert.textContent).not.toContain("Reference");
+    // The message survives on screen, so it can be read while the field is
+    // corrected — and clears as soon as it is.
+    await user.type(screen.getByLabelText(/^Employee ID/), "9");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

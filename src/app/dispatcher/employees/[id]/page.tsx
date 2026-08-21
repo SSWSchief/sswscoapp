@@ -42,6 +42,7 @@ export default function EmployeeAccessPage({
     protectedAdministratorIds,
   } = useOperations();
   const { toast } = useToast();
+  const canEmail = emailDeliveryEnabled();
   const [pending, setPending] = React.useState(false);
   const [issuedPassword, setIssuedPassword] = React.useState<string | null>(
     null,
@@ -455,16 +456,17 @@ export default function EmployeeAccessPage({
                     Issue Temporary Password
                   </Button>
                   {/*
-                    Supabase reports resetPasswordForEmail as successful with
-                    no SMTP connected — it just never delivers anything — so
-                    this button used to toast "Password reset email
-                    initiated" while sending nothing. Matthew is that failure:
-                    an administrator clicked it, believed it, and he never
-                    heard anything. The login page already treats this
-                    correctly (see the "Forgot password?" link there); this
-                    button gets the same treatment now.
+                    Replaced rather than merely disabled when email sending is
+                    off: Supabase resolves `resetPasswordForEmail` successfully
+                    with no SMTP connected, so the button used to report
+                    "initiated" for a message that never left the project.
+                    Matthew is that failure — an administrator clicked it,
+                    believed it, and he never heard anything. Saying so beats
+                    hiding the control, which leaves an administrator looking
+                    for an option they remember being there. The login page
+                    treats "Forgot password?" the same way.
                   */}
-                  {emailDeliveryEnabled() ? (
+                  {canEmail ? (
                     <Button
                       className="w-full"
                       variant="secondary"

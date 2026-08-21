@@ -7,7 +7,8 @@ import { FormField, Input, Select } from "@/components/ui/Field";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useToast } from "@/components/system/ToastProvider";
 import type { AccessRole, UserRole } from "@/lib/types";
-import { apiErrorMessage } from "@/lib/client-api";
+import { apiErrorDetail } from "@/lib/client-api";
+import { employeeConflictMessage } from "@/lib/employee-conflict";
 import { emailDeliveryEnabled } from "@/lib/email-delivery";
 import { deriveEmployeeId } from "@/lib/employee-id";
 import { accessRoleLabel, defaultAccessRole } from "@/lib/permissions";
@@ -23,6 +24,9 @@ export function EmployeeModal({
   const { toast } = useToast();
   const canEmail = emailDeliveryEnabled();
   const [saving, setSaving] = React.useState(false);
+  // Kept beside the field rather than only in a toast: a duplicate Employee ID
+  // is fixed by editing that field, and a message that has already faded is no
+  // help while doing it.
   const [errors, setErrors] = React.useState<{
     employeeId?: string;
     email?: string;
@@ -71,6 +75,9 @@ export function EmployeeModal({
     // is the only side that can see soft-deleted employees still holding one.
     const employeeId = form.employeeId.trim();
     const email = form.email.trim().toLowerCase();
+    // Caught before the round trip where the list on screen already proves it.
+    // The server stays authoritative — it also sees inactive and removed
+    // employees, which never reach this list.
     const idHolder = employeeId
       ? users.find((user) => user.employeeId === employeeId)
       : undefined;
@@ -78,13 +85,26 @@ export function EmployeeModal({
       (user) => user.email.toLowerCase() === email,
     );
     if (idHolder || emailHolder) {
+      // Worded by the same helper the routes use, so the sentence does not
+      // change depending on which side noticed.
       setErrors({
         employeeId: idHolder
-          ? `Employee ID "${employeeId}" already belongs to ${idHolder.fullName}. Each employee needs their own.`
+          ? employeeConflictMessage("employee_id", employeeId, {
+              fullName: idHolder.fullName,
+              removed: false,
+              inactive: idHolder.status === "inactive",
+            })
           : undefined,
         email: emailHolder
-          ? `${emailHolder.fullName} already uses this email address.`
+          ? employeeConflictMessage("email", email, {
+              fullName: emailHolder.fullName,
+              removed: false,
+              inactive: emailHolder.status === "inactive",
+            })
           : undefined,
+      });
+      toast("That employee could not be created — see the highlighted field.", {
+        tone: "error",
       });
       return;
     }
@@ -99,10 +119,33 @@ export function EmployeeModal({
           employeeId: employeeId || undefined,
         }),
       });
-      if (!response.ok)
-        throw new Error(
-          await apiErrorMessage(response, "The employee could not be created."),
+      if (!response.ok) {
+        const failure = await apiErrorDetail(
+          response,
+          "The employee could not be created.",
         );
+        // A conflict is the administrator's to resolve, so it is pinned to the
+        // field it belongs to and shown without the support reference. Anything
+        // else keeps the reference: it is the only handle on a server fault.
+        const field =
+          failure.code === "employee_id_taken"
+            ? "employeeId"
+            : failure.code === "email_taken" || failure.code === "account_exists"
+              ? "email"
+              : null;
+        if (field) {
+          setErrors(
+            field === "employeeId"
+              ? { employeeId: failure.message }
+              : { email: failure.message },
+          );
+          toast(failure.message, { tone: "error" });
+          return;
+        }
+        throw new Error(
+          `${failure.message}${failure.requestId ? ` (Reference ${failure.requestId})` : ""}`,
+        );
+      }
       const body = (await response.json()) as {
         data?: { temporaryPassword?: string };
       };
@@ -111,7 +154,7 @@ export function EmployeeModal({
         // Held on screen rather than closing: this is the only time the
         // password is ever shown.
         setIssued({
-          name: form.fullName,
+          name: form.fullName.trim(),
           password: body.data.temporaryPassword,
         });
         toast("Employee created.", { tone: "success" });

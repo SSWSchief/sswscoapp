@@ -5,6 +5,8 @@ import {
   requestId,
 } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveAppUrl } from "@/lib/app-url";
+import { emailDeliveryEnabled } from "@/lib/email-delivery";
 
 export const dynamic = "force-dynamic";
 const route = "/api/health";
@@ -12,6 +14,7 @@ const route = "/api/health";
 export async function GET(request: Request) {
   const startedAt = Date.now();
   const requestIdValue = requestId(request);
+  const appUrl = resolveAppUrl();
   try {
     const databaseStartedAt = Date.now();
     const result = await createAdminClient()
@@ -28,6 +31,15 @@ export async function GET(request: Request) {
         },
       },
       release: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) || "local",
+      // Reported so the address emailed links point at can be read from
+      // outside in one request. It is the public URL of this application, so
+      // there is nothing here a visitor does not already know — and the last
+      // time it was wrong it took ten days and three support rounds to find.
+      emailLinks: {
+        appUrl: appUrl.url,
+        source: appUrl.source,
+        emailDeliveryEnabled: emailDeliveryEnabled(),
+      },
     };
     logRequest("info", "health_check_complete", {
       requestId: requestIdValue,

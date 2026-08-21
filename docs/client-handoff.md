@@ -219,15 +219,16 @@ original plan; the steps still generalize to any future provider change.
   doesn't, something touched the wrong record.
 - Supabase → Authentication → SMTP Settings: custom SMTP via
   `smtp.resend.com`, sender `notifications@sswsco.com`.
-- Invite user and Reset Password templates are repointed to the `token_hash`
-  form below. **Confirm sign up still uses the default `{{ .ConfirmationURL }}`**
-  — harmless only because public signup is disabled (reconfirm that toggle
-  before ever changing this); fix it the same way if signup is ever turned on.
-- `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel production, set
-  August 16, 2026.
-- Redirect handling verified against production with
-  `npm run auth:check-redirect -- --email=tehronporter@gmail.com` on
-  August 17, 2026: **PASS**.
+- Invite user and Reset Password templates use the **stock
+  `{{ .ConfirmationURL }}`** form. They were briefly hand-edited to a
+  `{{ .SiteURL }}` + `{{ .TokenHash }}` form; that is what broke onboarding for
+  ten days and it was reverted on August 21, 2026. Step 5 explains why.
+  **Confirm sign up also uses the default** — harmless only because public
+  signup is disabled (reconfirm that toggle before ever changing this).
+- `NEXT_PUBLIC_APP_URL=https://sswscoapp.vercel.app` and
+  `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel production.
+- Verified end to end on August 21, 2026: a real reset delivered to a Gmail
+  inbox, link clicked, session established, "Set new password" reached.
 
 **What actually went wrong on day one, for the record.** An employee
 (Matthew Hicks) was reported as never receiving an email. Resend's own send
@@ -257,33 +258,59 @@ second look because something broke:
    record can break the company's real mail, not just the new integration.
 2. In Supabase → Project Settings → Authentication → SMTP Settings, enable
    custom SMTP with the provider's host and credentials.
-3. **Repoint the two credential-issuing email templates.** Authentication →
-   Emails, then set the link `href` in each. Leave the rest of the HTML alone.
+3. Set the sender to a real monitored address on `sswsco.com`, and confirm the
+   provider's DKIM record verifies. `sswsco.com` publishes `p=quarantine`, so
+   misaligned mail is quarantined rather than delivered.
+4. **Set `NEXT_PUBLIC_APP_URL` in Vercel** to the public address of the
+   application — today `https://sswscoapp.vercel.app`, or the custom domain if
+   one is ever added — and redeploy. This is the single setting that decides
+   where an emailed link sends someone.
 
-   *Invite user*
-   ```
-   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/reset-password
-   ```
-   *Reset Password*
-   ```
-   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password
-   ```
+   It exists because the alternative kept failing. Supabase decides a link's
+   destination from the `redirect_to` the application supplies, and falls back
+   to the project's **Site URL** whenever there is none. The application used to
+   supply none for invitations, so the Site URL — a dashboard field, edited by
+   hand, in a different product — was the only thing pointing employees at the
+   app. It drifted twice. The second time it pointed at
+   `https://sswscoapp-silver-state-waste-solutions.vercel.app`, the team-scoped
+   Vercel alias, which Deployment Protection answers with a Vercel login page:
+   every new hire who clicked "accept your invitation" was asked to sign up for
+   a Vercel account. The application now supplies `redirect_to` on every link it
+   sends, from this variable.
 
-   This is not cosmetic and it is easy to skip. The default
-   `{{ .ConfirmationURL }}` returns the token in the URL *fragment* — the part
-   after `#` — which browsers never send to a server, so `/auth/confirm` sees
-   nothing and bounces the employee to `/login?error=auth_confirm`. Putting
-   `token_hash` in the query string is what lets the server redeem it.
+   Confirm it took, from anywhere:
+   ```
+   curl -s https://sswscoapp.vercel.app/api/health
+   ```
+   `emailLinks.appUrl` must be the public address and `emailLinks.source` should
+   read `configured`. `vercel` means the variable is unset and Vercel's own
+   production domain is being used — correct today, but not pinned by anything.
 
-   Hardcode `type` as shown. Do not use `{{ .Type }}`: it is not a documented
-   Supabase variable, and an empty value makes the route reject the link.
-4. Re-confirm the Site URL and redirect allowlist:
+5. **Leave the two email templates alone.** Authentication → Emails: the stock
+   *Invite user* and *Reset Password* templates both use
+   `{{ .ConfirmationURL }}`, and that works end to end.
+
+   Earlier revisions of this document asked for hand-edited templates built on
+   `{{ .SiteURL }}` and `{{ .TokenHash }}`. Do not use them. `{{ .SiteURL }}`
+   interpolates a dashboard field that the Vercel–Supabase integration rewrites
+   on every deployment, so those templates reintroduce the exact failure they
+   were meant to avoid. The reason they existed was real —
+   `{{ .ConfirmationURL }}` returns its tokens in the URL *fragment*, which
+   browsers never send to a server, so `/auth/confirm` could not redeem them —
+   but the application handles that case in the browser now, so the stock
+   templates are both correct and nothing to maintain.
+
+6. Verify the whole path in one command:
    ```
    npm run auth:check-redirect -- --email=<a reserved account>
    ```
-   This generates a link and sends nothing. It must report PASS before you rely
-   on email — a rewritten redirect means links will dead-end. Never point this
-   at a real employee address.
+   Never point this at a real employee address. It generates a link and sends
+   nothing. It checks three things, and an earlier version that checked only
+   the first reported PASS while every invitation was dead-ending:
+
+   - a requested redirect survives the project's allowlist,
+   - the Site URL a link falls back to is the application, not an alias,
+   - neither address is behind Vercel Deployment Protection.
 
    The check reads `.env.local`, which points at **staging**, so it verifies
    staging by default. To check production, supply its credentials explicitly
@@ -298,16 +325,36 @@ second look because something broke:
    Treat that key as sensitive once it has been typed anywhere: clear terminal
    scrollback afterward, and rotate it in Supabase → Project Settings → API if
    it is ever visible in a screenshot, chat log, or shared screen.
-5. Set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel and redeploy if it
+
+   **Do not try to fix a wrong Site URL by correcting it.** That was attempted
+   four times and reverted every time: the Vercel–Supabase integration rewrites
+   it on every deployment, to the team-scoped alias
+   `https://sswscoapp-silver-state-waste-solutions.vercel.app/`, which
+   Deployment Protection answers with a Vercel login page. It also re-adds the
+   allowlist entries shaped
+   `https://sswscoapp-*-silver-state-waste-solutions.vercel.app/**` — seeing
+   those is how you recognise it. Nothing depends on the Site URL any more, so
+   let it drift. What does matter is that `https://sswscoapp.vercel.app/**`
+   stays in the redirect allowlist: Supabase discards a `redirect_to` that is
+   not on it and falls back to the Site URL.
+
+7. Set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel and redeploy if it
    is not already. The sign-in screen then offers self-service password reset
    again, and Add Employee grows a "How they get in" choice. While this is
    `false`, Add Employee shows no such choice and always issues a temporary
-   password, and every button elsewhere that would email a reset link hides
-   itself rather than reporting a success it cannot deliver — that is
-   deliberate on both counts.
-6. Send one invitation or reset to a reserved account — never a real
-   employee — and open the email in a real inbox. Click the link. If it lands
-   on `/login?error=auth_confirm`, step 3 was missed or mistyped. A `200` from
-   the provider's send API only proves the message left their servers, not
-   that it reached an inbox; a real click-through is the only step that
-   confirms delivery, not just dispatch.
+   password, and every button elsewhere that would email a reset link says so
+   rather than reporting a success it cannot deliver — deliberate on both counts.
+8. Send one invitation or reset to a reserved account — never a real
+   employee — and open the email in a real inbox. Click the link. It should
+   open the application's "Set new password" screen. A Vercel login page means
+   step 4 or 5 was missed. A `200` from the provider's send API only proves the
+   message left their servers, not that it reached an inbox; a real
+   click-through is the only step that confirms delivery, not just dispatch.
+
+   One thing to expect: Gmail shows "This message might be dangerous" on these
+   emails and strips the link, even though SPF, DKIM and DMARC all pass. It is
+   a phishing heuristic, not an authentication failure — the sender is
+   `sswsco.com` while the only link points at
+   `doofdntdobpixqmcqfnm.supabase.co`, which is the shape of a
+   credential-phishing email. Giving the application a custom domain on
+   `sswsco.com` would align the two and is the real fix.
