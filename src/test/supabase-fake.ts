@@ -7,6 +7,12 @@
  * insert or update can be made to fail with any Postgres error code.
  */
 
+export type AuthCall = {
+  method: "inviteUserByEmail" | "resetPasswordForEmail";
+  email: string;
+  redirectTo: string | undefined;
+};
+
 export type Row = Record<string, unknown>;
 export type Tables = Record<string, Row[]>;
 export interface DatabaseFailure {
@@ -108,9 +114,22 @@ export function fakeAdminClient(tables: Tables, options: Options = {}) {
     };
     return chain;
   };
+  /**
+   * Every emailed-link request, with the options it was given.
+   *
+   * The `redirectTo` is the whole point of recording these: an invitation sent
+   * without one is accepted by Supabase and delivered, and only fails later,
+   * on the employee's screen, as a Vercel login page.
+   */
+  const authCalls: AuthCall[] = [];
+  const record = (method: AuthCall["method"], email: string, options?: { redirectTo?: string }) => {
+    authCalls.push({ method, email, redirectTo: options?.redirectTo });
+    return { data: {}, error: null };
+  };
   return {
     /** Every row this client actually wrote, for asserting nothing was created. */
     inserted,
+    authCalls,
     tables: store,
     client: {
       from,
@@ -119,12 +138,14 @@ export function fakeAdminClient(tables: Tables, options: Options = {}) {
         error: null,
       }),
       auth: {
-        resetPasswordForEmail: async () => ({ data: {}, error: null }),
+        resetPasswordForEmail: async (email: string, options?: { redirectTo?: string }) =>
+          record("resetPasswordForEmail", email, options),
         admin: {
           listUsers: async () => ({ data: { users: [] }, error: null }),
           createUser: async () => ({ data: { user: { id: "auth-new" } }, error: null }),
           updateUserById: async () => ({ data: { user: { id: "auth-new" } }, error: null }),
-          inviteUserByEmail: async () => ({ data: {}, error: null }),
+          inviteUserByEmail: async (email: string, options?: { redirectTo?: string }) =>
+            record("inviteUserByEmail", email, options),
         },
       },
     },

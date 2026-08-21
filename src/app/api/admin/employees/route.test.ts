@@ -182,3 +182,70 @@ describe("POST /api/admin/employees conflicts", () => {
     });
   });
 });
+
+describe("POST /api/admin/employees invitation links", () => {
+  it("tells Supabase where the invitation must land", async () => {
+    // Without an explicit `redirectTo`, Supabase falls back to the project's
+    // Site URL — a dashboard field that pointed at an SSO-protected Vercel
+    // alias in production and asked every new hire to sign up for Vercel.
+    vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://sswscoapp.vercel.app");
+    supabase = fakeAdminClient({ users: [] });
+
+    const response = await POST(request({ delivery: "invitation" }));
+
+    expect(response.status).toBe(201);
+    expect(supabase.authCalls).toEqual([
+      {
+        method: "inviteUserByEmail",
+        email: "fdakake@sswsco.com",
+        redirectTo:
+          "https://sswscoapp.vercel.app/auth/confirm?next=%2Freset-password",
+      },
+    ]);
+  });
+
+  it("ignores the host the administrator happens to be browsing", async () => {
+    vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://sswscoapp.vercel.app");
+    supabase = fakeAdminClient({ users: [] });
+
+    await POST(
+      new Request(
+        "https://sswscoapp-silver-state-waste-solutions.vercel.app/api/admin/employees",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            employeeId: "Owner",
+            fullName: "Fred Dakake",
+            email: "fdakake@sswsco.com",
+            phone: "(973) 277-8852",
+            role: "management",
+            accessRole: "admin",
+            delivery: "invitation",
+          }),
+        },
+      ),
+    );
+
+    expect(supabase.authCalls[0]?.redirectTo).toBe(
+      "https://sswscoapp.vercel.app/auth/confirm?next=%2Freset-password",
+    );
+  });
+
+  it("rolls the profile back rather than emailing a link to localhost", async () => {
+    vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "");
+    vi.stubEnv("NODE_ENV", "production");
+    supabase = fakeAdminClient({ users: [] });
+
+    const result = await failure(await POST(request({ delivery: "invitation" })));
+
+    expect(result.status).toBe(500);
+    expect(result.code).toBe("app_url_unconfigured");
+    expect(supabase.authCalls).toEqual([]);
+    expect(supabase.tables.users).toEqual([]);
+  });
+});

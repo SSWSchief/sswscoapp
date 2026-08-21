@@ -24,9 +24,12 @@ function employee(overrides: Row = {}): Row {
 
 function invite() {
   return POST(
-    new Request("https://sswscoapp.test/api/admin/employees/matthew/invite", {
-      method: "POST",
-    }),
+    new Request(
+      "https://sswscoapp-silver-state-waste-solutions.vercel.app/api/admin/employees/matthew/invite",
+      {
+        method: "POST",
+      },
+    ),
     { params: Promise.resolve({ id: "matthew" }) },
   );
 }
@@ -59,10 +62,45 @@ describe("POST /api/admin/employees/[id]/invite", () => {
 
   it("sends the reset once email delivery is actually configured", async () => {
     vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://sswscoapp.vercel.app");
     supabase = fakeAdminClient({ users: [employee()] });
 
     const response = await invite();
 
     expect(response.status).toBe(200);
+  });
+
+  it("points the reset at the configured address, not the host it was called on", async () => {
+    // `invite()` calls this route on an SSO-protected alias. Deriving the link
+    // from the request origin is how an administrator emailed an employee a
+    // Vercel login page.
+    vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://sswscoapp.vercel.app");
+    supabase = fakeAdminClient({ users: [employee()] });
+
+    await invite();
+
+    expect(supabase.authCalls).toEqual([
+      {
+        method: "resetPasswordForEmail",
+        email: "matthew@sswsco.com",
+        redirectTo:
+          "https://sswscoapp.vercel.app/auth/confirm?next=%2Freset-password",
+      },
+    ]);
+  });
+
+  it("sends nothing when there is no public address to link to", async () => {
+    vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "");
+    vi.stubEnv("NODE_ENV", "production");
+    supabase = fakeAdminClient({ users: [employee()] });
+
+    const result = await failure(await invite());
+
+    expect(result.status).toBe(500);
+    expect(result.code).toBe("app_url_unconfigured");
+    expect(supabase.authCalls).toEqual([]);
   });
 });
