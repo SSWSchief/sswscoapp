@@ -185,18 +185,23 @@ The client owner accepts, by signing this handoff, that the support
 administrator retains access to production data until such a migration is
 applied.
 
-## Appendix — connecting email later (optional, not planned)
+## Appendix — email onboarding
 
-**Skip this section.** The company runs on administrator-issued temporary
-passwords by choice, and with a small team that is a complete and reasonable
-onboarding method — nothing here is required for the system to work.
+This section was written as optional and is no longer: as of August 2026 the
+project sends real mail, `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED` is `true` in
+production, and employees are onboarded by emailed invitation rather than by
+temporary passwords handed over in person. Both paths still work; Add Employee
+offers the choice.
 
-Keep it only for the day handing out passwords by hand stops being practical.
-Connecting email restores emailed invitations and self-service password reset.
+Steps 1–3 cover connecting a mail provider and can be skipped if one is already
+connected. **Steps 4–8 are the ones that decide whether the link in that email
+actually reaches the application**, and they are where this has gone wrong
+before — twice — so read them even if mail is already flowing.
 
 Silver State already has Microsoft 365 (the domain's DNS resolves mail through
 Proofpoint to a Microsoft tenant), so **this needs no new vendor** — the
-existing mail service can send for the application.
+existing mail service can send for the application. Any SMTP provider works;
+Resend is equally fine and needs no Microsoft tenant changes.
 
 0. **Disable public signup first.** Authentication → Sign In / Providers →
    turn off "Allow new users to sign up". Until email exists, an unconfirmed
@@ -215,35 +220,56 @@ existing mail service can send for the application.
    different provider would need new DNS records and the domain currently
    publishes `p=quarantine`, so misaligned mail is quarantined rather than
    delivered.
-4. **Repoint the two email templates.** Authentication → Emails, then set the
-   link `href` in each. Leave the rest of the HTML alone.
+4. **Set `NEXT_PUBLIC_APP_URL` in Vercel** to the public address of the
+   application — today `https://sswscoapp.vercel.app`, or the custom domain if
+   one is ever added — and redeploy. This is the single setting that decides
+   where an emailed link sends someone.
 
-   *Invite user*
-   ```
-   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/reset-password
-   ```
-   *Reset Password*
-   ```
-   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password
-   ```
+   It exists because the alternative kept failing. Supabase decides a link's
+   destination from the `redirect_to` the application supplies, and falls back
+   to the project's **Site URL** whenever there is none. The application used to
+   supply none for invitations, so the Site URL — a dashboard field, edited by
+   hand, in a different product — was the only thing pointing employees at the
+   app. It drifted twice. The second time it pointed at
+   `https://sswscoapp-silver-state-waste-solutions.vercel.app`, the team-scoped
+   Vercel alias, which Deployment Protection answers with a Vercel login page:
+   every new hire who clicked "accept your invitation" was asked to sign up for
+   a Vercel account. The application now supplies `redirect_to` on every link it
+   sends, from this variable.
 
-   This is not cosmetic and it is easy to skip. The default
-   `{{ .ConfirmationURL }}` returns the token in the URL *fragment* — the part
-   after `#` — which browsers never send to a server, so `/auth/confirm` sees
-   nothing and bounces the employee to `/login?error=auth_confirm`. Putting
-   `token_hash` in the query string is what lets the server redeem it.
+   Confirm it took, from anywhere:
+   ```
+   curl -s https://sswscoapp.vercel.app/api/health
+   ```
+   `emailLinks.appUrl` must be the public address and `emailLinks.source` should
+   read `configured`. `vercel` means the variable is unset and Vercel's own
+   production domain is being used — correct today, but not pinned by anything.
 
-   Hardcode `type` as shown. Do not use `{{ .Type }}`: it is not a documented
-   Supabase variable, and an empty value makes the route reject the link.
-5. Re-confirm the Site URL and redirect allowlist. Production was corrected and
-   verified on August 13, 2026 — Site URL `https://sswscoapp.vercel.app`, one
-   redirect entry `https://sswscoapp.vercel.app/**` — so this is a regression
-   check, not a fix:
+5. **Leave the two email templates alone.** Authentication → Emails: the stock
+   *Invite user* and *Reset Password* templates both use
+   `{{ .ConfirmationURL }}`, and that now works end to end.
+
+   Earlier revisions of this document asked for hand-edited templates built on
+   `{{ .SiteURL }}` and `{{ .TokenHash }}`. Do not use them. `{{ .SiteURL }}`
+   interpolates the same drifting dashboard field described above, so those
+   templates reintroduce the exact failure they were meant to avoid. The reason
+   they existed was real — `{{ .ConfirmationURL }}` returns its tokens in the
+   URL *fragment*, which browsers never send to a server, so `/auth/confirm`
+   could not redeem them — but the application handles that case in the browser
+   now, so the stock templates are both correct and nothing to maintain.
+
+6. Verify the whole path in one command. Production's Site URL and redirect
+   allowlist were last corrected on August 20, 2026:
    ```
    npm run auth:check-redirect -- --email=<a reserved account>
    ```
-   This generates a link and sends nothing. It must report PASS before you rely
-   on email — a rewritten redirect means links will dead-end.
+   This generates a link and sends nothing. It checks three things, and an
+   earlier version that checked only the first reported PASS while every
+   invitation was dead-ending:
+
+   - a requested redirect survives the project's allowlist,
+   - the Site URL a link falls back to is the application, not an alias,
+   - neither address is behind Vercel Deployment Protection.
 
    The check reads `.env.local`, which points at **staging**, so it verifies
    staging by default. To check production, supply its credentials explicitly
@@ -255,13 +281,14 @@ existing mail service can send for the application.
    ```
    Take the secret key from the Supabase dashboard. Vercel marks it Sensitive,
    so `vercel env pull` returns it empty — that is intended, not a fault.
-6. Set `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel and redeploy. The
-   sign-in screen then offers self-service password reset again, and Add
-   Employee grows a "How they get in" choice. Until this is set, Add Employee
-   shows no such choice and always issues a temporary password — that is
-   deliberate. Supabase accepts an invitation request without SMTP and simply
-   never delivers it, so offering the option before this step only produced a
-   failed creation.
-7. Send one invitation to yourself end to end before switching any employee over.
-   Click the link from a real inbox. If it lands on `/login?error=auth_confirm`,
-   step 4 was missed or mistyped.
+
+   For belt and braces, set Supabase → Authentication → URL Configuration →
+   Site URL to `https://sswscoapp.vercel.app` and keep one redirect entry,
+   `https://sswscoapp.vercel.app/**`. Nothing depends on the Site URL any more,
+   but a correct value costs nothing and the check will tell you if it drifts.
+
+8. Send one invitation to yourself end to end before switching any employee
+   over. Click the link from a real inbox. It should open the application's
+   "Set new password" screen. A Vercel login page means step 4 was missed;
+   `/login` with "that sign-in link is invalid or has expired" means the link
+   was genuinely stale — send a fresh one and click it promptly.

@@ -13,6 +13,11 @@ import { createClient } from "@/lib/supabase/server";
  * `token_hash`, which `verifyOtp` exchanges for a cookie session server-side.
  *
  * `/auth/callback` stays in place for genuine PKCE browser flows.
+ *
+ * A link that carries its tokens in the fragment instead is no longer a dead
+ * end: this route hands it to `/login`, which completes it in the browser.
+ * That is what lets the default templates work, so email onboarding no longer
+ * depends on two hand-edited dashboard fields staying correct.
  */
 const allowedTypes = new Set<EmailOtpType>([
   "invite",
@@ -43,5 +48,14 @@ export async function GET(request: Request) {
     const result = await client.auth.exchangeCodeForSession(code);
     if (!result.error) return NextResponse.redirect(new URL(next, url.origin));
   }
-  return NextResponse.redirect(new URL("/login?error=auth_confirm", url.origin));
+  // Nothing redeemable in the query string. That is the expected shape when the
+  // template uses the default `{{ .ConfirmationURL }}`: Supabase returns those
+  // tokens in the URL *fragment*, which never reaches a server. The fragment
+  // survives this redirect, so the sign-in page picks it up client-side and
+  // finishes the exchange there rather than stranding the employee. `next` is
+  // carried across so it still knows where to send them afterwards.
+  const failure = new URL("/login", url.origin);
+  failure.searchParams.set("error", "auth_confirm");
+  failure.searchParams.set("next", next);
+  return NextResponse.redirect(failure);
 }

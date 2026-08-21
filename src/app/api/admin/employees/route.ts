@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { employeeCreateSchema, jsonBodySizeAllowed } from "@/lib/validation";
 import { generateTemporaryPassword } from "@/lib/temporary-password";
 import { emailDeliveryEnabled } from "@/lib/email-delivery";
+import { emailRedirectUrl } from "@/lib/app-url";
 import { findAuthUserIdByEmail } from "@/lib/supabase/auth-users";
 import {
   employeeConflictMessage,
@@ -258,8 +259,26 @@ export async function POST(request: Request) {
     return apiSuccess({ id: profile.data.id, temporaryPassword }, id, 201);
   }
 
+  // `redirectTo` is not optional in practice. Without it Supabase falls back to
+  // the project's Site URL, which is a dashboard field this deployment does not
+  // control and which pointed at an SSO-protected Vercel alias for ten days —
+  // every invitation in that window asked the new hire to sign up for Vercel.
+  // Supplying it explicitly makes the link's destination a property of the
+  // application, and `{{ .ConfirmationURL }}` then carries it into the email.
+  let redirectTo: string;
+  try {
+    redirectTo = emailRedirectUrl("/reset-password");
+  } catch {
+    await admin.from("users").delete().eq("id", profile.data.id);
+    return fail(
+      "app_url_unconfigured",
+      "The employee profile was rolled back because the application has no public address configured to send an invitation link to.",
+      500,
+    );
+  }
   const invite = await admin.auth.admin.inviteUserByEmail(email, {
     data: { full_name: input.fullName },
+    redirectTo,
   });
   if (invite.error) {
     await admin.from("users").delete().eq("id", profile.data.id);
