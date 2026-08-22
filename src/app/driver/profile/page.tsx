@@ -6,21 +6,20 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useDriverTheme } from "@/components/driver/driver-context";
 import { useConfirm } from "@/components/system/ConfirmProvider";
-import { useToast } from "@/components/system/ToastProvider";
 import { InstallAppCard } from "@/components/system/InstallAppCard";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { createClient } from "@/lib/supabase/client";
+import { useWebPush } from "@/lib/push/useWebPush";
 
 // Screen 18 — Profile (driver).
 const items: {
   icon: IconName;
   label: string;
-  action: "profile" | "password" | "notifications" | "support";
+  action: "profile" | "password" | "support";
 }[] = [
   { icon: "user", label: "Edit Profile", action: "profile" },
   { icon: "settings", label: "Change Password", action: "password" },
-  { icon: "bell", label: "Notification Settings", action: "notifications" },
   { icon: "info", label: "Help & Support", action: "support" },
 ];
 
@@ -28,10 +27,10 @@ export default function DriverProfilePage() {
   const { currentUser: driver, trucks } = useOperations();
   const { settings } = useExpandedOperations();
   const { dark, toggle } = useDriverTheme();
+  const { status: pushStatus, subscribe, unsubscribe } = useWebPush();
   const confirm = useConfirm();
-  const { toast } = useToast();
   const router = useRouter();
-  const supportEmail = settings?.email ?? "dispatch@ssware.com";
+  const supportEmail = settings?.email ?? "dispatch@sswsco.com";
   const assignedTruck = trucks.find(
     (truck) => truck.assignedDriverId === driver?.id,
   );
@@ -43,13 +42,6 @@ export default function DriverProfilePage() {
   const runProfileAction = (action: (typeof items)[number]["action"]) => {
     if (action === "password") {
       router.push("/reset-password");
-      return;
-    }
-    if (action === "notifications") {
-      toast(
-        "Use the bell icon at the top of the app to review alerts. Browser notification permissions are managed in your device settings.",
-        { tone: "info", duration: 6500 },
-      );
       return;
     }
     if (action === "profile") {
@@ -131,6 +123,53 @@ export default function DriverProfilePage() {
                 }`}
               />
             </button>
+          </div>
+        </div>
+
+        {/* Push notifications */}
+        <div className="bg-white dark:bg-gray-900 mt-3 border-y border-brand-ice/60 dark:border-white/10">
+          <div className="flex items-center gap-3 px-5 py-4">
+            <Icon
+              name="bell"
+              width={20}
+              height={20}
+              className="text-brand-steel dark:text-gray-400"
+            />
+            <div className="flex-1">
+              <span className="text-sm font-medium text-brand-charcoal dark:text-gray-100">
+                Push Notifications
+              </span>
+              {pushStatus === "unsupported" && (
+                <p className="mt-0.5 text-xs text-brand-steel dark:text-gray-400">
+                  Install to your Home Screen to enable notifications.
+                </p>
+              )}
+              {pushStatus === "denied" && (
+                <p className="mt-0.5 text-xs text-brand-steel dark:text-gray-400">
+                  Blocked — enable in your browser or device settings.
+                </p>
+              )}
+            </div>
+            {pushStatus !== "unsupported" && pushStatus !== "loading" && (
+              <button
+                role="switch"
+                aria-checked={pushStatus === "granted"}
+                disabled={pushStatus === "denied"}
+                onClick={() =>
+                  void (pushStatus === "granted" ? unsubscribe() : subscribe())
+                }
+                className={`relative h-6 w-11 rounded-full transition-colors disabled:opacity-40 ${
+                  pushStatus === "granted" ? "bg-brand-blue" : "bg-brand-silver"
+                }`}
+                aria-label="Toggle push notifications"
+              >
+                <span
+                  className={`absolute left-0 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                    pushStatus === "granted" ? "translate-x-[22px]" : "translate-x-0.5"
+                  }`}
+                />
+              </button>
+            )}
           </div>
         </div>
 

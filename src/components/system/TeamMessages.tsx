@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { useExpandedOperations } from "./ExpandedOperationsProvider";
 import { useOperations } from "./OperationsProvider";
 import { useToast } from "./ToastProvider";
@@ -57,14 +58,21 @@ export function TeamMessages() {
   } = useExpandedOperations();
   const { users, currentUser, canMutate } = useOperations();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [channelId, setChannelId] = React.useState("");
   const [recipient, setRecipient] = React.useState("");
   const [draft, setDraft] = React.useState("");
   const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
-    if (!channelId && channels[0]) setChannelId(channels[0].id);
-  }, [channelId, channels]);
+    if (channelId) return;
+    const fromUrl = searchParams.get("channel");
+    if (fromUrl) {
+      setChannelId(fromUrl);
+      return;
+    }
+    if (channels[0]) setChannelId(channels[0].id);
+  }, [channelId, channels, searchParams]);
 
   const channel = channels.find((item) => item.id === channelId);
   const rows = messages.filter((message) => message.channelId === channelId);

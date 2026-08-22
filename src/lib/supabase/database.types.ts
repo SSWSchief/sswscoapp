@@ -224,6 +224,16 @@ export interface MessageReadRow extends Record<string, unknown> {
   user_id: string;
   read_at: string;
 }
+export interface PushSubscriptionRow extends Record<string, unknown> {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string;
+  created_at: string;
+  last_seen_at: string;
+}
 export interface PretripTemplateRow extends Record<string, unknown> {
   id: string;
   title: string;
@@ -357,6 +367,7 @@ export interface Database {
       >;
       messages: Table<MessageRow>;
       message_reads: Table<MessageReadRow>;
+      push_subscriptions: Table<PushSubscriptionRow>;
       pretrip_templates: Table<PretripTemplateRow>;
       pretrip_submissions: Table<PretripSubmissionRow>;
       sop_documents: Table<SopDocumentRow>;

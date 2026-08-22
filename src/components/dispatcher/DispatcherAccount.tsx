@@ -5,7 +5,15 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Icon } from "@/components/ui/Icon";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { createClient } from "@/lib/supabase/client";
+import { useWebPush } from "@/lib/push/useWebPush";
 import { cn } from "@/lib/utils";
+
+const pushToggleLabel: Record<string, string> = {
+  unsupported: "Install to your Home Screen to enable notifications",
+  denied: "Notifications blocked — enable in browser settings",
+  granted: "Push notifications on",
+  default: "Get notified of new messages",
+};
 
 export function DispatcherAccount({
   onSignedOut,
@@ -15,6 +23,7 @@ export function DispatcherAccount({
   className?: string;
 }) {
   const { currentUser } = useOperations();
+  const { status: pushStatus, subscribe, unsubscribe } = useWebPush();
   const router = useRouter();
 
   const signOut = async () => {
@@ -58,6 +67,16 @@ export function DispatcherAccount({
         className="w-full rounded px-2 py-1.5 text-left text-xs opacity-70 hover:bg-white/10 hover:opacity-100"
       >
         Change password
+      </button>
+      <button
+        type="button"
+        disabled={pushStatus === "unsupported" || pushStatus === "denied"}
+        onClick={() =>
+          void (pushStatus === "granted" ? unsubscribe() : subscribe())
+        }
+        className="w-full rounded px-2 py-1.5 text-left text-xs opacity-70 hover:bg-white/10 hover:opacity-100 disabled:hover:bg-transparent"
+      >
+        {pushToggleLabel[pushStatus] ?? pushToggleLabel.default}
       </button>
     </div>
   );

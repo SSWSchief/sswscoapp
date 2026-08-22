@@ -1,4 +1,4 @@
-const CACHE_NAME = "sswsco-overwatch-shell-v2";
+const CACHE_NAME = "sswsco-overwatch-shell-v3";
 const APP_SHELL = [
   "/offline",
   "/icons/icon-192.png",
@@ -49,4 +49,55 @@ self.addEventListener("fetch", (event) => {
       }))
     );
   }
+});
+
+self.addEventListener("push", (event) => {
+  let payload = { title: "SSWSCO Overwatch", body: "You have a new message." };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    // Fall back to the defaults above if the payload isn't JSON.
+  }
+  const options = {
+    body: payload.body,
+    icon: payload.icon || "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    tag: payload.tag || "sswsco-message",
+    data: payload.data || {},
+    renotify: true,
+  };
+  event.waitUntil(self.registration.showNotification(payload.title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data && event.notification.data.url ? event.notification.data.url : "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(targetUrl.split("?")[0]) && "focus" in client) {
+          if ("navigate" in client) client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(targetUrl);
+    })
+  );
+});
+
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    self.registration.pushManager
+      .subscribe(event.oldSubscription ? { userVisibleOnly: true, applicationServerKey: event.oldSubscription.options.applicationServerKey } : undefined)
+      .then((subscription) =>
+        fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subscription: subscription.toJSON() }),
+        })
+      )
+      .catch(() => {
+        // Best effort; the client-side hook re-subscribes on next load too.
+      })
+  );
 });

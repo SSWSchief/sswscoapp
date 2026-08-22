@@ -401,8 +401,8 @@ export function ExpandedOperationsProvider({
                 }),
           "finance",
         ),
-      sendMessage: (channelId, body) =>
-        run(
+      sendMessage: async (channelId, body) => {
+        const result = await run(
           () =>
             createClient().from("messages").insert({
               channel_id: channelId,
@@ -410,7 +410,19 @@ export function ExpandedOperationsProvider({
               body: body.trim(),
             }),
           "messaging",
-        ),
+        );
+        if (result.ok)
+          fetch("/api/messages/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ channelId }),
+          }).catch((error) =>
+            log("warn", "push_notify_request_failed", {
+              error: String(error),
+            }),
+          );
+        return result;
+      },
       createDirectChannel: async (userId) => {
         if (!canMutate)
           return fail({
