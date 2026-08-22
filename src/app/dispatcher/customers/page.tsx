@@ -12,10 +12,11 @@ import { CustomerModal } from "@/components/dispatcher/CustomerModal";
 import type { Customer } from "@/lib/types";
 import { useToast } from "@/components/system/ToastProvider";
 import { useConfirm } from "@/components/system/ConfirmProvider";
+import { ListFooter } from "@/components/ui/ListFooter";
 
 // Screen 9 — Customers.
 export default function CustomersPage() {
-  const { customers, deactivateCustomer, canMutate } = useOperations();
+  const { customers, deactivateCustomer, canMutate, totals } = useOperations();
   const { toast } = useToast();
   const confirm = useConfirm();
   const [query, setQuery] = React.useState("");
@@ -156,9 +157,12 @@ export default function CustomersPage() {
             ))}
           </ul>
 
-          <div className="px-5 py-3 text-sm text-brand-steel border-t border-brand-ice/60">
-            Showing {visible.length} of {customers.length} customers
-          </div>
+          <ListFooter
+            shown={visible.length}
+            loaded={customers.length}
+            total={totals.customers}
+            noun="customers"
+          />
         </Card>
       </div>
       <CustomerModal

@@ -9,7 +9,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { employeePatchSchema, jsonBodySizeAllowed } from "@/lib/validation";
 import {
   employeeConflictMessage,
+  isIncompatibleRole,
   uniqueViolationField,
+  writeErrorDetail,
 } from "@/lib/employee-conflict";
 
 const route = "/api/admin/employees/[id]";
@@ -20,7 +22,12 @@ export async function PATCH(
 ) {
   const startedAt = Date.now();
   const requestIdValue = requestId(request);
-  const fail = (code: string, message: string, status: number) => {
+  const fail = (
+    code: string,
+    message: string,
+    status: number,
+    detail?: Record<string, unknown>,
+  ) => {
     logRequest(
       status >= 500 ? "error" : "warn",
       "admin_employee_update_failed",
@@ -31,6 +38,7 @@ export async function PATCH(
         startedAt,
         status,
         code,
+        detail,
       },
     );
     return apiFailure(code, message, status, requestIdValue);
@@ -224,7 +232,16 @@ export async function PATCH(
     for (const rollback of rollbacks.reverse()) await rollback();
     // Same reasoning as the create route: name the field that collided and the
     // employee holding it, including the removed records that hold a value
-    // while appearing in no list.
+    // while appearing in no list. The cause is logged either way, so a reported
+    // reference ID can be answered.
+    const detail = writeErrorDetail(result.error);
+    if (isIncompatibleRole(result.error))
+      return fail(
+        "incompatible_role",
+        "That operational role and access role cannot be combined. Choose a different access role.",
+        400,
+        detail,
+      );
     const field = uniqueViolationField(result.error);
     const value = field === "employee_id" ? input.employeeId : newEmail;
     if (field && value) {
@@ -249,12 +266,14 @@ export async function PATCH(
             : null,
         ),
         409,
+        detail,
       );
     }
     return fail(
       "profile_update_failed",
       "The employee profile could not be updated and authentication changes were rolled back.",
       400,
+      detail,
     );
   }
   const auditActions = [

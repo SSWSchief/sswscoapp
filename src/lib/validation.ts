@@ -3,7 +3,12 @@ import { permissionKeys } from "./permissions";
 
 export const employeeCreateSchema = z
   .object({
-    employeeId: z.string().trim().min(1).max(50),
+    /**
+     * Optional: derived from the name when omitted. Only a company that numbers
+     * its staff has an answer here, and requiring one invited job titles into a
+     * unique key. See `@/lib/employee-id`.
+     */
+    employeeId: z.string().trim().min(1).max(50).optional(),
     fullName: z.string().trim().min(2).max(120),
     email: z.email().max(254),
     phone: z.string().trim().max(30).optional().default(""),

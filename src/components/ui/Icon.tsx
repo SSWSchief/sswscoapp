@@ -10,6 +10,7 @@ export type IconName =
   | "dashboard"
   | "jobs"
   | "customers"
+  | "vendors"
   | "truck"
   | "dumpster"
   | "employees"
@@ -61,6 +62,14 @@ const paths: Record<IconName, React.ReactNode> = {
       <circle cx="9" cy="7" r="3" />
       <path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1" />
       <path d="M16 3.5a3 3 0 0 1 0 7M21 21v-1a5 5 0 0 0-4-4.9" />
+    </>
+  ),
+  vendors: (
+    <>
+      <path d="M4 3h10l6 6v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+      <path d="M14 3v6h6" />
+      <path d="M8 17c0-2 1.3-3 3-3s3 1 3 3" />
+      <circle cx="11" cy="11.5" r="1.75" />
     </>
   ),
   truck: (

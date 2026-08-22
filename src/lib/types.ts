@@ -19,6 +19,7 @@ export type PermissionKey =
   | "customers"
   | "trucks"
   | "dumpsters"
+  | "vendors"
   | "employees"
   | "time_clock"
   | "absence"
@@ -80,6 +81,16 @@ export interface Customer {
   address: string;
   activeJobs: number;
   group?: "Big GC" | "Commercial" | "Residential";
+}
+
+export interface Vendor {
+  id: string;
+  name: string;
+  category: string;
+  phone: string;
+  email: string;
+  notes: string;
+  isActive: boolean;
 }
 
 export interface Truck {

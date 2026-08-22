@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { effectivePermissions } from "./permissions";
+import {
+  effectivePermissions,
+  permissionGroups,
+  permissionKeys,
+} from "./permissions";
 import type { User } from "./types";
 
 const user: User = {
@@ -28,5 +32,16 @@ describe("effectivePermissions", () => {
     });
     expect(permissions.driver_jobs).toBe(false);
     expect(permissions.customers).toBe(true);
+  });
+});
+
+describe("permissionGroups", () => {
+  it("covers every permission key exactly once", () => {
+    // A key present in permissionLabels but missing here renders nowhere on
+    // the employee access page; one listed twice renders there twice. Both
+    // are real bugs a reviewer can easily miss when a permission is added.
+    const grouped = permissionGroups.flatMap((group) => group.keys);
+    expect(grouped.sort()).toEqual([...permissionKeys].sort());
+    expect(new Set(grouped).size).toBe(grouped.length);
   });
 });

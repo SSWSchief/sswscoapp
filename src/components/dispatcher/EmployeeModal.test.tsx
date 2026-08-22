@@ -35,8 +35,9 @@ afterEach(() => {
 });
 
 // Required labels carry a trailing asterisk, so these match on the prefix.
+// Employee ID is deliberately left blank: it is assigned for you, and the
+// common path through this form never touches it.
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText(/^Employee ID/), "EMP-9");
   await user.type(screen.getByLabelText(/^Full Name/), "Austin Doe");
   await user.type(screen.getByLabelText(/^Email/), "austin@example.com");
 }
@@ -91,12 +92,98 @@ describe("EmployeeModal onboarding delivery", () => {
   });
 });
 
-describe("EmployeeModal duplicate handling", () => {
+describe("EmployeeModal employee ID", () => {
   beforeEach(() => {
     vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "");
   });
 
-  it("names the employee holding a duplicate Employee ID before asking the server", async () => {
+  it("creates the employee without one being entered", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (_url: string, init: { body: string }) => {
+      void init;
+      return { ok: true, json: async () => ({ data: {} }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<EmployeeModal open onClose={() => {}} />);
+    await user.type(screen.getByLabelText(/^Full Name/), "Norberto Angulo");
+    await user.type(screen.getByLabelText(/^Email/), "nangulo@sswsco.com");
+    await user.click(screen.getByRole("button", { name: "Create Employee" }));
+
+    // Omitted rather than blank, so the server assigns it — the only side that
+    // can see soft-deleted employees still holding an ID.
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.employeeId).toBeUndefined();
+  });
+
+  it("shows what will be assigned as the name is typed", async () => {
+    const user = userEvent.setup();
+    render(<EmployeeModal open onClose={() => {}} />);
+    await user.type(screen.getByLabelText(/^Full Name/), "Norberto Angulo");
+    expect(
+      screen.getByText(/Assigned automatically — NANGULO/),
+    ).toBeInTheDocument();
+  });
+
+  it("still sends an ID that was entered by hand", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (_url: string, init: { body: string }) => {
+      void init;
+      return { ok: true, json: async () => ({ data: {} }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<EmployeeModal open onClose={() => {}} />);
+    await fillRequiredFields(user);
+    await user.type(screen.getByLabelText(/^Employee ID/), "EMP-014");
+    await user.click(screen.getByRole("button", { name: "Create Employee" }));
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).employeeId).toBe(
+      "EMP-014",
+    );
+  });
+});
+
+describe("EmployeeModal roles", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "");
+  });
+
+  it("asks one question and derives the access that follows it", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (_url: string, init: { body: string }) => {
+      void init;
+      return { ok: true, json: async () => ({ data: {} }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<EmployeeModal open onClose={() => {}} />);
+    // Austin's people are owners; the list has to say so somewhere, or the word
+    // ends up in whichever box accepts free text.
+    await user.selectOptions(
+      screen.getByLabelText("What do they do?"),
+      "management",
+    );
+    expect(screen.queryByLabelText("Access Role")).not.toBeInTheDocument();
+    expect(screen.getByText(/They get admin access/)).toBeInTheDocument();
+
+    await fillRequiredFields(user);
+    await user.click(screen.getByRole("button", { name: "Create Employee" }));
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.role).toBe("management");
+    expect(body.accessRole).toBe("admin");
+  });
+
+  it("reveals access as a separate choice on request", async () => {
+    const user = userEvent.setup();
+    render(<EmployeeModal open onClose={() => {}} />);
+    await user.click(
+      screen.getByRole("button", { name: "Change what they can see" }),
+    );
+    expect(screen.getByLabelText("Access Role")).toBeInTheDocument();
+  });
+});
+
+describe("EmployeeModal duplicate details", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "");
     employees.push({
       id: "u1",
       employeeId: "Owner",
@@ -104,19 +191,56 @@ describe("EmployeeModal duplicate handling", () => {
       email: "eli@sswsco.com",
       status: "active",
     });
+  });
+
+  it("names the employee holding a duplicate Employee ID before asking the server", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     render(<EmployeeModal open onClose={() => {}} />);
+    // Austin's report: a second person given the Employee ID "Owner" came back
+    // as an existing employee, though their name, email, and phone were new.
     await user.type(screen.getByLabelText(/^Employee ID/), "Owner");
-    await user.type(screen.getByLabelText(/^Full Name/), "Fred Dakake");
-    await user.type(screen.getByLabelText(/^Email/), "fdakake@sswsco.com");
+    await user.type(screen.getByLabelText(/^Full Name/), "Norberto Angulo");
+    await user.type(screen.getByLabelText(/^Email/), "nangulo@sswsco.com");
     await user.click(screen.getByRole("button", { name: "Create Employee" }));
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(
-      screen.getByRole("alert").textContent,
-    ).toContain("already used by Eli Montoya");
+    expect(screen.getByRole("alert").textContent).toContain(
+      "already used by Eli Montoya",
+    );
+  });
+
+  it("names the employee already holding a reused email address", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<EmployeeModal open onClose={() => {}} />);
+    await user.type(screen.getByLabelText(/^Full Name/), "Norberto Angulo");
+    // Stored lowercase, so a differently-cased retype is the same address.
+    await user.type(screen.getByLabelText(/^Email/), "Eli@sswsco.com");
+    await user.click(screen.getByRole("button", { name: "Create Employee" }));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toContain(
+      "already used by Eli Montoya",
+    );
+  });
+
+  it("clears the conflict once the Employee ID is edited", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", vi.fn());
+    render(<EmployeeModal open onClose={() => {}} />);
+    await user.type(screen.getByLabelText(/^Employee ID/), "Owner");
+    await user.type(screen.getByLabelText(/^Full Name/), "Norberto Angulo");
+    await user.type(screen.getByLabelText(/^Email/), "nangulo@sswsco.com");
+    await user.click(screen.getByRole("button", { name: "Create Employee" }));
+    expect(screen.getByRole("alert").textContent).toContain(
+      "already used by Eli Montoya",
+    );
+
+    await user.type(screen.getByLabelText(/^Employee ID/), "-2");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("pins a server conflict to its field without the support reference", async () => {
@@ -131,7 +255,7 @@ describe("EmployeeModal duplicate handling", () => {
           error: {
             code: "employee_id_taken",
             message:
-              "Employee ID “Owner” still belongs to a removed record for Fred Dakake.",
+              "Employee ID \u201cOwner\u201d still belongs to a removed record for Fred Dakake.",
             requestId: "sfo1::abc",
           },
         }),

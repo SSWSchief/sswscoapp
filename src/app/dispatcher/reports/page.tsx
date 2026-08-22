@@ -10,6 +10,7 @@ import { useOperations } from "@/components/system/OperationsProvider";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { downloadCsv } from "@/lib/client-download";
 import { pacificDate } from "@/lib/time-clock";
+import { loadedJobWindow } from "@/lib/job-dates";
 
 const reportCards = [
   [
@@ -40,6 +41,8 @@ export default function Page() {
   const [to, setTo] = React.useState(() => pacificDate(new Date()));
   const [downloading, setDownloading] = React.useState<string | null>(null);
   const invalidRange = from > to;
+  const loadedFrom = pacificDate(loadedJobWindow().start);
+  const reachesPastLoaded = from < loadedFrom;
   const selected = jobs.filter((j) => {
     const d = pacificDate(j.scheduledFor);
     return d >= from && d <= to;
@@ -93,6 +96,18 @@ export default function Page() {
           {invalidRange && (
             <p className="text-sm text-red-600 sm:col-span-2">
               From date must be before the through date.
+            </p>
+          )}
+          {/*
+            The figures below count the jobs held in memory, which is a window
+            around today. The exports query the database over whatever range is
+            asked for, so a range reaching past the window makes the two
+            disagree — and the CSV is the one that is right.
+          */}
+          {reachesPastLoaded && !invalidRange && (
+            <p className="text-sm text-brand-steel sm:col-span-2">
+              Figures below cover {loadedFrom} onwards. The CSV exports cover
+              the full range you chose.
             </p>
           )}
         </Card>
