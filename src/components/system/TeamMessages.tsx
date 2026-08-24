@@ -316,13 +316,19 @@ export function TeamMessages() {
                       : "bg-brand-mist"
                   }`}
                 >
+                  {/* Your own name is not in `users` here — the people domain
+                      is not loaded on this page — and never in
+                      `messageRecipients`, which lists everyone *else*. Without
+                      this, every message you sent was labelled "Employee". */}
                   <div className="text-xs font-semibold">
-                    {users.find((user) => user.id === message.senderId)
-                      ?.fullName ??
-                      messageRecipients.find(
-                        (user) => user.id === message.senderId,
-                      )?.fullName ??
-                      "Employee"}
+                    {message.senderId === currentUser?.id
+                      ? "You"
+                      : (users.find((user) => user.id === message.senderId)
+                          ?.fullName ??
+                        messageRecipients.find(
+                          (user) => user.id === message.senderId,
+                        )?.fullName ??
+                        "Employee")}
                   </div>
                   <p className="whitespace-pre-wrap text-sm">
                     {message.body}

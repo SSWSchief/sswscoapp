@@ -127,6 +127,25 @@ describe("TeamMessages", () => {
     expect(markChannelRead).toHaveBeenCalledWith("c1");
   });
 
+  // Seen on production: the people domain is not loaded on this page, so the
+  // sender lookup missed the current user and labelled every message they had
+  // sent "Employee".
+  it("attributes your own messages to you, not to 'Employee'", async () => {
+    mocks.operations.mockReturnValue({
+      users: [],
+      currentUser: { id: "me", accessRole: "admin" },
+      canMutate: true,
+    });
+    render(<TeamMessages />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Open conversation with Alexus Marshall",
+      }),
+    );
+    expect(screen.getByText("You")).toBeInTheDocument();
+    expect(screen.queryByText("Employee")).not.toBeInTheDocument();
+  });
+
   it("shows an unread count next to the sender", () => {
     render(<TeamMessages />);
     const row = screen.getByRole("button", {
