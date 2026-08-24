@@ -583,6 +583,10 @@ export interface Database {
         Args: { target_job_id: string };
         Returns: AcknowledgementRow[];
       };
+      leave_message_channel: {
+        Args: { target_channel_id: string };
+        Returns: void;
+      };
       message_read_receipts: {
         Args: { target_message_id: string };
         Returns: ReadReceiptRow[];

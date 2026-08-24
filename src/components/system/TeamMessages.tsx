@@ -5,8 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { useExpandedOperations } from "./ExpandedOperationsProvider";
 import { useOperations } from "./OperationsProvider";
 import { useToast } from "./ToastProvider";
+import { useConfirm } from "./ConfirmProvider";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/Icon";
 import { Select, Textarea } from "@/components/ui/Field";
 import { RelativeTime } from "@/components/ui/RelativeTime";
 
@@ -54,10 +56,12 @@ export function TeamMessages() {
     messageRecipients,
     sendMessage,
     createDirectChannel,
+    deleteChannel,
     markChannelRead,
   } = useExpandedOperations();
   const { users, currentUser, canMutate } = useOperations();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const searchParams = useSearchParams();
   const [channelId, setChannelId] = React.useState("");
   const [recipient, setRecipient] = React.useState("");
@@ -105,9 +109,25 @@ export function TeamMessages() {
     if (result.ok) setDraft("");
   };
 
+  const removeChannel = async (target: (typeof channels)[number]) => {
+    const ok = await confirm({
+      title: `Delete conversation with ${target.name}?`,
+      message: "This removes it from your message list for good.",
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
+    const result = await deleteChannel(target.id);
+    if (result.ok) {
+      if (target.id === channelId) setChannelId("");
+    } else {
+      toast(result.error.message, { tone: "error" });
+    }
+  };
+
   return (
-    <div className="grid min-h-0 min-w-0 flex-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-      <Card className="min-w-0 self-start overflow-hidden">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
+      <Card className="flex max-h-56 min-w-0 flex-col overflow-hidden lg:max-h-none lg:self-start">
         <CardHeader title="Channels" />
         <div className="space-y-2 border-b border-brand-ice p-3">
           <Select
@@ -131,7 +151,7 @@ export function TeamMessages() {
             Start message
           </Button>
         </div>
-        <div className="divide-y divide-brand-ice">
+        <div className="min-h-0 flex-1 divide-y divide-brand-ice overflow-y-auto lg:flex-none lg:overflow-visible">
           {channels.map((item) => {
             const unread = messages.filter(
               (message) =>
@@ -140,26 +160,40 @@ export function TeamMessages() {
                 message.senderId !== currentUser?.id,
             ).length;
             return (
-              <button
+              <div
                 key={item.id}
-                onClick={() => setChannelId(item.id)}
-                className={`flex min-h-12 w-full min-w-0 items-center justify-between gap-3 p-3 text-left ${
+                className={`flex min-h-12 min-w-0 items-center gap-2 pr-2 ${
                   item.id === channelId ? "bg-brand-mist text-brand-blue" : ""
                 }`}
               >
-                <span className="min-w-0 break-words">{item.name}</span>
-                {unread > 0 && (
-                  <span className="shrink-0 rounded-full bg-brand-blue px-2 py-0.5 text-xs text-white">
-                    {unread}
-                  </span>
+                <button
+                  onClick={() => setChannelId(item.id)}
+                  className="flex min-h-12 w-full min-w-0 flex-1 items-center justify-between gap-3 p-3 text-left"
+                >
+                  <span className="min-w-0 break-words">{item.name}</span>
+                  {unread > 0 && (
+                    <span className="shrink-0 rounded-full bg-brand-blue px-2 py-0.5 text-xs text-white">
+                      {unread}
+                    </span>
+                  )}
+                </button>
+                {item.kind === "direct" && canMutate && (
+                  <button
+                    type="button"
+                    aria-label={`Delete conversation with ${item.name}`}
+                    onClick={() => void removeChannel(item)}
+                    className="shrink-0 rounded p-1.5 text-brand-steel hover:text-red-600"
+                  >
+                    <Icon name="close" className="h-4 w-4" />
+                  </button>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>
       </Card>
 
-      <Card className="flex min-h-[420px] min-w-0 flex-col overflow-hidden sm:min-h-[480px]">
+      <Card className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:min-h-[480px] lg:flex-none">
         <CardHeader title={channel?.name ?? "Messages"} />
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
           {rows.map((message) => (

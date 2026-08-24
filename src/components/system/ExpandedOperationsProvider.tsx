@@ -86,6 +86,7 @@ type Value = State & {
     body: string,
   ) => Promise<MutationResult<void>>;
   createDirectChannel: (userId: string) => Promise<MutationResult<string>>;
+  deleteChannel: (channelId: string) => Promise<MutationResult<void>>;
   markChannelRead: (channelId: string) => Promise<MutationResult<void>>;
   submitPretrip: (input: {
     templateId: string;
@@ -436,6 +437,23 @@ export function ExpandedOperationsProvider({
           if (r.error) throw r.error;
           await refresh();
           return { ok: true, data: r.data };
+        } catch (e) {
+          return fail(e);
+        }
+      },
+      deleteChannel: async (channelId) => {
+        if (!canMutate)
+          return fail({
+            message:
+              "Changes are disabled until the live connection is restored.",
+          });
+        try {
+          const r = await createClient().rpc("leave_message_channel", {
+            target_channel_id: channelId,
+          });
+          if (r.error) throw r.error;
+          await refresh();
+          return { ok: true, data: undefined };
         } catch (e) {
           return fail(e);
         }
