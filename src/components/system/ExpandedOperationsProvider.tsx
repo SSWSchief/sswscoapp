@@ -51,6 +51,11 @@ import {
   expandedTableDomain,
   type ExpandedDomain,
 } from "@/lib/operations/route-domains";
+import {
+  groupUnreadByChannel,
+  unreadMessagesFor,
+  type UnreadChannel,
+} from "@/lib/operations/unread-messages";
 import { log } from "@/lib/logger";
 
 interface InvoiceInput {
@@ -74,13 +79,6 @@ type State = {
   trainingDataset: TrainingDataset;
   priceList: PriceListItem[];
 };
-export interface UnreadChannel {
-  id: string;
-  name: string;
-  unread: number;
-  lastBody: string;
-  lastAt: string;
-}
 type Value = State & {
   loading: boolean;
   /** Messages across all channels that are unread and not sent by you. */
@@ -381,39 +379,14 @@ export function ExpandedOperationsProvider({
     [canMutate, refresh],
   );
   const unreadMessages = React.useMemo(
-    () =>
-      data.messages.filter(
-        (message) => !message.read && message.senderId !== currentUser?.id,
-      ),
-    [data.messages, currentUser?.id],
+    () => unreadMessagesFor(data.messages, data.channels, currentUser?.id),
+    [data.messages, data.channels, currentUser?.id],
   );
   const unreadMessageCount = unreadMessages.length;
-  const unreadChannels = React.useMemo<UnreadChannel[]>(() => {
-    const byChannel = new Map<string, UnreadChannel>();
-    for (const message of unreadMessages) {
-      const existing = byChannel.get(message.channelId);
-      if (existing) {
-        existing.unread += 1;
-        if (message.createdAt > existing.lastAt) {
-          existing.lastAt = message.createdAt;
-          existing.lastBody = message.body;
-        }
-        continue;
-      }
-      byChannel.set(message.channelId, {
-        id: message.channelId,
-        name:
-          data.channels.find((channel) => channel.id === message.channelId)
-            ?.name ?? "Conversation",
-        unread: 1,
-        lastBody: message.body,
-        lastAt: message.createdAt,
-      });
-    }
-    return [...byChannel.values()].sort((a, b) =>
-      a.lastAt < b.lastAt ? 1 : -1,
-    );
-  }, [unreadMessages, data.channels]);
+  const unreadChannels = React.useMemo(
+    () => groupUnreadByChannel(unreadMessages, data.channels),
+    [unreadMessages, data.channels],
+  );
   const value = React.useMemo<Value>(
     () => ({
       loading,
