@@ -5,7 +5,7 @@ export default function Page() {
   return (
     <>
       <Topbar title="Messages" />
-      <div className="portal-content flex min-h-0">
+      <div className="portal-content flex min-h-0 overflow-hidden lg:overflow-y-auto">
         <TeamMessages />
       </div>
     </>

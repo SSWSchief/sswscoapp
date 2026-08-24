@@ -5,7 +5,7 @@ export default function Page() {
   return (
     <>
       <MobileHeader title="Messages" />
-      <div className="flex min-h-0 flex-1 overflow-y-auto bg-surface p-3">
+      <div className="flex min-h-0 flex-1 bg-surface p-3">
         <TeamMessages />
       </div>
     </>
