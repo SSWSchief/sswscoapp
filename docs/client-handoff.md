@@ -227,6 +227,20 @@ original plan; the steps still generalize to any future provider change.
   signup is disabled (reconfirm that toggle before ever changing this).
 - `NEXT_PUBLIC_APP_URL=https://sswscoapp.vercel.app` and
   `NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED=true` in Vercel production.
+
+**Push notifications (VAPID).** Separate from email, and easy to miss: message
+push needs three variables in Vercel production, and without them the feature
+is inert. Generate the pair once with `npx web-push generate-vapid-keys`, then
+set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`
+(a `mailto:` address) and **redeploy** — the public key is inlined into the
+browser bundle at build time, so adding it without rebuilding changes nothing.
+Verify from outside with `curl -s https://sswscoapp.vercel.app/api/health`,
+which reports `push.configured` alongside each half of the pair; the values
+themselves are never returned. Two platform facts worth stating plainly to
+anyone testing it: on iPhone, web push only works once the site is **added to
+the Home Screen** (a Safari tab can never receive it), and push is delivered
+only to *other* people in the conversation — messaging yourself to test will
+always look like a failure.
 - Verified end to end on August 21, 2026: a real reset delivered to a Gmail
   inbox, link clicked, session established, "Set new password" reached.
 

@@ -8,6 +8,8 @@ import { LogoFull } from "@/components/ui/Logo";
 import { Icon } from "@/components/ui/Icon";
 import { DriverNotificationsPanel } from "./DriverNotificationsPanel";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
+import { EnableAlertsBanner } from "@/components/system/EnableAlertsBanner";
 import { DriverShellContext } from "./driver-context";
 import { accessRoleLabel, effectivePermissions } from "@/lib/permissions";
 import { driverSecondaryNav } from "@/components/navigation/routes";
@@ -27,15 +29,18 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { notificationsFor, currentUser } = useOperations();
+  const { unreadMessageCount } = useExpandedOperations();
   const visibleMenu = currentUser
     ? driverSecondaryNav.filter(
         (item) => effectivePermissions(currentUser)[item.permission],
       )
     : [];
-  const unreadCount = currentUser
-    ? notificationsFor(currentUser.id).filter((item) => !item.acknowledgedAt)
-        .length
-    : 0;
+  // Includes unread messages so the bell reflects them too; see DispatcherShell.
+  const unreadCount =
+    (currentUser
+      ? notificationsFor(currentUser.id).filter((item) => !item.acknowledgedAt)
+          .length
+      : 0) + unreadMessageCount;
 
   React.useEffect(() => {
     setDark(localStorage.getItem(STORAGE_KEY) === "dark");
@@ -73,6 +78,7 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
         >
           <div className={dark ? "dark" : undefined}>
             <div className="app-fixed-height flex min-w-0 flex-col bg-surface dark:bg-gray-950 lg:h-[calc(100dvh-3rem)]">
+              <EnableAlertsBanner />
               {children}
               <BottomNav />
             </div>

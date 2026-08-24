@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/system/ConfirmProvider";
 import { InstallAppCard } from "@/components/system/InstallAppCard";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { useToast } from "@/components/system/ToastProvider";
 import { createClient } from "@/lib/supabase/client";
 import { useWebPush } from "@/lib/push/useWebPush";
 
@@ -29,8 +30,28 @@ export default function DriverProfilePage() {
   const { dark, toggle } = useDriverTheme();
   const { status: pushStatus, subscribe, unsubscribe } = useWebPush();
   const confirm = useConfirm();
+  const { toast } = useToast();
   const router = useRouter();
   const supportEmail = settings?.email ?? "dispatch@sswsco.com";
+
+  // A failed opt-in used to be swallowed, so the switch just sprang back with
+  // no explanation and no notifications ever arrived.
+  const togglePush = async () => {
+    const result =
+      pushStatus === "granted" ? await unsubscribe() : await subscribe();
+    if (result.ok) {
+      toast(
+        pushStatus === "granted"
+          ? "Push notifications turned off."
+          : "Push notifications are on for this device.",
+        { tone: "success" },
+      );
+      return;
+    }
+    toast(result.message ?? "Could not change notification settings.", {
+      tone: "error",
+    });
+  };
   const assignedTruck = trucks.find(
     (truck) => truck.assignedDriverId === driver?.id,
   );
@@ -149,15 +170,20 @@ export default function DriverProfilePage() {
                   Blocked — enable in your browser or device settings.
                 </p>
               )}
+              {pushStatus === "unconfigured" && (
+                <p className="mt-0.5 text-xs text-brand-steel dark:text-gray-400">
+                  Not configured on this deployment yet.
+                </p>
+              )}
             </div>
             {pushStatus !== "unsupported" && pushStatus !== "loading" && (
               <button
                 role="switch"
                 aria-checked={pushStatus === "granted"}
-                disabled={pushStatus === "denied"}
-                onClick={() =>
-                  void (pushStatus === "granted" ? unsubscribe() : subscribe())
+                disabled={
+                  pushStatus === "denied" || pushStatus === "unconfigured"
                 }
+                onClick={() => void togglePush()}
                 className={`relative h-6 w-11 rounded-full transition-colors disabled:opacity-40 ${
                   pushStatus === "granted" ? "bg-brand-blue" : "bg-brand-silver"
                 }`}

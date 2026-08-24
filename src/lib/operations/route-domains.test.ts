@@ -13,7 +13,9 @@ describe("route domain selection", () => {
       "notifications",
       "customers",
     ]);
-    expect([...expandedDomainsForPath("/dispatcher/customers")]).toEqual([]);
+    expect([...expandedDomainsForPath("/dispatcher/customers")]).toEqual([
+      "messaging",
+    ]);
   });
 
   it("loads only job dependencies for job details", () => {
@@ -26,7 +28,7 @@ describe("route domain selection", () => {
   it("loads dashboard summary domains", () => {
     expect(coreDomainsForPath("/dispatcher/dashboard").size).toBe(7);
     expect(expandedDomainsForPath("/dispatcher/dashboard")).toEqual(
-      new Set(["finance", "compliance"]),
+      new Set(["messaging", "finance", "compliance"]),
     );
   });
 
@@ -34,13 +36,13 @@ describe("route domain selection", () => {
     ["/management", ["finance", "messaging", "compliance", "settings"]],
     ["/dispatcher/messages", ["messaging"]],
     ["/driver/messages", ["messaging"]],
-    ["/dispatcher/invoices", ["finance"]],
-    ["/dispatcher/reports", ["finance"]],
-    ["/driver/pre-trip", ["compliance"]],
-    ["/driver/sops", ["compliance"]],
-    ["/driver/profile", ["settings"]],
+    ["/dispatcher/invoices", ["messaging", "finance"]],
+    ["/dispatcher/reports", ["messaging", "finance"]],
+    ["/driver/pre-trip", ["messaging", "compliance"]],
+    ["/driver/sops", ["messaging", "compliance"]],
+    ["/driver/profile", ["messaging", "settings"]],
     // Settings also loads finance: the pricing tab reads the rate card.
-    ["/dispatcher/settings", ["compliance", "settings", "finance"]],
+    ["/dispatcher/settings", ["messaging", "compliance", "settings", "finance"]],
   ])("selects expanded domains for %s", (path, expected) => {
     expect([...expandedDomainsForPath(path)]).toEqual(expected);
   });

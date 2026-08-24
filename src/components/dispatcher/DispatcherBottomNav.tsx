@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { staffMobileNav } from "@/components/navigation/routes";
 import { Icon } from "@/components/ui/Icon";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { effectivePermissions } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { useDispatcherUI } from "./shell-context";
@@ -12,6 +13,7 @@ import { useDispatcherUI } from "./shell-context";
 export function DispatcherBottomNav() {
   const pathname = usePathname();
   const { currentUser } = useOperations();
+  const { unreadMessageCount } = useExpandedOperations();
   const { openDrawer } = useDispatcherUI();
   const permissions = currentUser ? effectivePermissions(currentUser) : null;
   const tabs = permissions
@@ -37,7 +39,14 @@ export function DispatcherBottomNav() {
                 active ? "text-brand-blue" : "text-brand-silver",
               )}
             >
-              <Icon name={item.icon} width={22} height={22} />
+              <span className="relative flex">
+                <Icon name={item.icon} width={22} height={22} />
+                {item.icon === "messages" && unreadMessageCount > 0 && (
+                  <span className="absolute -top-1 -right-2 min-w-[15px] h-[15px] rounded-full bg-red-500 px-1 text-[9px] font-bold leading-[15px] text-white text-center">
+                    {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                  </span>
+                )}
+              </span>
               <span className="truncate">{item.shortLabel ?? item.label}</span>
             </Link>
           );

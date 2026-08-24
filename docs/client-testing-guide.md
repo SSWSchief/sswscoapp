@@ -24,6 +24,39 @@ Overwatch works in any modern browser and installs to a phone's Home Screen.
 Drivers should install it: open the site in Safari on iPhone, tap Share, then
 **Add to Home Screen**. Driver → Profile has the same instructions.
 
+## Making sure you are on the newest version
+
+Overwatch updates itself. When a new version has been released, a dark bar
+appears at the bottom of the screen reading *"A new version of Overwatch is
+ready"* with an **Update** button — tap it and the app reloads on the new
+version. It checks when you return to the app and every few minutes while it
+is open.
+
+If you kept the app open on your phone for a long stretch before this was
+added, do one manual refresh to pick it up: on iPhone, close the app from the
+app switcher and reopen it; in a browser, pull down to refresh. After that it
+keeps itself current. **This is worth doing before any training session** — it
+is the difference between testing today's build and one from days ago.
+
+## Notifications
+
+Message alerts are **on by default**. The one thing no website is allowed to do
+on your behalf is grant itself permission to notify you, so the first time you
+open Overwatch you will see a small blue bar reading *"Turn on alerts so you
+hear about new messages"* — tap **Turn on** and accept your phone's prompt.
+That is the only step. You can turn alerts off later from **Account** on a
+computer or **Profile** on a phone.
+
+Three things that make notifications look broken when they are not:
+
+- **On iPhone, alerts only work if Overwatch is on your Home Screen.** Apple
+  does not deliver them to a Safari tab. Install it first (see above).
+- **You never get a notification for your own message.** Alerts go to the other
+  people in the conversation, so testing by messaging yourself always looks
+  like nothing happened. Test with a second person or a second account.
+- **A new message also lights up the bell** at the top of the screen and puts a
+  count on **Messages** in the menu, whether or not phone alerts are on.
+
 ## What each role sees
 
 You are routed automatically to the right workspace after signing in.

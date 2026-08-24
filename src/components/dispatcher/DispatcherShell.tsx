@@ -12,6 +12,8 @@ import { PortalSwitch } from "@/components/navigation/PortalSwitch";
 import { Icon } from "@/components/ui/Icon";
 import { LogoFull } from "@/components/ui/Logo";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
+import { EnableAlertsBanner } from "@/components/system/EnableAlertsBanner";
 import { cn } from "@/lib/utils";
 import { effectivePermissions } from "@/lib/permissions";
 import { DispatcherAccount } from "./DispatcherAccount";
@@ -23,6 +25,7 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = React.useState(false);
   const pathname = usePathname();
   const { notificationsFor, currentUser } = useOperations();
+  const { unreadMessageCount } = useExpandedOperations();
   const permissions = currentUser ? effectivePermissions(currentUser) : null;
   const visibleSections = staffNavSections
     .map((section) => ({
@@ -32,9 +35,12 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
         : section.items,
     }))
     .filter((section) => section.items.length > 0);
-  const unreadCount = notificationsFor(currentUser?.id ?? "").filter(
-    (notification) => !notification.acknowledgedAt,
-  ).length;
+  // The bell covers unread messages as well: a new message is the thing staff
+  // most need to be told about, and it previously lit nothing anywhere.
+  const unreadCount =
+    notificationsFor(currentUser?.id ?? "").filter(
+      (notification) => !notification.acknowledgedAt,
+    ).length + unreadMessageCount;
 
   // Global ⌘K / Ctrl+K to open the command palette.
   React.useEffect(() => {
@@ -63,6 +69,7 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
       <div className="app-fixed-height flex overflow-hidden bg-surface text-brand-charcoal">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <EnableAlertsBanner />
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {children}
           </div>
@@ -110,7 +117,17 @@ export function DispatcherShell({ children }: { children: React.ReactNode }) {
                             : "text-brand-ice hover:bg-white/10 hover:text-white",
                         )}
                       >
-                        <Icon name={item.icon} width={18} height={18} />
+                        <span className="relative flex shrink-0">
+                          <Icon name={item.icon} width={18} height={18} />
+                          {item.icon === "messages" &&
+                            unreadMessageCount > 0 && (
+                              <span className="absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] rounded-full bg-red-500 px-1 text-[9px] font-bold leading-[15px] text-white text-center">
+                                {unreadMessageCount > 9
+                                  ? "9+"
+                                  : unreadMessageCount}
+                              </span>
+                            )}
+                        </span>
                         {item.label}
                       </Link>
                     );

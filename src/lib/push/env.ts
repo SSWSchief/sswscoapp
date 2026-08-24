@@ -12,6 +12,25 @@ export function getPublicVapidKey(): string {
   return value;
 }
 
+/**
+ * Which half of the push configuration is present, as booleans. Reported by
+ * /api/health so a deployment missing its keys can be spotted in one request
+ * rather than inferred from notifications that never arrive.
+ */
+export function pushConfigurationStatus() {
+  const present = (value: string | undefined) =>
+    Boolean(value) && !placeholderValues.has(value as string);
+  const publicKey = present(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
+  const privateKey = present(process.env.VAPID_PRIVATE_KEY);
+  const subject = present(process.env.VAPID_SUBJECT);
+  return {
+    configured: publicKey && privateKey && subject,
+    publicKey,
+    privateKey,
+    subject,
+  };
+}
+
 export function getPushEnv() {
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;

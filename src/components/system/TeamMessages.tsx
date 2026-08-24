@@ -226,6 +226,7 @@ export function TeamMessages() {
               >
                 <button
                   onClick={() => openChannel(item.id)}
+                  aria-label={`Open conversation with ${item.name}`}
                   className="flex min-h-16 w-full min-w-0 flex-1 items-center gap-3 p-3 text-left"
                 >
                   <span

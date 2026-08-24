@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { RelativeTime } from "@/components/ui/RelativeTime";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 
 export function DriverNotificationsPanel({
   open,
@@ -18,6 +19,7 @@ export function DriverNotificationsPanel({
     acknowledgeAll,
     currentUser,
   } = useOperations();
+  const { unreadChannels } = useExpandedOperations();
   const recipientId = currentUser?.id ?? "";
   const notifications = notificationsFor(recipientId);
   const unread = notifications.filter((item) => !item.acknowledgedAt);
@@ -34,7 +36,37 @@ export function DriverNotificationsPanel({
         </button>
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {notifications.length === 0 ? (
+        {/* The bell counts unread messages too, so it has to show them —
+            a badge that opens an empty panel reads as a bug. */}
+        {unreadChannels.map((channel) => (
+          <Link
+            key={channel.id}
+            href={`/driver/messages?channel=${encodeURIComponent(channel.id)}`}
+            onClick={onClose}
+            className="flex items-start gap-3 rounded-card border border-brand-ice bg-white p-4 shadow-card dark:border-white/10 dark:bg-gray-900"
+          >
+            <span className="mt-0.5 shrink-0 text-brand-blue">
+              <Icon name="messages" width={18} height={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center justify-between gap-2">
+                <span className="truncate font-semibold text-brand-charcoal dark:text-white">
+                  {channel.name}
+                </span>
+                <span className="shrink-0 rounded-full bg-brand-blue px-2 py-0.5 text-[10px] font-semibold text-white">
+                  {channel.unread}
+                </span>
+              </span>
+              <span className="mt-1 block truncate text-sm text-brand-steel dark:text-gray-400">
+                {channel.lastBody}
+              </span>
+              <span className="mt-1 block text-xs text-brand-silver">
+                <RelativeTime iso={channel.lastAt} />
+              </span>
+            </span>
+          </Link>
+        ))}
+        {notifications.length === 0 && unreadChannels.length === 0 ? (
           <div className="rounded-card bg-white p-6 text-center text-sm text-brand-steel dark:bg-gray-900">
             No notifications yet.
           </div>

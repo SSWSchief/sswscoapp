@@ -1,4 +1,5 @@
 import { apiFailure, apiSuccess, logRequest, requestId } from "@/lib/api-response";
+import { getPushEnv } from "@/lib/push/env";
 import { sendPushToSubscriptions } from "@/lib/push/send";
 import { truncate } from "@/lib/push/utils";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -135,6 +136,19 @@ export async function POST(request: Request) {
     const list = byUser.get(row.user_id) ?? [];
     list.push(row);
     byUser.set(row.user_id, list);
+  }
+
+  // Without VAPID keys every send below throws the same error for every
+  // recipient. Fail once, with a code that names the cause, so a deployment
+  // missing its keys is visible in the logs instead of looking like silence.
+  try {
+    getPushEnv();
+  } catch {
+    return fail(
+      "push_not_configured",
+      "Push notifications are not configured on this deployment.",
+      503,
+    );
   }
 
   const messageBody = truncate(message.data.body, 120);

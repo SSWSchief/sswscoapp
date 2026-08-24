@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { LogoFull } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
 import { effectivePermissions } from "@/lib/permissions";
@@ -14,6 +15,7 @@ import { DispatcherAccount } from "./DispatcherAccount";
 /** Desktop sidebar. The mobile drawer reuses `dispatcherNav` from ./nav. */
 export function Sidebar() {
   const { currentUser } = useOperations();
+  const { unreadMessageCount } = useExpandedOperations();
   const pathname = usePathname();
   const permissions = currentUser ? effectivePermissions(currentUser) : null;
   const visibleSections = staffNavSections
@@ -51,7 +53,14 @@ export function Sidebar() {
                       : "text-brand-ice hover:bg-white/10 hover:text-white",
                   )}
                 >
-                  <Icon name={item.icon} width={18} height={18} />
+                  <span className="relative flex shrink-0">
+                    <Icon name={item.icon} width={18} height={18} />
+                    {item.icon === "messages" && unreadMessageCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] rounded-full bg-red-500 px-1 text-[9px] font-bold leading-[15px] text-white text-center">
+                        {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                      </span>
+                    )}
+                  </span>
                   {item.label}
                 </Link>
               );

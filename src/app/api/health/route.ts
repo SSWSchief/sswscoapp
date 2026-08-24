@@ -7,6 +7,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveAppUrl } from "@/lib/app-url";
 import { emailDeliveryEnabled } from "@/lib/email-delivery";
+import { pushConfigurationStatus } from "@/lib/push/env";
 
 export const dynamic = "force-dynamic";
 const route = "/api/health";
@@ -40,6 +41,10 @@ export async function GET(request: Request) {
         source: appUrl.source,
         emailDeliveryEnabled: emailDeliveryEnabled(),
       },
+      // Booleans only — never the keys themselves. Push failing because a
+      // deployment never received its VAPID keys is invisible from the app
+      // (the opt-in simply does nothing), so it needs to be readable here.
+      push: pushConfigurationStatus(),
     };
     logRequest("info", "health_check_complete", {
       requestId: requestIdValue,

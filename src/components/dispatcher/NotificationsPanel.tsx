@@ -3,6 +3,7 @@
 import { Icon } from "@/components/ui/Icon";
 import { RelativeTime } from "@/components/ui/RelativeTime";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { UnreadMessageLinks } from "@/components/system/UnreadMessageLinks";
 
 export function NotificationsPanel({
   open,
@@ -42,8 +43,18 @@ export function NotificationsPanel({
             <Icon name="close" width={18} height={18} />
           </button>
         </div>
-        <ul className="flex-1 overflow-y-auto divide-y divide-brand-ice/50 sm:max-h-[420px]">
-          {messages.map((m) => (
+        <div className="flex-1 overflow-y-auto sm:max-h-[420px]">
+          <UnreadMessageLinks
+            basePath="/dispatcher/messages"
+            onNavigate={onClose}
+          />
+          {messages.length === 0 ? (
+            <p className="px-4 py-6 text-center text-sm text-brand-steel">
+              No notifications yet.
+            </p>
+          ) : null}
+          <ul className="divide-y divide-brand-ice/50">
+            {messages.map((m) => (
             <li key={m.id} className="px-4 py-3 hover:bg-brand-mist">
               <div className="flex items-start gap-2.5">
                 <span
@@ -71,9 +82,10 @@ export function NotificationsPanel({
                   )}
                 </div>
               </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </div>
         <div className="safe-area-bottom-padded shrink-0 px-4 pt-2.5 border-t border-brand-ice/60 text-center">
           <button
             onClick={() => acknowledgeAll(recipientId)}

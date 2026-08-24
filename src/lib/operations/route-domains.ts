@@ -72,7 +72,10 @@ export function coreDomainsForPath(pathname: string): Set<CoreDomain> {
 
 export function expandedDomainsForPath(pathname: string): Set<ExpandedDomain> {
   if (pathname === "/management") return new Set(allExpanded);
-  const domains = new Set<ExpandedDomain>();
+  // Messaging stays loaded on every screen (like the "notifications" core
+  // domain) so unread badges in the sidebar/nav and topbar stay live even
+  // when the Messages page itself isn't open.
+  const domains = new Set<ExpandedDomain>(["messaging"]);
   if (pathname === "/dispatcher/dashboard") {
     domains.add("finance");
     domains.add("compliance");
@@ -82,7 +85,6 @@ export function expandedDomainsForPath(pathname: string): Set<ExpandedDomain> {
     pathname.startsWith("/dispatcher/reports")
   )
     domains.add("finance");
-  if (pathname.includes("/messages")) domains.add("messaging");
   if (
     pathname.startsWith("/driver/pre-trip") ||
     pathname.startsWith("/driver/sops")

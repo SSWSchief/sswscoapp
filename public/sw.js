@@ -1,4 +1,4 @@
-const CACHE_NAME = "sswsco-overwatch-shell-v3";
+const CACHE_NAME = "sswsco-overwatch-shell-v4";
 const APP_SHELL = [
   "/offline",
   "/icons/icon-192.png",
