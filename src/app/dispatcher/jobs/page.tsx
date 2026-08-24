@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Input } from "@/components/ui/Field";
+import { Input, Select } from "@/components/ui/Field";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { cn, formatTime, jobStatusLabel } from "@/lib/utils";
 import type { JobStatus } from "@/lib/types";
@@ -116,7 +116,34 @@ function JobsPageContent() {
                 className="pl-10"
               />
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            {/* Below sm, six status pills plus a sort control don't fit in
+                one row and wrap unpredictably — a pair of selects covers the
+                same filtering in a fixed, predictable amount of space. */}
+            <div className="grid grid-cols-2 gap-2 sm:hidden">
+              <Select
+                aria-label="Filter by status"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value as StatusFilter)}
+              >
+                {filters.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+                <option value="active">Active</option>
+              </Select>
+              <Select
+                aria-label="Sort by"
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+              >
+                <option value="time">Sort: Time</option>
+                <option value="customer">Sort: Customer</option>
+                <option value="status">Sort: Status</option>
+              </Select>
+            </div>
+
+            <div className="hidden flex-wrap items-center gap-2 sm:flex">
               {filters.map((f) => (
                 <button
                   key={f.value}

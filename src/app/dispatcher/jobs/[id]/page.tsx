@@ -40,6 +40,7 @@ export default function JobDetailsPage({
     canMutate,
   } = useOperations();
   const [editOpen, setEditOpen] = React.useState(false);
+  const [actionsOpen, setActionsOpen] = React.useState(false);
   const [reasonMode, setReasonMode] = React.useState<
     "cancel" | "complete" | null
   >(null);
@@ -114,25 +115,81 @@ export default function JobDetailsPage({
       <Topbar
         title={`Job ${job.reference}`}
         action={
-          <div className="flex gap-2">
-            <Button
-              disabled={!canMutate || busy}
-              variant="secondary"
-              aria-label="Edit job"
-              onClick={() => setEditOpen(true)}
-            >
-              <Icon name="edit" width={16} height={16} />
-              <span className="hidden lg:inline">Edit Job</span>
-            </Button>
-            {job.status !== "complete" && job.status !== "cancelled" && (
+          <div className="flex items-center gap-2">
+            {/* Desktop: full action row */}
+            <div className="hidden items-center gap-2 lg:flex">
               <Button
                 disabled={!canMutate || busy}
-                variant="danger"
-                onClick={() => setReasonMode("cancel")}
+                variant="secondary"
+                aria-label="Edit job"
+                onClick={() => setEditOpen(true)}
               >
-                Cancel
+                <Icon name="edit" width={16} height={16} />
+                Edit Job
               </Button>
-            )}
+              {job.status !== "complete" && job.status !== "cancelled" && (
+                <Button
+                  disabled={!canMutate || busy}
+                  variant="danger"
+                  onClick={() => setReasonMode("cancel")}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
+
+            {/* Mobile: Edit/Cancel collapse into a menu so the header doesn't
+                crowd search + notifications + a primary action into one row */}
+            <div className="relative lg:hidden">
+              <button
+                type="button"
+                onClick={() => setActionsOpen((open) => !open)}
+                aria-label="More actions"
+                aria-expanded={actionsOpen}
+                className="rounded p-2 text-brand-steel hover:bg-brand-mist"
+              >
+                <Icon name="more" />
+              </button>
+              {actionsOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Close menu"
+                    onClick={() => setActionsOpen(false)}
+                    className="fixed inset-0 z-40 cursor-default"
+                  />
+                  <div className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded border border-brand-ice bg-white shadow-card">
+                    <button
+                      type="button"
+                      disabled={!canMutate || busy}
+                      onClick={() => {
+                        setActionsOpen(false);
+                        setEditOpen(true);
+                      }}
+                      className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm text-brand-charcoal hover:bg-brand-mist disabled:opacity-50"
+                    >
+                      <Icon name="edit" width={16} height={16} />
+                      Edit Job
+                    </button>
+                    {job.status !== "complete" && job.status !== "cancelled" && (
+                      <button
+                        type="button"
+                        disabled={!canMutate || busy}
+                        onClick={() => {
+                          setActionsOpen(false);
+                          setReasonMode("cancel");
+                        }}
+                        className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        <Icon name="close" width={16} height={16} />
+                        Cancel Job
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
             {job.status === "arrived" && (
               <Button
                 disabled={!canMutate || busy}

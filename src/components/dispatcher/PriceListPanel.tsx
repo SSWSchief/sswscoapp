@@ -147,7 +147,45 @@ export function PriceListPanel() {
           {busy ? "Saving…" : existing ? "Update Rate" : "Add Rate"}
         </Button>
 
-        <div className="overflow-x-auto">
+        <ul className="divide-y divide-brand-ice/60 sm:hidden">
+          {priceList.map((item) => (
+            <li key={item.id} className="flex items-start justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-brand-charcoal">
+                  {item.serviceType}
+                </div>
+                <div className="text-xs text-brand-steel">
+                  {item.dumpsterSize}
+                </div>
+                {item.notes && (
+                  <div className="mt-1 text-xs text-brand-steel">
+                    {item.notes}
+                  </div>
+                )}
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <span className="text-sm font-semibold text-brand-charcoal">
+                  {formatCurrency(item.priceCents)}
+                </span>
+                <button
+                  type="button"
+                  disabled={!canMutate}
+                  onClick={() => void remove(item.id)}
+                  className="text-xs font-semibold text-status-cancelled disabled:opacity-50"
+                >
+                  Remove
+                </button>
+              </div>
+            </li>
+          ))}
+          {!priceList.length && (
+            <li className="py-4 text-sm text-brand-steel">
+              No rates configured yet.
+            </li>
+          )}
+        </ul>
+
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[520px] text-sm">
             <thead>
               <tr className="border-b border-brand-ice text-left text-xs uppercase tracking-wide text-brand-steel">

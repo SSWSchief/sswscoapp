@@ -4,6 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Topbar } from "@/components/dispatcher/Topbar";
+import { AddTruckModal } from "@/components/dispatcher/AssetModals";
+import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { TruckStatusBadge } from "@/components/ui/StatusBadge";
@@ -18,6 +20,7 @@ export default function TruckDetailsPage({
   const { id } = React.use(params);
   const { trucks, jobs, users, hydrated } = useOperations();
   const truck = trucks.find((item) => item.id === id);
+  const [editOpen, setEditOpen] = React.useState(false);
   if (!hydrated) return <div className="flex-1 bg-surface" />;
   if (!truck) notFound();
   const driver = truck.assignedDriverId
@@ -29,7 +32,19 @@ export default function TruckDetailsPage({
 
   return (
     <>
-      <Topbar title={`Truck ${truck.number}`} />
+      <Topbar
+        title={`Truck ${truck.number}`}
+        action={
+          <Button
+            variant="secondary"
+            aria-label="Edit truck"
+            onClick={() => setEditOpen(true)}
+          >
+            <Icon name="edit" width={16} height={16} />
+            <span className="hidden sm:inline">Edit Truck</span>
+          </Button>
+        }
+      />
       <div className="portal-content space-y-5">
         <Link
           href="/dispatcher/trucks"
@@ -116,6 +131,11 @@ export default function TruckDetailsPage({
           </Card>
         </div>
       </div>
+      <AddTruckModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        truck={truck}
+      />
     </>
   );
 }

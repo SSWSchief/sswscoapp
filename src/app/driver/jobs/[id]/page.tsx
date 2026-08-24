@@ -268,11 +268,20 @@ export default function DriverJobDetailsPage({
               </div>
             ))}
             <button
+              onClick={() => cameraInputRef.current?.click()}
+              className="h-16 w-16 rounded border-2 border-dashed border-brand-ice dark:border-white/20 flex flex-col items-center justify-center gap-0.5 text-brand-steel active:border-brand-blue active:text-brand-blue"
+              aria-label="Take job photo"
+            >
+              <Icon name="photo" width={18} height={18} />
+              <span className="text-[10px] font-medium">Camera</span>
+            </button>
+            <button
               onClick={() => libraryInputRef.current?.click()}
-              className="h-16 w-16 rounded border-2 border-dashed border-brand-ice dark:border-white/20 flex flex-col items-center justify-center text-brand-steel active:border-brand-blue active:text-brand-blue"
+              className="h-16 w-16 rounded border-2 border-dashed border-brand-ice dark:border-white/20 flex flex-col items-center justify-center gap-0.5 text-brand-steel active:border-brand-blue active:text-brand-blue"
               aria-label="Choose photo from library"
             >
               <Icon name="plus" width={18} height={18} />
+              <span className="text-[10px] font-medium">Library</span>
             </button>
             <input
               ref={cameraInputRef}
@@ -385,24 +394,6 @@ export default function DriverJobDetailsPage({
         )}
         {status === "arrived" && !completed && (
           <>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => cameraInputRef.current?.click()}
-                disabled={busy || !canMutate}
-                className="h-12 rounded border border-brand-blue/40 text-brand-blue font-medium text-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                <Icon name="photo" width={16} height={16} />
-                Take Photo
-              </button>
-              <button
-                onClick={() => setComposing(true)}
-                disabled={busy || !canMutate}
-                className="h-12 rounded border border-brand-blue/40 text-brand-blue font-medium text-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                <Icon name="edit" width={16} height={16} />
-                Add Note
-              </button>
-            </div>
             <button
               onClick={() => setDryRunOpen(true)}
               disabled={busy || !canMutate}

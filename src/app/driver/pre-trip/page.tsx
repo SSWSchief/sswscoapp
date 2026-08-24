@@ -20,6 +20,9 @@ export default function Page() {
     {},
   );
   const [busy, setBusy] = React.useState(false);
+  const checkedCount = template
+    ? template.items.filter((item) => results[item.id]).length
+    : 0;
   const save = async () => {
     if (
       !template ||
@@ -62,7 +65,21 @@ export default function Page() {
       <div className="flex-1 overflow-y-auto bg-surface p-4 space-y-4">
         {template ? (
           <Card>
-            <CardHeader title={`${template.title} · v${template.version}`} />
+            <CardHeader
+              className="sticky top-0 z-10 bg-white dark:bg-gray-900"
+              title={`${template.title} · v${template.version}`}
+              action={
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    checkedCount === template.items.length
+                      ? "bg-status-complete/15 text-status-complete"
+                      : "bg-brand-mist text-brand-steel"
+                  }`}
+                >
+                  {checkedCount}/{template.items.length} checked
+                </span>
+              }
+            />
             <div className="space-y-4 p-4">
               <FormField label="Truck" required>
                 <Select

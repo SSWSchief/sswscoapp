@@ -78,7 +78,7 @@ export default function DumpstersPage() {
             {dumpsters.map((dumpster) => (
               <li key={dumpster.id} className="p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <h2 className="font-semibold text-brand-charcoal">
                       {dumpster.code}
                     </h2>
@@ -86,7 +86,19 @@ export default function DumpstersPage() {
                       {dumpster.size} · {dumpster.type}
                     </p>
                   </div>
-                  <DumpsterStatusBadge status={dumpster.status} />
+                  <div className="flex items-center gap-2">
+                    <DumpsterStatusBadge status={dumpster.status} />
+                    <button
+                      onClick={() => {
+                        setEditing(dumpster);
+                        setOpen(true);
+                      }}
+                      aria-label={`Edit ${dumpster.code}`}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-brand-steel hover:text-brand-blue"
+                    >
+                      <Icon name="edit" width={18} height={18} />
+                    </button>
+                  </div>
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
                   <div>

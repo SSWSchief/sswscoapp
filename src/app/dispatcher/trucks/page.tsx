@@ -127,7 +127,19 @@ export default function TrucksPage() {
                     >
                       {truck.number}
                     </Link>
-                    <TruckStatusBadge status={truck.status} />
+                    <div className="flex items-center gap-2">
+                      <TruckStatusBadge status={truck.status} />
+                      <button
+                        onClick={() => {
+                          setEditing(truck);
+                          setOpen(true);
+                        }}
+                        aria-label={`Edit ${truck.number}`}
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center text-brand-steel hover:text-brand-blue"
+                      >
+                        <Icon name="edit" width={18} height={18} />
+                      </button>
+                    </div>
                   </div>
                   <dl className="mt-2 grid grid-cols-2 gap-3 text-sm">
                     <div>

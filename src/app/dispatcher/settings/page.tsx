@@ -282,28 +282,36 @@ export default function Page() {
       <Topbar title="Settings" />
       <div className="flex-1 overflow-y-auto p-4 pb-28 sm:p-6 sm:pb-10">
         <Card className="mx-auto max-w-5xl overflow-hidden">
-          <div
-            className="flex overflow-x-auto border-b border-brand-ice/70 px-4 sm:px-5"
-            role="tablist"
-            aria-label="Settings sections"
-          >
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "min-h-14 shrink-0 border-b-4 px-3 font-heading text-sm font-semibold uppercase tracking-wide sm:px-5 sm:text-base",
-                  activeTab === tab
-                    ? "border-brand-blue text-brand-blue"
-                    : "border-transparent text-brand-steel hover:text-brand-charcoal",
-                )}
-              >
-                {tabLabels[tab]}
-              </button>
-            ))}
+          <div className="relative border-b border-brand-ice/70">
+            <div
+              className="flex overflow-x-auto px-4 sm:px-5"
+              role="tablist"
+              aria-label="Settings sections"
+            >
+              {tabs.map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    "min-h-14 shrink-0 border-b-4 px-3 font-heading text-sm font-semibold uppercase tracking-wide sm:px-5 sm:text-base",
+                    activeTab === tab
+                      ? "border-brand-blue text-brand-blue"
+                      : "border-transparent text-brand-steel hover:text-brand-charcoal",
+                  )}
+                >
+                  {tabLabels[tab]}
+                </button>
+              ))}
+            </div>
+            {/* Seven tabs overflow a phone-width strip with no other hint
+                that more exist off-screen to the right. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent dark:from-gray-900 sm:hidden"
+            />
           </div>
 
           {connectionState !== "ready" && connectionMessage && (
