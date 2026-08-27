@@ -9,6 +9,7 @@ import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useTimeClock } from "@/components/system/useTimeClock";
 import { TimeRequestModal } from "@/components/time/TimeRequestModal";
+import { StaffHoursPanel } from "@/components/time/StaffHoursPanel";
 import {
   clocksIn,
   reviewBlockedReason,
@@ -71,6 +72,15 @@ export default function TimeClockPage() {
             className={clocksIn(currentUser) ? "mt-5" : undefined}
           />
         ))}
+        {/*
+          Today's roster above answers "who is on the clock right now"; this
+          answers "what did they work last week", which is the question the
+          Time Clock page was being opened for and could not answer. It loads
+          its own window, so it costs nothing until someone changes the dates.
+        */}
+        <div className="mt-5">
+          <StaffHoursPanel />
+        </div>
         <Card className="mt-5">
           <div className="px-5 py-4 border-b border-brand-ice/60">
             <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
@@ -244,7 +254,12 @@ function TimeRoster({
             <TR key={r.member.id}>
               <TD>
                 <div className="flex items-center gap-3">
-                  <Avatar initials={r.member.initials} size="sm" />
+                  <Avatar
+                    initials={r.member.initials}
+                    src={r.member.avatarUrl}
+                    alt={r.member.fullName}
+                    size="sm"
+                  />
                   <span className="font-medium text-brand-charcoal">
                     {r.member.fullName}
                   </span>
@@ -269,7 +284,12 @@ function TimeRoster({
           <li key={row.member.id} className="p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <Avatar initials={row.member.initials} size="sm" />
+                <Avatar
+                  initials={row.member.initials}
+                  src={row.member.avatarUrl}
+                  alt={row.member.fullName}
+                  size="sm"
+                />
                 <h3 className="font-semibold text-brand-charcoal">
                   {row.member.fullName}
                 </h3>

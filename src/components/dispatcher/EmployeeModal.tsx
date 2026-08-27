@@ -192,7 +192,11 @@ export function EmployeeModal({
           </div>
           <p className="text-sm text-brand-steel">
             They sign in with their email and this password, then set their own
-            from Change Password.
+            from Change Password. Until they do, they show as{" "}
+            <strong className="font-semibold text-brand-charcoal">
+              Pending
+            </strong>{" "}
+            on the Employees list.
           </p>
         </div>
       </Modal>

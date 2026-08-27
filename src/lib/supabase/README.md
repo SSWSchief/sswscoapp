@@ -11,7 +11,11 @@ The ordered files in `supabase/migrations/` are the database source of truth. Th
 - role-aware Row Level Security
 - audited driver status and dry-run functions
 - Realtime tables for jobs, alerts, field evidence, time, assets, messages, inspections, SOPs, invoices, and settings
-- a private `job-photos` bucket with signed-URL access
+- private `job-photos` and `employee-photos` buckets with signed-URL access
+- `users.activated_at`, stamped by an Auth trigger on first sign-in, which is
+  what the app reads to show an employee as Pending rather than Active
+- `notifications.pushed_at`, the claim marker that keeps Web Push delivery from
+  alerting anyone twice for the same event
 
 To connect a remote project:
 

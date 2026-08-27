@@ -157,6 +157,7 @@ export async function PATCH(
   }
   if (input.permissionOverrides)
     changes.permission_overrides = input.permissionOverrides;
+  if (input.avatarPath !== undefined) changes.avatar_path = input.avatarPath;
   if (input.employeeId) changes.employee_id = input.employeeId;
   if (input.fullName) changes.full_name = input.fullName;
   if (input.phone !== undefined) changes.phone = input.phone;
@@ -285,6 +286,7 @@ export async function PATCH(
     input.fullName ? "name_changed" : null,
     input.phone !== undefined ? "phone_changed" : null,
     input.employeeId ? "employee_id_changed" : null,
+    input.avatarPath !== undefined ? "photo_changed" : null,
   ].filter((action): action is string => action !== null);
   for (const admin_action of auditActions) {
     await access.client.rpc("audit_admin_action", {

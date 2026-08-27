@@ -18,7 +18,7 @@ export interface WebPushResult {
 }
 
 /**
- * Message alerts are on by default; only an explicit opt-out turns them off.
+ * Push alerts are on by default; only an explicit opt-out turns them off.
  * Stored per device because a push subscription *is* per device — opting out
  * on a personal phone should not silence the truck tablet.
  */
@@ -107,7 +107,7 @@ export function useWebPush() {
   // required to register a subscription, so do it automatically. This covers
   // the common silent failure of a device that was granted permission once but
   // whose subscription has since lapsed — reinstall, cleared storage, or an
-  // expiry pruned by /api/messages/notify — after which alerts simply stop.
+  // expiry pruned by a delivery pass — after which alerts simply stop.
   React.useEffect(() => {
     if (status !== "default" || optedOut) return;
     if (typeof Notification === "undefined") return;

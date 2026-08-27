@@ -6,8 +6,9 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { jobsForPacificDay } from "@/lib/job-dates";
-import { StaffHoursPanel } from "@/components/management/StaffHoursPanel";
+import { StaffHoursPanel } from "@/components/time/StaffHoursPanel";
 import { PtoQueue } from "@/components/management/PtoQueue";
+import { employeeDisplayStatus } from "@/lib/employee-status";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -72,6 +73,16 @@ export default function Page() {
     {
       label: "Inactive employees",
       value: users.filter((user) => user.status === "inactive").length,
+      href: "/dispatcher/employees",
+    },
+    {
+      // Accounts that exist and have never been used. Left unlisted they read
+      // as working staff, which is how a hire who never got in stays invisible
+      // until somebody wonders why they are not on the schedule.
+      label: "Never signed in",
+      value: users.filter(
+        (user) => employeeDisplayStatus(user) === "pending",
+      ).length,
       href: "/dispatcher/employees",
     },
   ];

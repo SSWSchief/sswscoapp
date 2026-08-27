@@ -9,6 +9,7 @@ import {
   pacificDaysBetween,
   pacificDayStart,
   reviewBlockedReason,
+  formatPacificDayLabel,
   summarizeDay,
   summarizeRange,
   summarizeTime,
@@ -167,6 +168,12 @@ describe("reviewBlockedReason", () => {
   });
 });
 
+describe("formatPacificDayLabel", () => {
+  it("names the Pacific day, not the day the UTC timestamp lands on", () => {
+    expect(formatPacificDayLabel("2026-08-06")).toBe("Thu, Aug 6");
+  });
+});
+
 describe("summarizeDay", () => {
   it("totals a closed shift and excludes the break", () => {
     const rows = [
@@ -208,7 +215,36 @@ describe("summarizeDay", () => {
       day: "2026-08-06",
       workedSeconds: 0,
       open: false,
+      breakSeconds: 0,
+      firstIn: null,
+      lastOut: null,
+      entryCount: 0,
     });
+  });
+
+  it("reports the shift's shape, not just its total", () => {
+    // The daily review answers "what did this person actually do that day",
+    // which a single number cannot: a 7.5-hour day looks the same whether the
+    // break was thirty minutes or two hours.
+    const rows = [
+      entry("1", "clock_in", "2026-08-06T15:00:00Z"),
+      entry("2", "break_start", "2026-08-06T17:00:00Z"),
+      entry("3", "break_end", "2026-08-06T17:30:00Z"),
+      entry("4", "clock_out", "2026-08-06T23:00:00Z"),
+    ];
+    const day = summarizeDay("u1", rows, "2026-08-06");
+    expect(day.firstIn).toBe("2026-08-06T15:00:00Z");
+    expect(day.lastOut).toBe("2026-08-06T23:00:00Z");
+    expect(day.breakSeconds).toBe(1800);
+    expect(day.entryCount).toBe(4);
+  });
+
+  it("leaves the clock-out empty on a day that was never closed", () => {
+    const rows = [entry("1", "clock_in", "2026-08-06T15:00:00Z")];
+    const day = summarizeDay("u1", rows, "2026-08-06");
+    expect(day.firstIn).toBe("2026-08-06T15:00:00Z");
+    expect(day.lastOut).toBeNull();
+    expect(day.open).toBe(true);
   });
 });
 

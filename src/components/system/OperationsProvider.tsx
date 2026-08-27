@@ -23,6 +23,7 @@ import {
   pacificDate,
   pacificDayStart,
 } from "@/lib/time-clock";
+import { attachAvatarUrls } from "@/lib/supabase/avatar-urls";
 import { loadedJobWindow } from "@/lib/job-dates";
 import type {
   AccessRole,
@@ -72,6 +73,7 @@ import {
   type CoreDomain,
 } from "@/lib/operations/route-domains";
 import { log } from "@/lib/logger";
+import { requestNotificationDelivery } from "@/lib/push/notify-client";
 import { apiErrorMessage } from "@/lib/client-api";
 
 /**
@@ -336,7 +338,7 @@ export function OperationsProvider({
           );
           return;
         }
-        const profile = mapUser(profileResult.data as UserRow);
+        let profile = mapUser(profileResult.data as UserRow);
         const patch: Partial<State> = {};
         // How many rows exist behind each capped list, so a screen can say so
         // instead of presenting the slice it received as the whole table.
@@ -366,7 +368,10 @@ export function OperationsProvider({
           const detailRow = detail.data as UserRow | null;
           if (detailRow && !rows.some((row) => row.id === detailRow.id))
             rows.push(detailRow);
-          users = rows.map(mapUser);
+          // Signed once for the whole directory rather than per avatar on
+          // screen: the same person appears in the roster, the job detail, and
+          // the account menu, and each of those would otherwise sign their own.
+          users = await attachAvatarUrls(db, rows.map(mapUser));
           patch.users = users;
           totals.users = result.count ?? users.length;
           patch.protectedAdministratorIds = (
@@ -582,6 +587,13 @@ export function OperationsProvider({
           );
           patch.absenceEvents = (absences.data as AbsenceRow[]).map(mapAbsence);
         }
+        // The signed-in profile is loaded by its own query, so it needs the
+        // same treatment — reused from the directory's cache when that ran.
+        const fromDirectory = domains.has("people")
+          ? users.find((user) => user.id === profile.id)
+          : undefined;
+        profile =
+          fromDirectory ?? (await attachAvatarUrls(db, [profile]))[0];
         setState((previous) => ({
           ...previous,
           ...patch,
@@ -674,6 +686,18 @@ export function OperationsProvider({
     },
     [guard, refresh],
   );
+  /**
+   * Runs a delivery pass once a notifying mutation has actually succeeded.
+   * Failures are the pass's own to log — a job was still created.
+   */
+  const notifying = React.useCallback(
+    async <T,>(work: Promise<MutationResult<T>>): Promise<MutationResult<T>> => {
+      const result = await work;
+      if (result.ok) requestNotificationDelivery();
+      return result;
+    },
+    [],
+  );
   const value = React.useMemo<Value>(
     () => ({
       ...state,
@@ -684,8 +708,12 @@ export function OperationsProvider({
       canMutate,
       currentUser,
       refresh,
+      // Every mutation below that the database answers with a notification row
+      // asks for a delivery pass afterwards, so the alert reaches a phone and
+      // not only the in-app bell. The pass itself decides what is actually
+      // pending — see /api/notifications/deliver.
       createJob: (input) =>
-        run(async () => {
+        notifying(run(async () => {
           const r = await createClient().rpc("create_job", {
             customer_id: input.customerId,
             job_address: input.address,
@@ -700,9 +728,9 @@ export function OperationsProvider({
             traffic: input.trafficInstructions,
           });
           return { data: r.data ? mapJob(r.data) : null, error: r.error };
-        }),
+        })),
       updateJob: async (id, input) => {
-        const r = await run(() =>
+        const r = await notifying(run(() =>
           createClient().rpc("edit_job", {
             target_job_id: id,
             customer_id: input.customerId,
@@ -717,51 +745,51 @@ export function OperationsProvider({
             job_notes: input.notes,
             traffic: input.trafficInstructions,
           }),
-        );
+        ));
         return r.ok ? { ok: true, data: undefined } : r;
       },
       updateJobStatus: async (id, status) => {
-        const r = await run(() =>
+        const r = await notifying(run(() =>
           createClient().rpc("update_assigned_job_status", {
             target_job_id: id,
             next_status: status,
           }),
-        );
+        ));
         return r.ok ? { ok: true, data: undefined } : r;
       },
       completeJobAsDispatcher: (id, reason) =>
-        run(async () => {
+        notifying(run(async () => {
           const r = await createClient().rpc("complete_job_as_dispatch", {
             target_job_id: id,
             override_reason: reason ?? null,
           });
           return { data: r.data ? mapJob(r.data) : null, error: r.error };
-        }),
+        })),
       cancelJob: (id, reason) =>
-        run(async () => {
+        notifying(run(async () => {
           const r = await createClient().rpc("cancel_job", {
             target_job_id: id,
             cancel_reason: reason,
           });
           return { data: r.data ? mapJob(r.data) : null, error: r.error };
-        }),
+        })),
       logDryRun: async (id, reason) => {
-        const r = await run(() =>
+        const r = await notifying(run(() =>
           createClient().rpc("log_assigned_job_dry_run", {
             target_job_id: id,
             dry_run_reason: reason,
           }),
-        );
+        ));
         return r.ok ? { ok: true, data: undefined } : r;
       },
       assignDriver: (jobId, driverId) =>
-        run(async () => {
+        notifying(run(async () => {
           const r = await createClient().rpc("assign_job", {
             target_job_id: jobId,
             driver_id: driverId,
           });
           return { data: r.data ? mapJob(r.data) : null, error: r.error };
-        }),
+        })),
       acknowledgeNotification: async (id) => {
         const r = await run(() =>
           createClient()
@@ -1068,6 +1096,7 @@ export function OperationsProvider({
       connectionState,
       currentUser,
       guard,
+      notifying,
       refresh,
       run,
       state,

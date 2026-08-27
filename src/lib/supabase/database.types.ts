@@ -35,6 +35,10 @@ export interface UserRow extends Record<string, unknown> {
   permission_overrides: Json;
   status: EmployeeStatus;
   initials: string;
+  /** Object key in the private `employee-photos` bucket, or null for none. */
+  avatar_path: string | null;
+  /** First successful sign-in; null while the account has never been used. */
+  activated_at: string | null;
   pto_balance_hours: number | null;
   weekly_hours: number | null;
   created_at: string;
@@ -167,6 +171,8 @@ export interface NotificationRow extends Record<string, unknown> {
   related_job_id: string | null;
   requires_acknowledgement: boolean;
   acknowledged_at: string | null;
+  /** When this notification was handed to Web Push; null while still pending. */
+  pushed_at: string | null;
   created_at: string;
 }
 export interface TimeEntryRow extends Record<string, unknown> {

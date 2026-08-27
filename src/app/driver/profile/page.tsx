@@ -98,7 +98,12 @@ export default function DriverProfilePage() {
 
       <div className="flex-1 overflow-y-auto bg-surface dark:bg-gray-950">
         <div className="bg-white dark:bg-gray-900 p-6 flex items-center gap-4 border-b border-brand-ice/60 dark:border-white/10">
-          <Avatar initials={driver?.initials ?? "--"} size="lg" />
+          <Avatar
+            initials={driver?.initials ?? "--"}
+            src={driver?.avatarUrl}
+            alt={driver?.fullName}
+            size="lg"
+          />
           <div>
             <div className="font-heading font-semibold uppercase tracking-wide text-brand-charcoal dark:text-white text-lg">
               {driver?.fullName ?? "Employee"}

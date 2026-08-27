@@ -4,6 +4,8 @@ import {
   logRequest,
   requestId,
 } from "@/lib/api-response";
+import { deliverPendingNotifications } from "@/lib/push/deliver";
+import { log } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const route = "/api/cron/maintenance";
@@ -26,10 +28,8 @@ export async function GET(request: Request) {
     });
     return apiFailure("unauthorized", "Unauthorized.", 401, requestIdValue);
   }
-  const result = await createAdminClient().rpc(
-    "run_scheduled_maintenance_safe",
-    {},
-  );
+  const admin = createAdminClient();
+  const result = await admin.rpc("run_scheduled_maintenance_safe", {});
   if (result.error) {
     logRequest("error", "scheduled_maintenance_failed", {
       requestId: requestIdValue,
@@ -46,6 +46,17 @@ export async function GET(request: Request) {
       requestIdValue,
     );
   }
+  // Maintenance writes notifications of its own — the unassigned-job alerts —
+  // and nobody's browser is open to ask for those to be delivered. The pass
+  // only sends what is still fresh, so this cannot resurrect a stale backlog.
+  let delivery = null;
+  try {
+    delivery = await deliverPendingNotifications(admin);
+  } catch (error) {
+    log("warn", "scheduled_push_delivery_failed", {
+      message: error instanceof Error ? error.message : "unknown",
+    });
+  }
   logRequest("info", "scheduled_maintenance_complete", {
     requestId: requestIdValue,
     route,
@@ -53,5 +64,8 @@ export async function GET(request: Request) {
     startedAt,
     status: 200,
   });
-  return apiSuccess({ status: "ok", result: result.data }, requestIdValue);
+  return apiSuccess(
+    { status: "ok", result: result.data, delivery },
+    requestIdValue,
+  );
 }

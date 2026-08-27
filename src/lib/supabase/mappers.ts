@@ -63,6 +63,8 @@ export function mapUser(row: UserRow): User {
       {}) as User["permissionOverrides"],
     status: row.status,
     initials: row.initials,
+    avatarPath: row.avatar_path ?? null,
+    activatedAt: row.activated_at ?? null,
     ptoBalanceHours: row.pto_balance_hours ?? undefined,
     weeklyHours: row.weekly_hours ?? undefined,
   };

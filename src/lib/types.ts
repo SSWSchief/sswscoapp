@@ -69,6 +69,19 @@ export interface User {
   status: EmployeeStatus;
   /** initials shown in avatars when no photo is set */
   initials: string;
+  /** Object key of their photo in the private bucket, when they have one. */
+  avatarPath?: string | null;
+  /**
+   * Signed URL for `avatarPath`, resolved by the operations provider. Absent
+   * until it has been, and short-lived once it has — every avatar falls back
+   * to initials rather than showing a broken image.
+   */
+  avatarUrl?: string;
+  /**
+   * First sign-in. Null means the account has been created but never used —
+   * the employee is Pending, not Active. See `@/lib/employee-status`.
+   */
+  activatedAt?: string | null;
   ptoBalanceHours?: number;
   weeklyHours?: number;
 }

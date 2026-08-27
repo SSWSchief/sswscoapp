@@ -22,6 +22,8 @@ describe("database mappers", () => {
         permission_overrides: null,
         status: "active",
         initials: "AD",
+        avatar_path: null,
+        activated_at: null,
         pto_balance_hours: null,
         weekly_hours: 40,
         deleted_at: null,
@@ -146,6 +148,7 @@ describe("database mappers", () => {
         related_job_id: "job",
         requires_acknowledgement: true,
         acknowledged_at: null,
+        pushed_at: null,
       }).requiresAcknowledgement,
     ).toBe(true);
     expect(

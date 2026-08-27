@@ -14,6 +14,11 @@ import { useOperations } from "@/components/system/OperationsProvider";
 import { ListFooter } from "@/components/ui/ListFooter";
 import { accessRoleLabel } from "@/lib/permissions";
 import { isProtectedAdministrator } from "@/lib/owners";
+import {
+  employeeDisplayStatus,
+  employeeStatusLabel,
+  employeeStatusTone,
+} from "@/lib/employee-status";
 import { EmployeeModal } from "@/components/dispatcher/EmployeeModal";
 
 export default function EmployeesPage() {
@@ -77,7 +82,12 @@ export default function EmployeesPage() {
                   </TD>
                   <TD>
                     <div className="flex items-center gap-3">
-                      <Avatar initials={employee.initials} size="sm" />
+                      <Avatar
+                        initials={employee.initials}
+                        src={employee.avatarUrl}
+                        alt={employee.fullName}
+                        size="sm"
+                      />
                       <div>
                         <div className="font-medium text-brand-charcoal">
                           {employee.fullName}
@@ -99,9 +109,9 @@ export default function EmployeesPage() {
                   <TD>{employee.phone}</TD>
                   <TD>
                     <Badge
-                      tone={employee.status === "active" ? "green" : "gray"}
+                      tone={employeeStatusTone[employeeDisplayStatus(employee)]}
                       label={
-                        employee.status === "active" ? "Active" : "Inactive"
+                        employeeStatusLabel[employeeDisplayStatus(employee)]
                       }
                     />
                   </TD>
@@ -122,7 +132,12 @@ export default function EmployeesPage() {
             {employees.map((employee) => (
               <li key={employee.id} className="p-4">
                 <div className="flex items-start gap-3">
-                  <Avatar initials={employee.initials} size="sm" />
+                  <Avatar
+                    initials={employee.initials}
+                    src={employee.avatarUrl}
+                    alt={employee.fullName}
+                    size="sm"
+                  />
                   <div className="min-w-0 flex-1">
                     <h2 className="font-semibold text-brand-charcoal">
                       {employee.fullName}
@@ -138,8 +153,8 @@ export default function EmployeesPage() {
                     </a>
                   </div>
                   <Badge
-                    tone={employee.status === "active" ? "green" : "gray"}
-                    label={employee.status === "active" ? "Active" : "Inactive"}
+                    tone={employeeStatusTone[employeeDisplayStatus(employee)]}
+                    label={employeeStatusLabel[employeeDisplayStatus(employee)]}
                   />
                 </div>
                 <div className="mt-2 flex items-center justify-between border-t border-brand-ice/50 pt-2">

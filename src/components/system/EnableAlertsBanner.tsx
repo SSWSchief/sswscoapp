@@ -6,7 +6,7 @@ import { useToast } from "./ToastProvider";
 import { useWebPush } from "@/lib/push/useWebPush";
 
 /**
- * Message alerts are on by default, but browsers will not hand a page the
+ * Push alerts are on by default, but browsers will not hand a page the
  * notification permission without a user gesture — on iOS the prompt is only
  * allowed from a real tap. So the one unavoidable tap gets asked for here,
  * in front of the user, instead of hiding in a menu nobody opens.
@@ -27,11 +27,11 @@ export function EnableAlertsBanner() {
     const result = await subscribe();
     setBusy(false);
     if (result.ok) {
-      toast("Message alerts are on for this device.", { tone: "success" });
+      toast("Alerts are on for this device.", { tone: "success" });
       return;
     }
     setDismissed(true);
-    toast(result.message ?? "Could not turn on message alerts.", {
+    toast(result.message ?? "Could not turn on alerts.", {
       tone: "error",
     });
   };
@@ -44,7 +44,7 @@ export function EnableAlertsBanner() {
           <Icon name="bell" width={18} height={18} />
         </span>
         <p className="min-w-0 flex-1 text-xs text-brand-charcoal sm:text-sm">
-          Turn on alerts so you hear about new messages.
+          Turn on alerts so you hear about new jobs and messages.
         </p>
         <button
           type="button"

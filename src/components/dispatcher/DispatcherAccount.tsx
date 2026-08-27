@@ -35,8 +35,8 @@ export function DispatcherAccount({
     if (result.ok) {
       toast(
         pushStatus === "granted"
-          ? "Message alerts turned off."
-          : "Message alerts are on for this device.",
+          ? "Push alerts turned off."
+          : "Push alerts are on for this device.",
         { tone: "success" },
       );
       return;
@@ -58,6 +58,8 @@ export function DispatcherAccount({
       <div className="flex w-full items-center gap-2.5 rounded px-2 py-2 text-left">
         <Avatar
           initials={currentUser?.initials ?? "--"}
+          src={currentUser?.avatarUrl}
+          alt={currentUser?.fullName}
           size="sm"
           colorful={false}
           className="bg-brand-blue/25 text-brand-ice"
@@ -104,7 +106,7 @@ export function DispatcherAccount({
       >
         <Icon name="bell" width={16} height={16} className="shrink-0" />
         <span className="min-w-0 flex-1">
-          <span className="block text-xs font-medium">Message alerts</span>
+          <span className="block text-xs font-medium">Push alerts</span>
           <span className="block truncate text-[11px] opacity-70">
             {pushToggleLabel[pushStatus] ?? pushToggleLabel.default}
           </span>

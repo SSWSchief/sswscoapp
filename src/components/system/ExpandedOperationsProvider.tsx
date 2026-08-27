@@ -57,6 +57,7 @@ import {
   type UnreadChannel,
 } from "@/lib/operations/unread-messages";
 import { log } from "@/lib/logger";
+import { requestNotificationDelivery } from "@/lib/push/notify-client";
 
 interface InvoiceInput {
   invoiceNumber: string;
@@ -494,8 +495,8 @@ export function ExpandedOperationsProvider({
           "messaging",
         );
       },
-      submitPretrip: (input) =>
-        run(async () => {
+      submitPretrip: async (input) => {
+        const result = await run(async () => {
           if (!currentUser) return { error: { message: "Sign in required" } };
           const hasFailures = Object.values(input.results).includes("fail");
           const r = await createClient().from("pretrip_submissions").insert({
@@ -508,7 +509,13 @@ export function ExpandedOperationsProvider({
             has_failures: hasFailures,
           });
           return r;
-        }, "compliance"),
+        }, "compliance");
+        // A failed pre-trip notifies dispatch from a database trigger, and a
+        // truck that should not roll is worth a phone alert, not a badge
+        // somebody sees at the end of the day.
+        if (result.ok) requestNotificationDelivery();
+        return result;
+      },
       acknowledgeSop: (sopId) =>
         run(
           () =>

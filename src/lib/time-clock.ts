@@ -98,6 +98,19 @@ export function pacificDayEnd(day: string): string {
   return pacificDayStart(nextDay);
 }
 
+/**
+ * A Pacific calendar day as a person reads it — "Thu, Aug 20". Takes the
+ * YYYY-MM-DD form the day summaries are keyed by, and reads it at midday so
+ * the zone conversion can never land on the day before.
+ */
+export const formatPacificDayLabel = (day: string) =>
+  new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(`${day}T12:00:00Z`));
+
 export const formatPacificTime = (iso: string) =>
   new Intl.DateTimeFormat("en-US", {
     timeZone: zone,
@@ -139,6 +152,14 @@ interface DaySummary {
   workedSeconds: number;
   /** The day ended while still on the clock — a missed clock-out. */
   open: boolean;
+  /** Unpaid break time between the first punch and the last, in seconds. */
+  breakSeconds: number;
+  /** First clock-in of the day, as an ISO timestamp, or null if there was none. */
+  firstIn: string | null;
+  /** Last clock-out of the day, or null while the shift is still open. */
+  lastOut: string | null;
+  /** How many punches the day holds, corrections included. */
+  entryCount: number;
 }
 
 /**
@@ -159,29 +180,42 @@ export function summarizeDay(
     .sort((a, b) => a.at.localeCompare(b.at));
   let phase: ClockPhase = "out";
   let activeStart: number | null = null;
+  let breakStart: number | null = null;
   let worked = 0;
+  let breaks = 0;
+  let firstIn: string | null = null;
+  let lastOut: string | null = null;
   for (const entry of entries) {
     const at = new Date(entry.at).getTime();
     if (entry.type === "clock_in") {
       phase = "in";
       activeStart = at;
+      firstIn ??= entry.at;
     } else if (entry.type === "break_start" && phase === "in") {
       if (activeStart !== null) worked += Math.max(0, at - activeStart);
       phase = "break";
       activeStart = null;
+      breakStart = at;
     } else if (entry.type === "break_end" && phase === "break") {
+      if (breakStart !== null) breaks += Math.max(0, at - breakStart);
       phase = "in";
       activeStart = at;
+      breakStart = null;
     } else if (entry.type === "clock_out" && phase === "in") {
       if (activeStart !== null) worked += Math.max(0, at - activeStart);
       phase = "out";
       activeStart = null;
+      lastOut = entry.at;
     }
   }
   return {
     day,
     workedSeconds: Math.floor(worked / 1000),
     open: entries.length > 0 && phase !== "out",
+    breakSeconds: Math.floor(breaks / 1000),
+    firstIn,
+    lastOut,
+    entryCount: entries.length,
   };
 }
 

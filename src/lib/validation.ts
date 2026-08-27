@@ -46,6 +46,12 @@ export const employeePatchSchema = z
     email: z.email().max(254).optional(),
     phone: z.string().trim().max(30).optional(),
     role: z.enum(["dispatcher", "driver", "office", "management"]).optional(),
+    /**
+     * Object key in the `employee-photos` bucket, or null to clear the photo.
+     * The bytes never pass through this route — the browser uploads them under
+     * storage's own policies and sends the resulting key here.
+     */
+    avatarPath: z.string().trim().max(300).nullable().optional(),
   })
   .strict()
   .refine((input) => Object.keys(input).length > 0, {

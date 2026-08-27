@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Topbar } from "@/components/dispatcher/Topbar";
 import { useOperations } from "@/components/system/OperationsProvider";
-import { Avatar } from "@/components/ui/Avatar";
+import { EmployeePhotoField } from "@/components/dispatcher/EmployeePhotoField";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
@@ -18,6 +18,13 @@ import {
   permissionLabels,
 } from "@/lib/permissions";
 import { isProtectedAdministrator } from "@/lib/owners";
+import {
+  employeeDisplayStatus,
+  employeeStatusHint,
+  employeeStatusLabel,
+  employeeStatusTone,
+} from "@/lib/employee-status";
+import { Badge } from "@/components/ui/StatusBadge";
 import type { AccessRole, UserRole } from "@/lib/types";
 import { useToast } from "@/components/system/ToastProvider";
 import { apiErrorMessage } from "@/lib/client-api";
@@ -77,6 +84,7 @@ export default function EmployeeAccessPage({
   const visible = permissionKeys.filter((key) => effective[key]);
   const hidden = permissionKeys.filter((key) => !effective[key]);
   const detailsEditable = canMutate && currentUser?.accessRole === "admin";
+  const displayStatus = employeeDisplayStatus(employee);
   const detailsDirty =
     detailsForm.employeeId !== employee.employeeId ||
     detailsForm.fullName !== employee.fullName ||
@@ -124,11 +132,26 @@ export default function EmployeeAccessPage({
         </Link>
         <Card className="p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <Avatar initials={employee.initials} size="lg" />
+            <EmployeePhotoField employee={employee} editable={detailsEditable} />
             <div className="flex-1">
               <h2 className="font-heading text-2xl font-bold uppercase tracking-wide text-brand-charcoal">
                 {employee.fullName}
               </h2>
+              {/*
+                Stated here because the Account Actions card below offers
+                "Deactivate Employee" against a record whose real state was
+                never shown on this page — and because Pending, unlike the
+                other two, is not something anyone set.
+              */}
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <Badge
+                  tone={employeeStatusTone[displayStatus]}
+                  label={employeeStatusLabel[displayStatus]}
+                />
+                <span className="text-xs text-brand-steel">
+                  {employeeStatusHint[displayStatus]}
+                </span>
+              </div>
               {/*
                 Employee ID and email used to repeat here as read-only text,
                 immediately above the same two fields shown editable in the

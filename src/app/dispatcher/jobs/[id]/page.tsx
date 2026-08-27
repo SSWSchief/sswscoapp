@@ -256,6 +256,7 @@ export default function JobDetailsPage({
                 label="Driver"
                 value={driver?.fullName ?? "Unassigned"}
                 initials={driver?.initials}
+                photoUrl={driver?.avatarUrl}
               />
               <Assignment
                 icon="truck"
@@ -420,11 +421,13 @@ function Assignment({
   label,
   value,
   initials,
+  photoUrl,
 }: {
   icon: "employees" | "truck" | "dumpster" | "clipboard";
   label: string;
   value: string;
   initials?: string;
+  photoUrl?: string;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -434,7 +437,9 @@ function Assignment({
       <div>
         <div className="text-xs text-brand-steel">{label}</div>
         <div className="text-sm font-medium text-brand-charcoal flex items-center gap-1.5">
-          {initials && <Avatar initials={initials} size="sm" />}
+          {initials && (
+            <Avatar initials={initials} src={photoUrl} alt={value} size="sm" />
+          )}
           {value}
         </div>
       </div>
