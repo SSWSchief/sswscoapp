@@ -13,7 +13,9 @@ The ordered files in `supabase/migrations/` are the database source of truth. Th
 - Realtime tables for jobs, alerts, field evidence, time, assets, messages, inspections, SOPs, invoices, and settings
 - private `job-photos` and `employee-photos` buckets with signed-URL access
 - `users.activated_at`, stamped by an Auth trigger on first sign-in, which is
-  what the app reads to show an employee as Pending rather than Active
+  what the app reads to show an employee as Pending rather than Active. The
+  same trigger adopts an unlinked profile by email, because `link_auth_user`
+  can only link accounts that were inserted after their profile existed
 - `notifications.pushed_at`, the claim marker that keeps Web Push delivery from
   alerting anyone twice for the same event
 
