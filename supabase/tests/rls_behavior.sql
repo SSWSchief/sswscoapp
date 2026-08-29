@@ -1,5 +1,5 @@
 begin;
-select plan(31);
+select plan(36);
 
 create function pg_temp.capture_sqlstate(command text) returns text language plpgsql as $$
 begin
@@ -103,6 +103,20 @@ select is((select count(*) from (
 ) records),0::bigint,'training removal deletes only the registered records');
 select is((public.remove_training_dataset('training-v1')->>'idempotent')::boolean,true,'training removal is idempotent');
 select is(pg_temp.capture_sqlstate($$select public.remove_training_dataset('wrong-dataset')$$),'P0001','training removal rejects an unknown dataset key');
+
+-- Containment: a real job created (or later assigned) against the training
+-- customer must be refused up front, and if one already exists — the way
+-- job #1053 did before this migration — removal has to clean it up instead
+-- of foreign-key-failing on it.
+select is(public.provision_training_dataset()->>'status','active','administrator re-provisions the training dataset for containment tests');
+select is(pg_temp.capture_sqlstate($$select public.create_job('training-v1-customer','999 Real Street','555-0199','Delivery','20 Yard',null,null,null,now(),'','')$$),'P0001','create_job refuses the training customer');
+reset role;
+insert into public.jobs(id,reference,customer_id,address,service_type,dumpster_size,scheduled_for,status,created_by_id)
+  values('rls-stray-training-job','#RLS-STRAY','training-v1-customer','Stray training job','Delivery','20 Yard',now(),'pending','rls-admin');
+set local role authenticated;
+select is(pg_temp.capture_sqlstate($$select public.assign_job('rls-stray-training-job','rls-driver')$$),'P0001','assign_job refuses a job already tied to the training customer');
+select is(public.remove_training_dataset('training-v1')->>'status','removed','training removal succeeds despite a stray job referencing the training customer');
+select is((select count(*) from public.jobs where id in('training-v1-job','rls-stray-training-job')),0::bigint,'training removal also deletes the stray job it could previously not get past');
 
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000002","role":"authenticated","aal":"aal1"}',true);
 select is(public.has_permission('customers'),true,'dispatcher receives default customer permission');

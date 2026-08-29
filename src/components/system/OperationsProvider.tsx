@@ -636,12 +636,31 @@ export function OperationsProvider({
     window.addEventListener("offline", offline);
     const db = createClient();
     const channel = db.channel(`operations-${pathname.replaceAll("/", "-")}`);
+    // A single mutation can touch several rows on several tables at once —
+    // creating a job writes `jobs`, five `job_events` rows, a `job_activities`
+    // row, and a `notifications` row in one call. Postgres Changes fires once
+    // per row, so without coalescing, one mutation fans out into a burst of
+    // full-reload requests from every connected client at the same instant.
+    // Batching same-tick events into one trailing refresh keeps that burst to
+    // a single reload per client no matter how many rows a mutation touched.
+    const pendingDomains = new Set<CoreDomain>();
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = (domain: CoreDomain) => {
+      pendingDomains.add(domain);
+      if (flushTimer) return;
+      flushTimer = setTimeout(() => {
+        flushTimer = null;
+        const domains = new Set(pendingDomains);
+        pendingDomains.clear();
+        void refresh(domains);
+      }, 400);
+    };
     for (const [table, domain] of Object.entries(coreTableDomain)) {
       if (activeDomains.has(domain))
         channel.on(
           "postgres_changes",
           { event: "*", schema: "public", table },
-          () => void refresh(new Set([domain])),
+          () => scheduleRefresh(domain),
         );
     }
     channel.subscribe();
@@ -649,6 +668,7 @@ export function OperationsProvider({
     return () => {
       window.removeEventListener("online", online);
       window.removeEventListener("offline", offline);
+      if (flushTimer) clearTimeout(flushTimer);
       auth.data.subscription.unsubscribe();
       void db.removeChannel(channel);
     };

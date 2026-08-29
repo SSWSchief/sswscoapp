@@ -327,16 +327,32 @@ export function ExpandedOperationsProvider({
     if (!currentUser || activeDomains.size === 0) return;
     const db = createClient();
     const channel = db.channel(`expanded-${pathname.replaceAll("/", "-")}`);
+    // Coalesce same-tick row changes into one trailing refresh — see the
+    // matching comment in OperationsProvider, whose realtime handler had the
+    // same one-refresh-per-row-change bug.
+    const pendingDomains = new Set<ExpandedDomain>();
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = (domain: ExpandedDomain) => {
+      pendingDomains.add(domain);
+      if (flushTimer) return;
+      flushTimer = setTimeout(() => {
+        flushTimer = null;
+        const domains = new Set(pendingDomains);
+        pendingDomains.clear();
+        void refresh(domains);
+      }, 400);
+    };
     for (const [table, domain] of Object.entries(expandedTableDomain)) {
       if (activeDomains.has(domain))
         channel.on(
           "postgres_changes",
           { event: "*", schema: "public", table },
-          () => void refresh(new Set([domain])),
+          () => scheduleRefresh(domain),
         );
     }
     channel.subscribe();
     return () => {
+      if (flushTimer) clearTimeout(flushTimer);
       void db.removeChannel(channel);
     };
   }, [activeDomains, currentUser, pathname, refresh]);
