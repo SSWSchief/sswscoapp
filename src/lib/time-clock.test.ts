@@ -2,14 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   applyTimeCorrections,
   clocksIn,
-  formatPacificTime,
+  describeTimeRequest,
   formatHoursDuration,
+  formatPacificDayLabel,
+  formatPacificTime,
   pacificDate,
   pacificDayEnd,
-  pacificDaysBetween,
   pacificDayStart,
+  pacificDaysBetween,
   reviewBlockedReason,
-  formatPacificDayLabel,
   summarizeDay,
   summarizeRange,
   summarizeTime,
@@ -296,5 +297,46 @@ describe("pacificDayEnd", () => {
     const end = pacificDayEnd("2026-08-06");
     // 11:59 PM Pacific on the 6th is 06:59Z on the 7th, and must fall inside.
     expect(Date.parse("2026-08-07T06:59:00Z") < Date.parse(end)).toBe(true);
+  });
+});
+
+describe("describeTimeRequest", () => {
+  const base = {
+    id: "r1",
+    userId: "u1",
+    status: "pending" as const,
+    requestedFor: "2026-09-01",
+    hours: 0,
+    reason: "",
+  };
+
+  it("names the punch and the new time when correcting an existing one", () => {
+    expect(
+      describeTimeRequest({
+        ...base,
+        kind: "edit_time",
+        targetEntryId: "entry-1",
+        requestedEntryType: "clock_out",
+        requestedAt: "2026-09-01T18:30:00Z",
+      }),
+    ).toMatch(/^Change clock out to /);
+  });
+
+  it("says a punch is being added when there is nothing to correct", () => {
+    expect(
+      describeTimeRequest({
+        ...base,
+        kind: "edit_time",
+        targetEntryId: null,
+        requestedEntryType: "clock_out",
+        requestedAt: "2026-09-01T18:30:00Z",
+      }),
+    ).toMatch(/^Add missing clock out at /);
+  });
+
+  it("summarises PTO by its hours", () => {
+    expect(
+      describeTimeRequest({ ...base, kind: "pto", hours: 8 }),
+    ).toBe("PTO · 8h");
   });
 });

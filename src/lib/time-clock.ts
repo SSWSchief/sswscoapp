@@ -303,3 +303,24 @@ export function summarizeTime(
     entries,
   };
 }
+
+/**
+ * What a time request is actually asking for, in the words the person filing
+ * it would use.
+ *
+ * The review row previously read "Change time · 0h · <reason>", which told a
+ * reviewer nothing about the change they were approving — the hours on a
+ * correction are always zero, and the punch and its new time were never shown
+ * at all. A request with no target entry is adding a punch that was never
+ * made, and says so, because approving that is a different act from nudging
+ * an existing one.
+ */
+export function describeTimeRequest(request: TimeRequest): string {
+  if (request.kind === "pto") return `PTO · ${formatHoursDuration(request.hours)}`;
+  const punch = (request.requestedEntryType ?? "clock_in").replace("_", " ");
+  const at = request.requestedAt ? formatPacificTime(request.requestedAt) : null;
+  if (!at) return `Change ${punch}`;
+  return request.targetEntryId
+    ? `Change ${punch} to ${at}`
+    : `Add missing ${punch} at ${at}`;
+}

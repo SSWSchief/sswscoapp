@@ -7,7 +7,11 @@ import { Badge } from "@/components/ui/StatusBadge";
 import { cn } from "@/lib/utils";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useTimeClock } from "@/components/system/useTimeClock";
-import { formatHoursDuration, formatPacificTime } from "@/lib/time-clock";
+import {
+  describeTimeRequest,
+  formatHoursDuration,
+  formatPacificTime,
+} from "@/lib/time-clock";
 import { TimeRequestModal } from "@/components/time/TimeRequestModal";
 
 const dot = {
@@ -163,7 +167,7 @@ export default function DriverTimeClockPage() {
               onClick={() => setRequestKind("edit_time")}
               className="min-h-11 rounded border border-brand-ice text-brand-blue disabled:text-brand-silver text-sm font-medium"
             >
-              Change Time
+              Fix My Hours
             </button>
             <button
               disabled={!canMutate}
@@ -185,8 +189,7 @@ export default function DriverTimeClockPage() {
                 className="flex items-center justify-between gap-3 rounded bg-brand-mist dark:bg-white/5 px-3 py-2"
               >
                 <span className="text-sm text-brand-charcoal dark:text-gray-200">
-                  {request.kind === "pto" ? "PTO" : "Time edit"} ·{" "}
-                  {formatHoursDuration(request.hours)}
+                  {describeTimeRequest(request)}
                 </span>
                 <Badge
                   tone={request.status === "approved" ? "green" : "amber"}

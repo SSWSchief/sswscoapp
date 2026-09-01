@@ -12,10 +12,11 @@ import { TimeRequestModal } from "@/components/time/TimeRequestModal";
 import { StaffHoursPanel } from "@/components/time/StaffHoursPanel";
 import {
   clocksIn,
-  reviewBlockedReason,
-  summarizeTime,
+  describeTimeRequest,
   formatPacificTime,
   pacificDate,
+  reviewBlockedReason,
+  summarizeTime,
 } from "@/lib/time-clock";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/system/ToastProvider";
@@ -333,8 +334,7 @@ function RequestRow({
           {author?.fullName ?? "Unknown employee"}
         </div>
         <div className="text-sm text-brand-steel">
-          {request.kind === "pto" ? "PTO option" : "Change time"} ·{" "}
-          {request.hours}h · {request.reason}
+          {describeTimeRequest(request)} · {request.reason}
         </div>
       </div>
       <Badge

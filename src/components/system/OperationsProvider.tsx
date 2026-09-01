@@ -108,6 +108,8 @@ interface State {
   jobNotes: JobNote[];
   disposalTickets: DisposalTicket[];
   openPlacements: ContainerPlacement[];
+  /** The signed-in person's own punches over the last fortnight. */
+  myRecentTimeEntries: TimeEntry[];
   timeEntries: TimeEntry[];
   timeEntryCorrections: TimeEntryCorrection[];
   timeRequests: TimeRequest[];
@@ -137,6 +139,7 @@ const emptyState: State = {
   jobNotes: [],
   disposalTickets: [],
   openPlacements: [],
+  myRecentTimeEntries: [],
   timeEntries: [],
   timeEntryCorrections: [],
   timeRequests: [],
@@ -595,7 +598,15 @@ export function OperationsProvider({
           // on the clock — which adding dispatch and office staff does. The
           // remaining limit is a runaway guard, not a working constraint.
           const dayStart = pacificDayStart(pacificDate(new Date()));
-          const [entries, corrections, requests, absences] = await Promise.all([
+          // The shared query above is scoped to today for everyone on the
+          // clock. Correcting a punch needs the opposite shape: one person,
+          // several days back — a mistake is usually noticed the next morning,
+          // and until this existed there was no way to reach yesterday at all.
+          const fortnightAgo = new Date(
+            Date.now() - 14 * 86_400_000,
+          ).toISOString();
+          const [entries, corrections, requests, absences, mine] =
+            await Promise.all([
             db
               .from("time_entries")
               .select("*")
@@ -613,8 +624,15 @@ export function OperationsProvider({
               .order("created_at", { ascending: false })
               .limit(50),
             db.from("absence_events").select("*").order("event_date").limit(50),
+            db
+              .from("time_entries")
+              .select("*")
+              .eq("user_id", profile.id)
+              .gte("occurred_at", fortnightAgo)
+              .order("occurred_at", { ascending: false })
+              .limit(200),
           ]);
-          const error = [entries, corrections, requests, absences].find(
+          const error = [entries, corrections, requests, absences, mine].find(
             (result) => result.error,
           )?.error;
           if (error) throw error;
@@ -630,6 +648,10 @@ export function OperationsProvider({
             mapTimeRequest,
           );
           patch.absenceEvents = (absences.data as AbsenceRow[]).map(mapAbsence);
+          patch.myRecentTimeEntries = applyTimeCorrections(
+            ((mine.data ?? []) as TimeEntryRow[]).map(mapTimeEntry),
+            mappedCorrections,
+          ).filter((entry) => entry.userId === profile.id);
         }
         // The signed-in profile is loaded by its own query, so it needs the
         // same treatment — reused from the directory's cache when that ran.
