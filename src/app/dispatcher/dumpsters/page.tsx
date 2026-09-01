@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { DumpsterStatusBadge } from "@/components/ui/StatusBadge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { OnSitePanel } from "@/components/dispatcher/OnSitePanel";
 import type { Dumpster } from "@/lib/types";
 
 // Screen 8 (Dumpsters tab) — Asset Management.
@@ -35,7 +36,9 @@ export default function DumpstersPage() {
         }
       />
 
-      <div className="portal-content">
+      <div className="portal-content portal-stack">
+        <OnSitePanel />
+
         <Card>
           <Table className="hidden md:block">
             <THead>

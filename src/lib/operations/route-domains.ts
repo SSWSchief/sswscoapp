@@ -59,6 +59,8 @@ export function coreDomainsForPath(pathname: string): Set<CoreDomain> {
     pathname.startsWith("/driver/pre-trip")
   )
     domains.add("fleet");
+  // The on-site panel names the customer a container is standing with.
+  if (pathname.startsWith("/dispatcher/dumpsters")) domains.add("customers");
   if (pathname.startsWith("/driver/profile")) domains.add("fleet");
   if (pathname.startsWith("/dispatcher/map")) {
     domains.add("jobs");
@@ -122,6 +124,7 @@ export const coreTableDomain: Record<string, CoreDomain> = {
   job_notes: "jobs",
   job_photos: "jobs",
   disposal_tickets: "jobs",
+  container_placements: "fleet",
   notifications: "notifications",
   users: "people",
   customers: "customers",

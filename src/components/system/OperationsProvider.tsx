@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   mapAbsence,
   mapActivity,
+  mapContainerPlacement,
   mapCustomer,
   mapDisposalTicket,
   mapVendor,
@@ -30,6 +31,7 @@ import type {
   AccessRole,
   AbsenceEvent,
   AppNotification,
+  ContainerPlacement,
   Customer,
   DisposalTicket,
   Vendor,
@@ -51,6 +53,7 @@ import type {
 } from "@/lib/types";
 import type {
   CorrectionRow,
+  ContainerPlacementRow,
   CustomerRow,
   DisposalTicketRow,
   VendorRow,
@@ -104,6 +107,7 @@ interface State {
   dumpsters: Dumpster[];
   jobNotes: JobNote[];
   disposalTickets: DisposalTicket[];
+  openPlacements: ContainerPlacement[];
   timeEntries: TimeEntry[];
   timeEntryCorrections: TimeEntryCorrection[];
   timeRequests: TimeRequest[];
@@ -132,6 +136,7 @@ const emptyState: State = {
   dumpsters: [],
   jobNotes: [],
   disposalTickets: [],
+  openPlacements: [],
   timeEntries: [],
   timeEntryCorrections: [],
   timeRequests: [],
@@ -541,7 +546,7 @@ export function OperationsProvider({
           totals.vendors = result.count ?? patch.vendors.length;
         }
         if (domains.has("fleet")) {
-          const [trucks, truckDetail, dumpsters] = await Promise.all([
+          const [trucks, truckDetail, dumpsters, placements] = await Promise.all([
             db
               .from("trucks")
               .select("*")
@@ -562,9 +567,20 @@ export function OperationsProvider({
               .is("deleted_at", null)
               .order("code")
               .limit(50),
+            // Only the open spans: a closed rental is history, and dispatch
+            // asks this table exactly one question -- what is still out.
+            db
+              .from("container_placements")
+              .select("*")
+              .is("retrieved_at", null)
+              .order("delivered_at")
+              .limit(100),
           ]);
-          if (trucks.error || truckDetail.error || dumpsters.error)
-            throw trucks.error ?? truckDetail.error ?? dumpsters.error;
+          if (trucks.error || truckDetail.error || dumpsters.error || placements.error)
+            throw trucks.error ?? truckDetail.error ?? dumpsters.error ?? placements.error;
+          patch.openPlacements = (
+            (placements.data ?? []) as ContainerPlacementRow[]
+          ).map(mapContainerPlacement);
           const truckRows = trucks.data as TruckRow[];
           const detailRow = truckDetail.data as TruckRow | null;
           if (detailRow && !truckRows.some((row) => row.id === detailRow.id))

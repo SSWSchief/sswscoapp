@@ -49,7 +49,9 @@ describe("route domain selection", () => {
 
   it.each([
     ["/dispatcher/trucks", ["notifications", "fleet", "jobs", "people"]],
-    ["/dispatcher/dumpsters", ["notifications", "fleet"]],
+    // Customers ride along so the On Site panel can name who each open
+    // rental is standing with.
+    ["/dispatcher/dumpsters", ["notifications", "fleet", "customers"]],
     ["/dispatcher/map", ["notifications", "jobs", "customers", "fleet"]],
     ["/dispatcher/time-clock", ["notifications", "time", "people"]],
     ["/dispatcher/absence-calendar", ["notifications", "time", "people"]],
