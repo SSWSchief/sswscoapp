@@ -14,6 +14,7 @@ import { DriverShellContext } from "./driver-context";
 import { accessRoleLabel, effectivePermissions } from "@/lib/permissions";
 import { driverSecondaryNav } from "@/components/navigation/routes";
 import { PortalSwitch } from "@/components/navigation/PortalSwitch";
+import { DriverStaffSidebar } from "./DriverStaffSidebar";
 import { createClient } from "@/lib/supabase/client";
 
 const STORAGE_KEY = "ssws-driver-theme";
@@ -71,7 +72,9 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
         unreadCount,
       }}
     >
-      <div className="app-viewport-height flex items-stretch justify-center bg-brand-navy/5 dark:bg-black">
+      <div className="app-viewport-height flex items-stretch bg-brand-navy/5 dark:bg-black">
+        <DriverStaffSidebar />
+        <div className="flex min-w-0 flex-1 items-stretch justify-center">
         <div
           data-driver-portal
           className="relative w-full min-w-0 max-w-3xl overflow-hidden bg-white shadow-xl dark:bg-gray-950 lg:my-6 lg:rounded-xl lg:border lg:border-brand-ice/70"
@@ -151,6 +154,7 @@ export function DriverShell({ children }: { children: React.ReactNode }) {
             open={notificationsOpen}
             onClose={() => setNotificationsOpen(false)}
           />
+        </div>
         </div>
       </div>
     </DriverShellContext.Provider>

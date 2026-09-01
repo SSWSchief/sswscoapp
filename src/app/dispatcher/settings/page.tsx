@@ -147,6 +147,29 @@ export default function Page() {
   } = useOperations();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = React.useState<Tab>("company");
+
+  /**
+   * Open the tab named in `?tab=`, so a link can point at one section rather
+   * than dropping people on Company and leaving them to find the rest. Read
+   * from `window` instead of `useSearchParams` to keep this page out of a
+   * Suspense boundary it otherwise does not need.
+   */
+  React.useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    if (requested && (tabs as readonly string[]).includes(requested)) {
+      setActiveTab(requested as Tab);
+    }
+  }, []);
+
+  // Keep the address bar on the visible tab so the page can be linked or
+  // reloaded where it stands. Replaces rather than pushes: tabs are not
+  // separate pages and should not each cost a press of the back button.
+  const selectTab = (tab: Tab) => {
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    window.history.replaceState(null, "", url);
+  };
   const [form, setForm] = React.useState(defaults);
   const [errors, setErrors] = React.useState<
     Partial<Record<keyof CompanySettings, string>>
@@ -294,7 +317,7 @@ export default function Page() {
                   type="button"
                   role="tab"
                   aria-selected={activeTab === tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => selectTab(tab)}
                   className={cn(
                     "min-h-14 shrink-0 border-b-4 px-3 font-heading text-sm font-semibold uppercase tracking-wide sm:px-5 sm:text-base",
                     activeTab === tab

@@ -12,7 +12,11 @@ import { staffNavSections } from "@/components/navigation/routes";
 import { PortalSwitch } from "@/components/navigation/PortalSwitch";
 import { DispatcherAccount } from "./DispatcherAccount";
 
-/** Desktop sidebar. The mobile drawer reuses `dispatcherNav` from ./nav. */
+/**
+ * Desktop staff navigation. Rendered by the dispatcher shell, and by the
+ * driver shell for accounts that hold more than one portal, so switching into
+ * the driver portal on a computer no longer hides the way back.
+ */
 export function Sidebar() {
   const { currentUser } = useOperations();
   const { unreadMessageCount } = useExpandedOperations();

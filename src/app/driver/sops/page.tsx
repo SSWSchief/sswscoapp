@@ -1,15 +1,25 @@
 "use client";
 import * as React from "react";
+import Link from "next/link";
 import { MobileHeader } from "@/components/driver/MobileHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/StatusBadge";
 import { Icon } from "@/components/ui/Icon";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
+import { useOperations } from "@/components/system/OperationsProvider";
 import { useToast } from "@/components/system/ToastProvider";
+import { effectivePermissions } from "@/lib/permissions";
 export default function Page() {
   const { sops, acknowledgeSop } = useExpandedOperations();
+  const { currentUser } = useOperations();
   const { toast } = useToast();
+  // This page reads SOPs; it never published them, and there was nothing here
+  // to say where publishing lives. Anyone who can reach Settings gets pointed
+  // at the tab that does it.
+  const canPublish = currentUser
+    ? effectivePermissions(currentUser).settings === true
+    : false;
   const [openId, setOpenId] = React.useState<string | null>(null);
   const published = sops
     .filter((s) => s.isPublished)
@@ -72,6 +82,15 @@ export default function Page() {
           <Card className="p-6 text-center text-brand-steel">
             No published SOPs.
           </Card>
+        )}
+        {canPublish && (
+          <Link
+            href="/dispatcher/settings?tab=sops"
+            className="flex min-h-14 items-center justify-center gap-2 rounded border border-dashed border-brand-ice px-4 text-center font-heading text-sm font-semibold uppercase tracking-wide text-brand-blue"
+          >
+            <Icon name="settings" width={18} height={18} />
+            Publish or Update SOPs
+          </Link>
         )}
       </div>
     </>
