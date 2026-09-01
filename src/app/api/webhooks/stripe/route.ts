@@ -7,6 +7,7 @@ import {
 } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createStripeClient } from "@/lib/stripe/client";
+import { webhookSigningSecret } from "@/lib/stripe/env";
 import {
   invoiceStatusFromStripe,
   shouldApplyStatus,
@@ -39,10 +40,32 @@ const HANDLED = [
 export async function POST(request: Request) {
   const startedAt = Date.now();
   const requestIdValue = requestId(request);
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const secret = webhookSigningSecret();
   const signature = request.headers.get("stripe-signature");
 
-  if (!secret || !signature) {
+  // A deployment that never received its signing secret is a configuration
+  // fault on this side, not a malformed request, and must not be reported as
+  // one: conflating the two makes a missing environment variable look exactly
+  // like Stripe sending garbage. 500 also keeps Stripe retrying, so events
+  // are not lost while the deployment is being fixed.
+  if (!secret) {
+    logRequest("error", "stripe_webhook_not_configured", {
+      requestId: requestIdValue,
+      route,
+      method: "POST",
+      startedAt,
+      status: 500,
+      code: "webhook_not_configured",
+    });
+    return apiFailure(
+      "webhook_not_configured",
+      "Stripe webhook secret is not configured for this deployment.",
+      500,
+      requestIdValue,
+    );
+  }
+
+  if (!signature) {
     logRequest("warn", "stripe_webhook_unsigned", {
       requestId: requestIdValue,
       route,

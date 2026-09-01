@@ -82,6 +82,16 @@ describe("POST /api/webhooks/stripe", () => {
     db.patched = null;
   });
 
+  it("reports a deployment that never received its signing secret", async () => {
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+    const { status, body } = await send("invoice.paid", { id: "in_1" }, false);
+    // 500, not 400: this is our misconfiguration, and Stripe should retry
+    // rather than treat the event as malformed and drop it.
+    expect(status).toBe(500);
+    expect(body.error.code).toBe("webhook_not_configured");
+    expect(db.patched).toBeNull();
+  });
+
   it("refuses a request carrying no signature", async () => {
     const { status, body } = await send("invoice.paid", { id: "in_1" }, false);
     expect(status).toBe(400);

@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveAppUrl } from "@/lib/app-url";
 import { emailDeliveryEnabled } from "@/lib/email-delivery";
 import { pushConfigurationStatus } from "@/lib/push/env";
+import { stripeConfigurationStatus } from "@/lib/stripe/env";
 
 export const dynamic = "force-dynamic";
 const route = "/api/health";
@@ -45,6 +46,10 @@ export async function GET(request: Request) {
       // deployment never received its VAPID keys is invisible from the app
       // (the opt-in simply does nothing), so it needs to be readable here.
       push: pushConfigurationStatus(),
+      // Same reasoning as push, and the same booleans-only rule: a deployment
+      // without its webhook secret refuses every Stripe event as unsigned,
+      // which looks identical to Stripe being broken.
+      stripe: stripeConfigurationStatus(),
     };
     logRequest("info", "health_check_complete", {
       requestId: requestIdValue,
