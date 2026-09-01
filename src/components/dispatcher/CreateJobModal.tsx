@@ -190,6 +190,7 @@ export function CreateJobModal({
             <FormField
               label="Customer"
               required
+              hideRequiredMark
               error={errors.customer}
               hint="Pick an existing customer or type a new name."
             >

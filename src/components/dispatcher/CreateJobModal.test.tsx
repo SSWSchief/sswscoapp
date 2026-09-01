@@ -88,6 +88,16 @@ describe("CreateJobModal — booking a customer who is not on the list", () => {
     expect(state.created[0]).toMatchObject({ salesRepId: "rep-1" });
   });
 
+  it("shows no asterisk on Customer but still requires one", async () => {
+    render(<CreateJobModal open onClose={() => {}} />);
+    const field = screen.getByLabelText(/^Customer/i);
+    // Dispatch read the asterisk as "pick from this list only". It is gone,
+    // while the control stays required for assistive technology.
+    expect(field).toHaveAttribute("aria-required", "true");
+    const label = screen.getByText("Customer", { selector: "label" });
+    expect(label.textContent).not.toContain("*");
+  });
+
   it("still refuses a job with no customer at all", async () => {
     render(<CreateJobModal open onClose={() => {}} />);
     const user = userEvent.setup();

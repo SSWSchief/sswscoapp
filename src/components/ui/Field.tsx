@@ -8,10 +8,18 @@ const baseControl =
 export function Label({
   children,
   required,
+  hideRequiredMark,
   htmlFor,
 }: {
   children: React.ReactNode;
   required?: boolean;
+  /**
+   * Keep the field required without printing the asterisk. For controls that
+   * read as locked-down when marked — dispatch asked for the star to come off
+   * the job form's customer field, which they took to mean "pick from this
+   * list only". Validation and aria-required are unaffected.
+   */
+  hideRequiredMark?: boolean;
   htmlFor?: string;
 }) {
   return (
@@ -20,7 +28,7 @@ export function Label({
       className="block text-xs font-semibold text-brand-charcoal mb-1.5"
     >
       {children}
-      {required && (
+      {required && !hideRequiredMark && (
         <span className="text-red-500" aria-hidden="true">
           {" "}
           *
@@ -87,12 +95,15 @@ export function Select({
 export function FormField({
   label,
   required,
+  hideRequiredMark,
   hint,
   error,
   children,
 }: {
   label: string;
   required?: boolean;
+  /** Required, but without the asterisk. See Label. */
+  hideRequiredMark?: boolean;
   hint?: string;
   error?: string;
   children: React.ReactElement;
@@ -111,7 +122,11 @@ export function FormField({
 
   return (
     <div>
-      <Label htmlFor={id} required={required}>
+      <Label
+        htmlFor={id}
+        required={required}
+        hideRequiredMark={hideRequiredMark}
+      >
         {label}
       </Label>
       {control}
