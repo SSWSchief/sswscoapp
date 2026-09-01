@@ -11,6 +11,11 @@ import { useOperations } from "@/components/system/OperationsProvider";
 import type { JobStatus } from "@/lib/types";
 import { PlatformMapLink } from "@/components/ui/PlatformMapLink";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import {
+  DisposalTicketDialog,
+  type DisposalTicketDraft,
+} from "@/components/driver/DisposalTicketDialog";
+import { netTons, producesDisposalTicket } from "@/lib/billing/measures";
 
 // Screen 6 — Driver Job Details. Interactive: photos gate completion, notes can
 // be added, and Complete requires confirmation (no accidental taps in the cab).
@@ -32,6 +37,8 @@ export default function DriverJobDetailsPage({
     logDryRun,
     uploadJobPhotos,
     addJobNote,
+    disposalTickets,
+    recordDisposalTicket,
   } = useOperations();
   const job = jobs.find(
     (item) =>
@@ -53,6 +60,7 @@ export default function DriverJobDetailsPage({
   const [composing, setComposing] = React.useState(false);
   const [draft, setDraft] = React.useState("");
   const [dryRunOpen, setDryRunOpen] = React.useState(false);
+  const [ticketOpen, setTicketOpen] = React.useState(false);
 
   React.useEffect(
     () => () =>
@@ -159,6 +167,23 @@ export default function DriverJobDetailsPage({
       setOptimisticNotes((current) => current.filter((note) => note !== body));
       setDraft(body);
       setComposing(true);
+      toast(result.error.message, { tone: "error" });
+    }
+  };
+
+  // Only hauls come back with a scale ticket; a delivery weighs nothing.
+  const needsTicket = job ? producesDisposalTicket(job.serviceType) : false;
+  const ticket = disposalTickets.find((entry) => entry.jobId === job?.id);
+
+  const saveTicket = async (draft: DisposalTicketDraft) => {
+    if (!job) return;
+    setBusy(true);
+    const result = await recordDisposalTicket(job.id, draft);
+    setBusy(false);
+    if (result.ok) {
+      setTicketOpen(false);
+      toast("Disposal ticket saved", { tone: "success" });
+    } else {
       toast(result.error.message, { tone: "error" });
     }
   };
@@ -392,6 +417,18 @@ export default function DriverJobDetailsPage({
             Arrived
           </button>
         )}
+        {needsTicket && (status === "arrived" || completed) && (
+          <button
+            onClick={() => setTicketOpen(true)}
+            disabled={busy || !canMutate}
+            className="w-full h-12 rounded border border-brand-blue text-brand-blue font-heading font-semibold uppercase tracking-wide text-sm flex items-center justify-center gap-1.5 disabled:opacity-50 dark:text-brand-skyline dark:border-brand-skyline"
+          >
+            <Icon name="clipboard" width={16} height={16} />
+            {ticket
+              ? `Ticket ${netTons(ticket.netWeightLbs)} tons`
+              : "Add Disposal Ticket"}
+          </button>
+        )}
         {status === "arrived" && !completed && (
           <>
             <button
@@ -418,6 +455,21 @@ export default function DriverJobDetailsPage({
           </div>
         )}
       </div>
+      <DisposalTicketDialog
+        open={ticketOpen}
+        onClose={() => setTicketOpen(false)}
+        onSubmit={saveTicket}
+        busy={busy}
+        existing={
+          ticket && {
+            netWeightLbs: ticket.netWeightLbs,
+            ticketNumber: ticket.ticketNumber,
+            grossWeightLbs: ticket.grossWeightLbs,
+            tareWeightLbs: ticket.tareWeightLbs,
+            notes: ticket.notes,
+          }
+        }
+      />
       <ReasonDialog
         open={dryRunOpen}
         onClose={() => setDryRunOpen(false)}

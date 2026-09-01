@@ -121,6 +121,7 @@ export const coreTableDomain: Record<string, CoreDomain> = {
   job_activities: "jobs",
   job_notes: "jobs",
   job_photos: "jobs",
+  disposal_tickets: "jobs",
   notifications: "notifications",
   users: "people",
   customers: "customers",

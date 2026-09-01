@@ -2,7 +2,9 @@ import type {
   AcknowledgementEntry,
   AppNotification,
   CompanySettings,
+  ContainerPlacement,
   Customer,
+  DisposalTicket,
   Vendor,
   Dumpster,
   InvoiceRecord,
@@ -26,7 +28,9 @@ import type {
   AbsenceRow,
   AcknowledgementRow,
   CompanySettingsRow,
+  ContainerPlacementRow,
   CorrectionRow,
+  DisposalTicketRow,
   PriceListRow,
   ReadReceiptRow,
   CustomerRow,
@@ -258,6 +262,33 @@ export const mapInvoice = (row: InvoiceRow): InvoiceRecord => ({
   paidAt: row.paid_at,
   closedAt: row.closed_at,
   createdAt: row.created_at,
+});
+export const mapDisposalTicket = (row: DisposalTicketRow): DisposalTicket => ({
+  id: row.id,
+  jobId: row.job_id,
+  ticketNumber: row.ticket_number,
+  vendorId: row.vendor_id,
+  grossWeightLbs: row.gross_weight_lbs === null ? null : Number(row.gross_weight_lbs),
+  tareWeightLbs: row.tare_weight_lbs === null ? null : Number(row.tare_weight_lbs),
+  netWeightLbs: Number(row.net_weight_lbs),
+  weighedAt: row.weighed_at,
+  storagePath: row.storage_path,
+  notes: row.notes,
+  recordedById: row.recorded_by_id,
+  createdAt: row.created_at,
+});
+export const mapContainerPlacement = (
+  row: ContainerPlacementRow,
+): ContainerPlacement => ({
+  id: row.id,
+  customerId: row.customer_id,
+  dumpsterId: row.dumpster_id,
+  address: row.address,
+  deliveredJobId: row.delivered_job_id,
+  retrievedJobId: row.retrieved_job_id,
+  deliveredAt: row.delivered_at,
+  retrievedAt: row.retrieved_at,
+  notes: row.notes,
 });
 export const mapPriceListItem = (row: PriceListRow): PriceListItem => ({
   id: row.id,

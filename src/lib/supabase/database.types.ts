@@ -310,6 +310,34 @@ export interface PriceListRow extends Record<string, unknown> {
   created_at: string;
   updated_at: string;
 }
+export interface DisposalTicketRow extends Record<string, unknown> {
+  id: string;
+  job_id: string;
+  ticket_number: string;
+  vendor_id: string | null;
+  gross_weight_lbs: number | null;
+  tare_weight_lbs: number | null;
+  net_weight_lbs: number;
+  weighed_at: string;
+  storage_path: string | null;
+  notes: string;
+  recorded_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface ContainerPlacementRow extends Record<string, unknown> {
+  id: string;
+  customer_id: string;
+  dumpster_id: string;
+  address: string;
+  delivered_job_id: string | null;
+  retrieved_job_id: string | null;
+  delivered_at: string;
+  retrieved_at: string | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
 /** Shared shape of the acknowledgement/read-receipt reporting functions. */
 export interface AcknowledgementRow extends Record<string, unknown> {
   user_id: string;
@@ -408,6 +436,8 @@ export interface Database {
       protected_administrators: Table<ProtectedAdministratorRow>;
       training_datasets: Table<TrainingDatasetRow>;
       price_list: Table<PriceListRow>;
+      disposal_tickets: Table<DisposalTicketRow>;
+      container_placements: Table<ContainerPlacementRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -418,6 +448,20 @@ export interface Database {
       assert_active_user: {
         Args: { target_user_id: string; required_role?: AccessRole };
         Returns: undefined;
+      };
+      record_disposal_ticket: {
+        Args: {
+          target_job_id: string;
+          net_lbs: number;
+          ticket_no?: string;
+          disposal_vendor_id?: string | null;
+          gross_lbs?: number | null;
+          tare_lbs?: number | null;
+          weighed?: string | null;
+          ticket_storage_path?: string | null;
+          ticket_notes?: string;
+        };
+        Returns: DisposalTicketRow;
       };
       create_job: {
         Args: {

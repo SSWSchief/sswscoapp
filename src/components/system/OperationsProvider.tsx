@@ -7,6 +7,7 @@ import {
   mapAbsence,
   mapActivity,
   mapCustomer,
+  mapDisposalTicket,
   mapVendor,
   mapDumpster,
   mapJob,
@@ -30,6 +31,7 @@ import type {
   AbsenceEvent,
   AppNotification,
   Customer,
+  DisposalTicket,
   Vendor,
   Dumpster,
   DumpsterSize,
@@ -50,6 +52,7 @@ import type {
 import type {
   CorrectionRow,
   CustomerRow,
+  DisposalTicketRow,
   VendorRow,
   DumpsterRow,
   JobActivityRow,
@@ -100,6 +103,7 @@ interface State {
   trucks: Truck[];
   dumpsters: Dumpster[];
   jobNotes: JobNote[];
+  disposalTickets: DisposalTicket[];
   timeEntries: TimeEntry[];
   timeEntryCorrections: TimeEntryCorrection[];
   timeRequests: TimeRequest[];
@@ -127,6 +131,7 @@ const emptyState: State = {
   trucks: [],
   dumpsters: [],
   jobNotes: [],
+  disposalTickets: [],
   timeEntries: [],
   timeEntryCorrections: [],
   timeRequests: [],
@@ -211,6 +216,18 @@ interface Value extends State {
   ) => Promise<MutationResult<Job>>;
   cancelJob: (id: string, reason: string) => Promise<MutationResult<Job>>;
   logDryRun: (id: string, reason: string) => Promise<MutationResult<void>>;
+  recordDisposalTicket: (
+    jobId: string,
+    input: {
+      netWeightLbs: number;
+      ticketNumber?: string;
+      vendorId?: string | null;
+      grossWeightLbs?: number | null;
+      tareWeightLbs?: number | null;
+      weighedAt?: string | null;
+      notes?: string;
+    },
+  ) => Promise<MutationResult<DisposalTicket>>;
   assignDriver: (
     jobId: string,
     driverId: string,
@@ -423,20 +440,28 @@ export function OperationsProvider({
                 .order("created_at")
                 .limit(50)
             : Promise.resolve({ data: [], error: null });
+          const ticketsQuery = activeJobId
+            ? db
+                .from("disposal_tickets")
+                .select("*")
+                .eq("job_id", activeJobId)
+                .limit(5)
+            : Promise.resolve({ data: [], error: null });
           const activitiesQuery = db
             .from("job_activities")
             .select("*")
             .order("created_at", { ascending: false })
             .limit(50);
-          const [jr, detail, pr, er, noter, ar] = await Promise.all([
+          const [jr, detail, pr, er, noter, ar, tr] = await Promise.all([
             jobsQuery,
             jobDetailQuery,
             photosQuery,
             eventsQuery,
             notesQuery,
             activitiesQuery,
+            ticketsQuery,
           ]);
-          const error = [jr, detail, pr, er, noter, ar].find(
+          const error = [jr, detail, pr, er, noter, ar, tr].find(
             (result) => result.error,
           )?.error;
           if (error) throw error;
@@ -465,6 +490,9 @@ export function OperationsProvider({
           );
           patch.jobNotes = ((noter.data ?? []) as JobNoteRow[]).map((row) =>
             mapJobNote(row, names.get(row.author_id)),
+          );
+          patch.disposalTickets = ((tr.data ?? []) as DisposalTicketRow[]).map(
+            mapDisposalTicket,
           );
         }
         if (domains.has("notifications")) {
@@ -802,6 +830,29 @@ export function OperationsProvider({
         ));
         return r.ok ? { ok: true, data: undefined } : r;
       },
+      /**
+       * File the scale ticket for a haul. Goes through the RPC rather than a
+       * table write so a driver — who is not staff and cannot write the table
+       * directly — can record their own job's ticket, and so a correction
+       * updates the existing ticket instead of billing the trip twice.
+       */
+      recordDisposalTicket: (jobId, input) =>
+        notifying(run(async () => {
+          const r = await createClient().rpc("record_disposal_ticket", {
+            target_job_id: jobId,
+            net_lbs: input.netWeightLbs,
+            ticket_no: input.ticketNumber ?? "",
+            disposal_vendor_id: input.vendorId ?? null,
+            gross_lbs: input.grossWeightLbs ?? null,
+            tare_lbs: input.tareWeightLbs ?? null,
+            weighed: input.weighedAt ?? null,
+            ticket_notes: input.notes ?? "",
+          });
+          return {
+            data: r.data ? mapDisposalTicket(r.data as DisposalTicketRow) : null,
+            error: r.error,
+          };
+        })),
       assignDriver: (jobId, driverId) =>
         notifying(run(async () => {
           const r = await createClient().rpc("assign_job", {

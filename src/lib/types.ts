@@ -299,6 +299,43 @@ export interface InvoiceRecord {
   createdAt: string;
 }
 
+/**
+ * A scale ticket for one haul, in pounds exactly as written at the disposal
+ * site. Tons are derived where they are needed rather than stored, so the
+ * figure on the paper is always what the database holds.
+ */
+export interface DisposalTicket {
+  id: string;
+  jobId: string;
+  ticketNumber: string;
+  vendorId: string | null;
+  grossWeightLbs: number | null;
+  tareWeightLbs: number | null;
+  netWeightLbs: number;
+  weighedAt: string;
+  storagePath: string | null;
+  notes: string;
+  recordedById: string | null;
+  createdAt: string;
+}
+
+/**
+ * One container standing at one jobsite, from the delivery that put it there
+ * to the pick-up that brought it back. `retrievedAt` of null means it is still
+ * out; billable rental days are the span between the two.
+ */
+export interface ContainerPlacement {
+  id: string;
+  customerId: string;
+  dumpsterId: string;
+  address: string;
+  deliveredJobId: string | null;
+  retrievedJobId: string | null;
+  deliveredAt: string;
+  retrievedAt: string | null;
+  notes: string;
+}
+
 /** A reference rate for one service and container size. */
 export interface PriceListItem {
   id: string;
