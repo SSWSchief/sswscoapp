@@ -243,6 +243,13 @@ export default function JobDetailsPage({
                 label="Scheduled Date"
                 value={formatDateTime(job.scheduledFor)}
               />
+              <Row
+                label="Sales Rep"
+                value={
+                  users.find((item) => item.id === job.salesRepId)?.fullName ??
+                  "—"
+                }
+              />
               <Row label="Notes" value={job.notes || "—"} />
             </dl>
           </Card>

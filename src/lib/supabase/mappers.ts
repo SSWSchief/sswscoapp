@@ -154,6 +154,7 @@ export function mapJob(
     status: row.status,
     notes: row.notes,
     trafficInstructions: row.traffic_instructions ?? undefined,
+    salesRepId: row.sales_rep_id ?? null,
     photos: photos
       .filter((p) => p.job_id === row.id)
       .map((p) => ({

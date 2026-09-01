@@ -125,6 +125,7 @@ export interface JobRow extends Record<string, unknown> {
   status: JobStatus;
   notes: string;
   traffic_instructions: string | null;
+  sales_rep_id: string | null;
   created_by_id: string | null;
   cancellation_reason: string | null;
   created_at: string;
@@ -468,6 +469,10 @@ export interface Database {
         };
         Returns: DisposalTicketRow;
       };
+      resolve_customer: {
+        Args: { customer_id: string | null; customer_name: string | null };
+        Returns: string;
+      };
       create_job: {
         Args: {
           customer_id: string;
@@ -481,6 +486,8 @@ export interface Database {
           schedule_at: string;
           job_notes?: string;
           traffic?: string;
+          customer_name?: string | null;
+          rep_id?: string | null;
         };
         Returns: JobRow;
       };
@@ -498,6 +505,8 @@ export interface Database {
           schedule_at: string;
           job_notes?: string;
           traffic?: string;
+          customer_name?: string | null;
+          rep_id?: string | null;
         };
         Returns: JobRow;
       };

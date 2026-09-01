@@ -104,6 +104,7 @@ describe("database mappers", () => {
         status: "pending",
         notes: "",
         traffic_instructions: null,
+        sales_rep_id: null,
         created_by_id: null,
         cancellation_reason: null,
         deleted_at: null,

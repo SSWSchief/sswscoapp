@@ -13,7 +13,9 @@ import type { DumpsterSize, Job, ServiceType } from "@/lib/types";
 // Screen 3 — Create / Edit Job. Grouped into sections with client-side
 // validation and availability-aware asset pickers.
 type Form = {
+  /** The customer's name as typed or picked, not an id — see resolveCustomer. */
   customer: string;
+  salesRep: string;
   address: string;
   serviceType: string;
   dumpsterSize: string;
@@ -27,6 +29,7 @@ type Form = {
 
 const empty: Form = {
   customer: "",
+  salesRep: "",
   address: "",
   serviceType: "",
   dumpsterSize: "",
@@ -60,6 +63,8 @@ export function CreateJobModal({
   const drivers = users.filter(
     (user) => user.accessRole === "driver" && user.status === "active",
   );
+  // Anyone on staff can bring in work, so the list is not narrowed by role.
+  const representatives = users.filter((user) => user.status === "active");
   const [form, setForm] = React.useState<Form>(empty);
   const [errors, setErrors] = React.useState<
     Partial<Record<keyof Form, string>>
@@ -71,7 +76,10 @@ export function CreateJobModal({
       setForm(
         job
           ? {
-              customer: job.customerId,
+              customer:
+                customers.find((item) => item.id === job.customerId)?.name ??
+                "",
+              salesRep: job.salesRepId ?? "",
               address: job.address,
               serviceType: job.serviceType,
               dumpsterSize: job.dumpsterSize,
@@ -91,7 +99,7 @@ export function CreateJobModal({
       );
       setErrors({});
     }
-  }, [job, open]);
+  }, [customers, job, open]);
 
   const set =
     (k: keyof Form) =>
@@ -100,7 +108,8 @@ export function CreateJobModal({
 
   const validate = (): boolean => {
     const next: Partial<Record<keyof Form, string>> = {};
-    if (!form.customer) next.customer = "Select or create a customer.";
+    if (!form.customer.trim())
+      next.customer = "Pick a customer or type a new name.";
     if (!form.address.trim()) next.address = "Enter a job address.";
     if (!form.serviceType) next.serviceType = "Choose a service type.";
     if (!form.dumpsterSize) next.dumpsterSize = "Choose a dumpster size.";
@@ -113,9 +122,17 @@ export function CreateJobModal({
     if (!validate()) return;
     if (saving || !canMutate) return;
     setSaving(true);
-    const customer = customers.find((item) => item.id === form.customer);
+    // An exact name match reuses that customer; anything else is sent as a
+    // name for the server to resolve or create, so dispatch never has to leave
+    // the form to book work for someone new.
+    const typed = form.customer.trim();
+    const customer = customers.find(
+      (item) => item.name.toLowerCase() === typed.toLowerCase(),
+    );
     const input = {
-      customerId: form.customer,
+      customerId: customer?.id ?? "",
+      customerName: customer ? "" : typed,
+      salesRepId: form.salesRep || null,
       address: form.address.trim(),
       phone: customer?.phone ?? "",
       serviceType: form.serviceType as ServiceType,
@@ -170,14 +187,37 @@ export function CreateJobModal({
       <div className="space-y-6">
         <Section title="Customer & Location">
           <div className="grid gap-5 sm:grid-cols-2">
-            <FormField label="Customer" required error={errors.customer}>
-              <Select value={form.customer} onChange={set("customer")}>
-                <option value="" disabled>
-                  Select customer
-                </option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
+            <FormField
+              label="Customer"
+              required
+              error={errors.customer}
+              hint="Pick an existing customer or type a new name."
+            >
+              <Input
+                list="known-customers"
+                value={form.customer}
+                onChange={set("customer")}
+                placeholder="Customer name"
+              />
+            </FormField>
+            {/* Outside the field: FormField clones its single child to carry
+                the id the label points at, so wrapping the input would hang
+                the label off a div instead of the control. */}
+            <datalist id="known-customers">
+              {customers.map((c) => (
+                <option key={c.id} value={c.name} />
+              ))}
+            </datalist>
+
+            <FormField
+              label="Sales Rep"
+              hint="Who brought in this job. Optional."
+            >
+              <Select value={form.salesRep} onChange={set("salesRep")}>
+                <option value="">No rep</option>
+                {representatives.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.fullName}
                   </option>
                 ))}
               </Select>

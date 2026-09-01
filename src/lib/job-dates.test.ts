@@ -20,6 +20,7 @@ const job = (
   assignedDriverId: "d",
   assignedTruckId: null,
   assignedDumpsterId: null,
+  salesRepId: null,
   scheduledFor,
   status,
   notes: "",

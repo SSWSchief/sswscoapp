@@ -148,7 +148,11 @@ const emptyState: State = {
   totals: { jobs: 0, customers: 0, users: 0, vendors: 0 },
 };
 interface CreateJobInput {
+  /** An existing customer, or "" when the name below is being typed instead. */
   customerId: string;
+  /** A customer typed straight into the job form; resolved or created server-side. */
+  customerName: string;
+  salesRepId: string | null;
   address: string;
   phone: string;
   serviceType: ServiceType;
@@ -812,6 +816,8 @@ export function OperationsProvider({
             schedule_at: new Date(input.scheduledFor).toISOString(),
             job_notes: input.notes,
             traffic: input.trafficInstructions,
+            customer_name: input.customerName || null,
+            rep_id: input.salesRepId,
           });
           return { data: r.data ? mapJob(r.data) : null, error: r.error };
         })),
@@ -830,6 +836,8 @@ export function OperationsProvider({
             schedule_at: new Date(input.scheduledFor).toISOString(),
             job_notes: input.notes,
             traffic: input.trafficInstructions,
+            customer_name: input.customerName || null,
+            rep_id: input.salesRepId,
           }),
         ));
         return r.ok ? { ok: true, data: undefined } : r;

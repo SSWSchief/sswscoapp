@@ -227,6 +227,8 @@ export interface Job {
   status: JobStatus;
   notes: string;
   trafficInstructions?: string;
+  /** The representative who brought in the work, for tracking and bonuses. */
+  salesRepId: string | null;
   photos: JobPhoto[];
   timeline: JobEvent[];
 }
