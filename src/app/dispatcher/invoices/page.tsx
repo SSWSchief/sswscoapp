@@ -11,16 +11,18 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { downloadCsv } from "@/lib/client-download";
+import { apiErrorMessage } from "@/lib/client-api";
 import type { InvoiceRecord } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function InvoicesPage() {
-  const { invoices } = useExpandedOperations();
+  const { invoices, refresh } = useExpandedOperations();
   const { customers, canMutate } = useOperations();
   const { toast } = useToast();
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<InvoiceRecord>();
   const [exporting, setExporting] = React.useState(false);
+  const [sending, setSending] = React.useState<string | null>(null);
   const receivables = invoices
     .filter((invoice) => !["paid", "closed", "void"].includes(invoice.status))
     .reduce((total, invoice) => total + invoice.amountCents, 0);
@@ -28,6 +30,43 @@ export default function InvoicesPage() {
   const editInvoice = (invoice: InvoiceRecord) => {
     setEditing(invoice);
     setOpen(true);
+  };
+
+  /**
+   * Raise the invoice in Stripe and mail it to the customer.
+   *
+   * The route is idempotent on the stored Stripe id, so a double click or an
+   * impatient retry returns the existing payment link rather than billing the
+   * customer twice.
+   */
+  const sendViaStripe = async (invoice: InvoiceRecord) => {
+    setSending(invoice.id);
+    try {
+      const response = await fetch(`/api/invoices/${invoice.id}/send`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        toast(
+          await apiErrorMessage(response, "The invoice could not be sent."),
+          { tone: "error" },
+        );
+        return;
+      }
+      const body = (await response.json()) as {
+        data: { alreadySent: boolean };
+      };
+      toast(
+        body.data.alreadySent
+          ? `${invoice.invoiceNumber} was already sent.`
+          : `${invoice.invoiceNumber} sent to the customer.`,
+        { tone: "success" },
+      );
+      await refresh();
+    } catch {
+      toast("The invoice could not be sent.", { tone: "error" });
+    } finally {
+      setSending(null);
+    }
   };
 
   const exportInvoices = async () => {
@@ -116,12 +155,20 @@ export default function InvoicesPage() {
                   </TD>
                   <TD>{formatDate(invoice.dueDate)}</TD>
                   <TD>
-                    <button
-                      className="min-h-11 text-brand-blue"
-                      onClick={() => editInvoice(invoice)}
-                    >
-                      Edit
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        className="min-h-11 text-brand-blue"
+                        onClick={() => editInvoice(invoice)}
+                      >
+                        Edit
+                      </button>
+                      <StripeAction
+                        invoice={invoice}
+                        busy={sending === invoice.id}
+                        disabled={!canMutate}
+                        onSend={() => void sendViaStripe(invoice)}
+                      />
+                    </div>
                   </TD>
                 </TR>
               ))}
@@ -154,13 +201,21 @@ export default function InvoicesPage() {
                     value={formatDate(invoice.dueDate)}
                   />
                 </dl>
-                <Button
-                  className="mt-4 w-full"
-                  variant="secondary"
-                  onClick={() => editInvoice(invoice)}
-                >
-                  Edit Invoice
-                </Button>
+                <div className="mt-4 grid gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => editInvoice(invoice)}
+                  >
+                    Edit Invoice
+                  </Button>
+                  <StripeAction
+                    invoice={invoice}
+                    busy={sending === invoice.id}
+                    disabled={!canMutate}
+                    onSend={() => void sendViaStripe(invoice)}
+                    full
+                  />
+                </div>
               </li>
             ))}
           </ul>
@@ -176,6 +231,47 @@ export default function InvoicesPage() {
         invoice={editing}
       />
     </>
+  );
+}
+
+/**
+ * Either send the invoice through Stripe, or open the payment page it already
+ * has. Never both: once an invoice has a Stripe id it has been billed, and
+ * offering "send" again invites a second invoice for the same work.
+ */
+function StripeAction({
+  invoice,
+  busy,
+  disabled,
+  onSend,
+  full,
+}: {
+  invoice: InvoiceRecord;
+  busy: boolean;
+  disabled: boolean;
+  onSend: () => void;
+  full?: boolean;
+}) {
+  if (invoice.hostedInvoiceUrl)
+    return (
+      <a
+        href={invoice.hostedInvoiceUrl}
+        target="_blank"
+        rel="noreferrer"
+        className={`inline-flex min-h-11 items-center justify-center text-brand-blue underline-offset-2 hover:underline ${full ? "w-full rounded border border-brand-ice" : ""}`}
+      >
+        Payment page
+      </a>
+    );
+  if (invoice.stripeInvoiceId) return null;
+  return (
+    <button
+      className={`min-h-11 text-brand-blue disabled:opacity-40 ${full ? "w-full rounded border border-brand-ice" : ""}`}
+      disabled={busy || disabled}
+      onClick={onSend}
+    >
+      {busy ? "Sending…" : "Send via Stripe"}
+    </button>
   );
 }
 

@@ -67,6 +67,7 @@ interface InvoiceInput {
   status: InvoiceStatus;
   dueDate: string;
   notes: string;
+  poNumber: string;
 }
 type State = {
   invoices: InvoiceRecord[];
@@ -425,6 +426,7 @@ export function ExpandedOperationsProvider({
                     status: input.status,
                     due_date: input.dueDate,
                     notes: input.notes.trim(),
+                    po_number: input.poNumber.trim(),
                   })
                   .eq("id", id)
               : createClient().from("invoices").insert({
@@ -435,6 +437,7 @@ export function ExpandedOperationsProvider({
                   status: input.status,
                   due_date: input.dueDate,
                   notes: input.notes.trim(),
+                  po_number: input.poNumber.trim(),
                   created_by_id: currentUser?.id,
                 }),
           "finance",

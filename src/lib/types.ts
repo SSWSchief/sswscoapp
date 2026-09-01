@@ -293,6 +293,12 @@ export interface InvoiceRecord {
   status: InvoiceStatus;
   dueDate: string;
   notes: string;
+  poNumber: string;
+  /** Set once the invoice has been raised in Stripe; null means never sent. */
+  stripeInvoiceId: string | null;
+  hostedInvoiceUrl: string | null;
+  invoicePdfUrl: string | null;
+  amountPaidCents: number;
   sentAt: string | null;
   paidAt: string | null;
   closedAt: string | null;

@@ -216,22 +216,29 @@ describe("database mappers", () => {
         note: "",
       }).date,
     ).toBe("2026-08-08");
-    expect(
-      mappers.mapInvoice({
-        ...base,
-        invoice_number: "INV-1",
-        customer_id: "customer",
-        job_id: null,
-        amount_cents: 100,
-        status: "draft",
-        due_date: "2026-09-01",
-        notes: "",
-        sent_at: null,
-        paid_at: null,
-        closed_at: null,
-        created_by_id: null,
-      }).amountCents,
-    ).toBe(100);
+    const invoice = mappers.mapInvoice({
+      ...base,
+      invoice_number: "INV-1",
+      customer_id: "customer",
+      job_id: null,
+      amount_cents: 100,
+      status: "draft",
+      due_date: "2026-09-01",
+      notes: "",
+      po_number: "",
+      stripe_invoice_id: null,
+      hosted_invoice_url: null,
+      invoice_pdf_url: null,
+      amount_paid_cents: 0,
+      sent_at: null,
+      paid_at: null,
+      closed_at: null,
+      created_by_id: null,
+    });
+    expect(invoice.amountCents).toBe(100);
+    // An invoice never pushed to Stripe carries no link and nothing settled.
+    expect(invoice.stripeInvoiceId).toBeNull();
+    expect(invoice.amountPaidCents).toBe(0);
     expect(
       mappers.mapMessageChannel({
         ...base,

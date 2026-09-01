@@ -29,6 +29,7 @@ export function InvoiceModal({
     status: "draft" as InvoiceStatus,
     dueDate: "",
     notes: "",
+    poNumber: "",
   });
   React.useEffect(() => {
     if (open) {
@@ -42,6 +43,7 @@ export function InvoiceModal({
         status: invoice?.status ?? "draft",
         dueDate: invoice?.dueDate ?? "",
         notes: invoice?.notes ?? "",
+        poNumber: invoice?.poNumber ?? "",
       });
     }
   }, [open, invoice, settings]);
@@ -177,6 +179,15 @@ export function InvoiceModal({
               </option>
             ))}
           </Select>
+        </FormField>
+        <FormField
+          label="PO Number"
+          hint="Printed on the invoice. Most GCs will not pay without it."
+        >
+          <Input
+            value={form.poNumber}
+            onChange={(e) => setForm({ ...form, poNumber: e.target.value })}
+          />
         </FormField>
         <FormField label="Due Date" required>
           <Input

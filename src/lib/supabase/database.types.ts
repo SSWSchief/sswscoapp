@@ -216,6 +216,11 @@ export interface InvoiceRow extends Record<string, unknown> {
   status: "draft" | "sent" | "paid" | "overdue" | "closed" | "void";
   due_date: string;
   notes: string;
+  po_number: string;
+  stripe_invoice_id: string | null;
+  hosted_invoice_url: string | null;
+  invoice_pdf_url: string | null;
+  amount_paid_cents: number;
   sent_at: string | null;
   paid_at: string | null;
   closed_at: string | null;
