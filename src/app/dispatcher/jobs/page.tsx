@@ -73,7 +73,10 @@ function JobsPageContent() {
       if (unassignedOnly && j.assignedDriverId) return false;
       if (!q) return true;
       const customer = customers.find((item) => item.id === j.customerId);
-      return `${j.reference} ${customer?.name ?? ""} ${j.address}`
+      // The sales rep is searchable too, so typing a rep's name lists
+      // everything they brought in — which is what recording them was for.
+      const rep = users.find((item) => item.id === j.salesRepId);
+      return `${j.reference} ${customer?.name ?? ""} ${j.address} ${rep?.fullName ?? ""}`
         .toLowerCase()
         .includes(q);
     });
@@ -85,7 +88,16 @@ function JobsPageContent() {
       return ca.localeCompare(cb);
     });
     return list;
-  }, [allJobs, customers, query, filter, sort, todayOnly, unassignedOnly]);
+  }, [
+    allJobs,
+    customers,
+    users,
+    query,
+    filter,
+    sort,
+    todayOnly,
+    unassignedOnly,
+  ]);
 
   return (
     <>
@@ -112,7 +124,7 @@ function JobsPageContent() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by job #, customer, or address…"
+                placeholder="Search by job #, customer, address, or rep…"
                 className="pl-10"
               />
             </div>
