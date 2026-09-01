@@ -1,7 +1,7 @@
 import "server-only";
 import { getWebPush } from "./client";
 
-export interface PushPayload {
+interface PushPayload {
   title: string;
   body: string;
   icon?: string;
@@ -9,7 +9,7 @@ export interface PushPayload {
   data?: Record<string, unknown>;
 }
 
-export interface PushSubscriptionTarget {
+interface PushSubscriptionTarget {
   id: string;
   endpoint: string;
   p256dh: string;

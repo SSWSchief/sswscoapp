@@ -4,7 +4,7 @@ import * as React from "react";
 import { getPublicVapidKey } from "./env";
 import { urlBase64ToUint8Array } from "./utils";
 
-export type WebPushStatus =
+type WebPushStatus =
   | "loading"
   | "unsupported"
   | "unconfigured"
@@ -12,7 +12,7 @@ export type WebPushStatus =
   | "granted"
   | "denied";
 
-export interface WebPushResult {
+interface WebPushResult {
   ok: boolean;
   message?: string;
 }
