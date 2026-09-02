@@ -555,6 +555,7 @@ export function ExpandedOperationsProvider({
               company_date_format: settings.dateFormat,
               retention_days: settings.messageRetentionDays,
               invoice_prefix: settings.invoicePrefix,
+              invoice_terms: settings.invoiceTerms,
             }),
           "settings",
         ),

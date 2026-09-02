@@ -302,6 +302,7 @@ describe("database mappers", () => {
         date_format: "MM/DD/YYYY",
         message_retention_days: 365,
         invoice_prefix: "INV",
+        invoice_terms: "",
         updated_at: base.updated_at,
       }).invoicePrefix,
     ).toBe("INV");

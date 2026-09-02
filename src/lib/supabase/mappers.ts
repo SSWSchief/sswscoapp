@@ -377,4 +377,5 @@ export const mapCompanySettings = (
   dateFormat: row.date_format,
   messageRetentionDays: row.message_retention_days,
   invoicePrefix: row.invoice_prefix,
+  invoiceTerms: row.invoice_terms ?? "",
 });

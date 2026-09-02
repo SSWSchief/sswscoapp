@@ -18,6 +18,8 @@ interface PushableInvoice {
   notes: string;
   poNumber: string;
   jobReference: string | null;
+  /** Rental terms and prohibited materials, printed on the invoice. */
+  terms: string;
 }
 
 interface PushedInvoice {
@@ -92,17 +94,36 @@ export async function pushInvoiceToStripe(
     customFields.push({ name: "Job", value: invoice.jobReference });
   }
 
+  // Stripe prints the footer on the PDF but not on the hosted payment page —
+  // verified against a real invoice, whose page text carries neither the terms
+  // nor any link to them. A customer paying from the emailed link would
+  // otherwise never know the terms existed, so the memo, which the page does
+  // show, says where they are.
+  const memo = [
+    invoice.notes,
+    invoice.terms
+      ? "Rental terms and prohibited materials are on the invoice PDF."
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" — ");
+
   const draft = await stripe.invoices.create(
     {
       customer: stripeCustomerId,
       collection_method: "send_invoice",
       due_date: dueDate,
-      description: invoice.notes || undefined,
+      description: memo || undefined,
       // The office's own number, not Stripe's. Left to Stripe, the customer
       // receives an invoice numbered #XZHQCMWK-0001 that nobody at SSWS can
       // look up. Our invoice_number is already unique per account, which is
       // exactly what Stripe requires of this field.
       number: invoice.invoiceNumber,
+      // The rental terms and the prohibited materials list travel with the
+      // bill. Stripe prints the footer on both the hosted payment page and the
+      // PDF, and finalising freezes it, so an invoice keeps the terms it was
+      // issued under even after they are next edited.
+      footer: invoice.terms || undefined,
       custom_fields: customFields.length ? customFields : undefined,
       metadata: {
         sswsco_invoice_id: invoice.id,

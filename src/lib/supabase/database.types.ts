@@ -304,6 +304,7 @@ export interface CompanySettingsRow extends Record<string, unknown> {
   date_format: string;
   message_retention_days: number;
   invoice_prefix: string;
+  invoice_terms: string;
   updated_at: string;
 }
 export interface PriceListRow extends Record<string, unknown> {
@@ -610,6 +611,7 @@ export interface Database {
           company_date_format: string;
           retention_days: number;
           invoice_prefix: string;
+          invoice_terms?: string;
         };
         Returns: CompanySettingsRow;
       };

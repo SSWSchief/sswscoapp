@@ -101,6 +101,15 @@ export async function POST(
       409,
     );
 
+  // Company-wide terms, read at send time and frozen into the invoice by
+  // Stripe's finalisation. Absent settings are not fatal: an invoice with no
+  // terms is worse than one with, but far better than one that cannot be sent.
+  const settings = await db
+    .from("company_settings")
+    .select("invoice_terms")
+    .maybeSingle();
+  const terms = (settings.data?.invoice_terms as string | undefined) ?? "";
+
   let jobReference: string | null = null;
   if (invoice.job_id) {
     const job = await db
@@ -133,6 +142,7 @@ export async function POST(
         notes: (invoice.notes as string) ?? "",
         poNumber: (invoice.po_number as string) ?? "",
         jobReference,
+        terms,
       },
       stripeCustomerId,
     );

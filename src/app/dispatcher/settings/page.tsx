@@ -31,6 +31,7 @@ const defaults: CompanySettings = {
   dateFormat: "MM/DD/YYYY",
   messageRetentionDays: 365,
   invoicePrefix: "INV",
+  invoiceTerms: "",
 };
 const tabs = [
   "company",
@@ -124,6 +125,10 @@ function validateSettings(settings: CompanySettings) {
     errors.messageRetentionDays = "Use 30 to 3650 days.";
   if (!/^[A-Z0-9]{2,12}$/.test(settings.invoicePrefix.trim().toUpperCase()))
     errors.invoicePrefix = "Use 2 to 12 letters or numbers.";
+  // Stripe refuses an invoice footer over 5000 characters, so terms that would
+  // not fit are caught here rather than when an invoice fails to send.
+  if (settings.invoiceTerms.length > 5000)
+    errors.invoiceTerms = "Trim to 5000 characters or fewer.";
   return errors;
 }
 
@@ -479,6 +484,20 @@ export default function Page() {
                           .toUpperCase()
                           .replace(/[^A-Z0-9]/g, ""),
                       })
+                    }
+                  />
+                </FormField>
+                <FormField
+                  label="Invoice Terms"
+                  error={errors.invoiceTerms}
+                  hint={`Printed on every invoice — rental terms and prohibited materials. ${form.invoiceTerms.length}/5000 characters.`}
+                >
+                  <Textarea
+                    rows={10}
+                    value={form.invoiceTerms}
+                    placeholder="Terms of the rental, prohibited materials, and anything else that must travel with the bill."
+                    onChange={(event) =>
+                      setForm({ ...form, invoiceTerms: event.target.value })
                     }
                   />
                 </FormField>

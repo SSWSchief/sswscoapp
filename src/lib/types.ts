@@ -429,6 +429,8 @@ export interface CompanySettings {
   dateFormat: string;
   messageRetentionDays: number;
   invoicePrefix: string;
+  /** Rental terms printed on every invoice. See 202609010005. */
+  invoiceTerms: string;
 }
 
 export type TrainingDatasetStatus = "not_provisioned" | "active" | "removed";
