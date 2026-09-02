@@ -57,6 +57,23 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith(prefix),
   );
   const isEntry = request.nextUrl.pathname === "/";
+
+  // A production build prefetches every visible link, so opening one page fired
+  // nine concurrent middleware invocations, each running a full Supabase auth
+  // pass. @supabase/ssr rotates the refresh token when it refreshes, and those
+  // parallel rotations invalidate one another — leaving the browser holding a
+  // cookie that no longer authenticates, after which every query returns
+  // nothing and the app looks empty rather than broken.
+  //
+  // Prefetches are answered without touching auth. Nothing is weakened by it:
+  // no page content is produced, and the real navigation still runs every
+  // check below. The only cost is that protected routes are no longer
+  // prefetched, which trades a little navigation speed for a session that
+  // survives a page load. Local development never showed this because Next
+  // does not prefetch in dev, and a single Node process does not run the
+  // invocations in parallel the way Vercel's edge does.
+  if (request.headers.get("next-router-prefetch") === "1")
+    return secured(new NextResponse(null, { status: 204 }));
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key =
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
