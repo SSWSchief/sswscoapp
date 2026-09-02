@@ -6,15 +6,21 @@ import { Button } from "@/components/ui/Button";
 import { FormField, Input, Textarea } from "@/components/ui/Field";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useToast } from "@/components/system/ToastProvider";
-import { formatPacificTime, pacificDate } from "@/lib/time-clock";
+import {
+  formatPacificTime,
+  pacificClockValue,
+  pacificDate,
+  pacificInstant,
+} from "@/lib/time-clock";
 import type { TimeEntry, TimeEntryType } from "@/lib/types";
 
-/** The clock time of an entry as HH:MM, for a time input. */
-const clockValue = (entry: TimeEntry | undefined) => {
-  if (!entry) return "";
-  const at = new Date(entry.at);
-  return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
-};
+/**
+ * The clock time of an entry as HH:MM, on the Pacific clock rather than the
+ * device's. The day this form works in is a Pacific day, so the times shown
+ * against it have to be Pacific too.
+ */
+const clockValue = (entry: TimeEntry | undefined) =>
+  entry ? pacificClockValue(entry.at) : "";
 
 export function TimeRequestModal({
   open,
@@ -108,8 +114,8 @@ export function TimeRequestModal({
     );
     if (!changes.length) return "Change a start or finish time first.";
     for (const change of changes) {
-      const at = new Date(`${form.requestedFor}T${change.value}`);
-      if (Number.isNaN(at.getTime())) return "That time could not be read.";
+      const at = pacificInstant(form.requestedFor, change.value);
+      if (!at) return "That time could not be read.";
       const result = await createTimeRequest({
         kind: "edit_time",
         requestedFor: form.requestedFor,
@@ -117,7 +123,7 @@ export function TimeRequestModal({
         reason: form.reason,
         targetEntryId: change.existing?.id ?? null,
         requestedEntryType: change.type,
-        requestedAt: at.toISOString(),
+        requestedAt: at,
       });
       if (!result.ok) return result.error.message;
     }

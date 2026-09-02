@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TimeRequestModal } from "./TimeRequestModal";
 import type { TimeEntry } from "@/lib/types";
+import { pacificDate, pacificInstant } from "@/lib/time-clock";
 
 const state = {
   myRecentTimeEntries: [] as TimeEntry[],
@@ -24,11 +25,16 @@ vi.mock("@/components/system/ToastProvider", () => ({
   useToast: () => ({ toast: () => {} }),
 }));
 
-const at = (hour: number, minute: number) => {
-  const d = new Date();
-  d.setHours(hour, minute, 0, 0);
-  return d.toISOString();
-};
+// Fixtures are built on the Pacific clock, the same one the component reads
+// and writes on, so the suite behaves identically on a Pacific laptop and a
+// UTC CI runner. Building them from the device clock is what made these tests
+// pass locally and fail in CI.
+const today = () => pacificDate(new Date());
+const at = (hour: number, minute: number) =>
+  pacificInstant(
+    today(),
+    `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+  ) as string;
 
 describe("TimeRequestModal — fixing hours", () => {
   afterEach(cleanup);

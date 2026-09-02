@@ -6,10 +6,12 @@ import {
   formatHoursDuration,
   formatPacificDayLabel,
   formatPacificTime,
+  pacificClockValue,
   pacificDate,
   pacificDayEnd,
   pacificDayStart,
   pacificDaysBetween,
+  pacificInstant,
   reviewBlockedReason,
   summarizeDay,
   summarizeRange,
@@ -338,5 +340,33 @@ describe("describeTimeRequest", () => {
     expect(
       describeTimeRequest({ ...base, kind: "pto", hours: 8 }),
     ).toBe("PTO · 8h");
+  });
+});
+
+describe("Pacific clock conversions", () => {
+  it("reads an instant on the Pacific clock, not the device's", () => {
+    // 20:00 UTC is 13:00 in Pacific daylight time.
+    expect(pacificClockValue("2026-09-01T20:00:00Z")).toBe("13:00");
+    // And 08:00 UTC is the previous evening there.
+    expect(pacificClockValue("2026-09-02T08:00:00Z")).toBe("01:00");
+  });
+
+  it("round-trips a wall-clock time through an instant and back", () => {
+    const iso = pacificInstant("2026-09-01", "08:00");
+    expect(iso).not.toBeNull();
+    expect(pacificClockValue(iso as string)).toBe("08:00");
+    expect(pacificDate(iso as string)).toBe("2026-09-01");
+  });
+
+  it("uses the right offset either side of the daylight-saving change", () => {
+    // Standard time in January, daylight time in July: the same wall clock
+    // reading is a different instant, which is why the offset is probed.
+    expect(pacificInstant("2026-01-15", "09:00")).toBe("2026-01-15T17:00:00.000Z");
+    expect(pacificInstant("2026-07-15", "09:00")).toBe("2026-07-15T16:00:00.000Z");
+  });
+
+  it("refuses input it cannot read rather than inventing a time", () => {
+    expect(pacificInstant("not-a-day", "09:00")).toBeNull();
+    expect(pacificInstant("2026-09-01", "9am")).toBeNull();
   });
 });

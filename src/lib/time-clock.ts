@@ -111,6 +111,49 @@ export const formatPacificDayLabel = (day: string) =>
     day: "numeric",
   }).format(new Date(`${day}T12:00:00Z`));
 
+/**
+ * An instant as HH:MM on the Pacific clock, for a `<input type="time">`.
+ *
+ * Deliberately not the device's own clock. Everything else about the time
+ * clock is reckoned in Pacific — the day a punch belongs to, the query window,
+ * the summaries — so reading a punch back in the phone's zone would show one
+ * time against a day chosen in another, and put the correction on the wrong
+ * day for anyone whose device is set elsewhere.
+ */
+export const pacificClockValue = (iso: string) =>
+  new Intl.DateTimeFormat("en-GB", {
+    timeZone: zone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(iso));
+
+/**
+ * The instant at which a Pacific calendar day reads a given wall-clock time.
+ *
+ * The counterpart to `pacificClockValue`, and DST-safe the same way
+ * `pacificDayStart` is: the offset changes twice a year and cannot be derived
+ * from the date alone, so both candidates are tried and the one that really
+ * lands on that day at that time wins.
+ */
+export function pacificInstant(day: string, time: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !/^\d{2}:\d{2}$/.test(time))
+    return null;
+  for (const offset of ["-08:00", "-07:00"]) {
+    const candidate = new Date(`${day}T${time}:00${offset}`);
+    if (Number.isNaN(candidate.getTime())) continue;
+    if (
+      pacificDate(candidate) === day &&
+      pacificClockValue(candidate.toISOString()) === time
+    )
+      return candidate.toISOString();
+  }
+  // The hour skipped by the spring-forward transition does not exist on the
+  // Pacific clock. Standard time keeps it inside the intended day.
+  const fallback = new Date(`${day}T${time}:00-08:00`);
+  return Number.isNaN(fallback.getTime()) ? null : fallback.toISOString();
+}
+
 export const formatPacificTime = (iso: string) =>
   new Intl.DateTimeFormat("en-US", {
     timeZone: zone,
