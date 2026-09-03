@@ -43,3 +43,8 @@ next-env.d.ts
 
 # local editor/agent tooling
 .claude/
+
+# Business planning notes that happen to live in this checkout. They are not
+# part of the client's application and a broad `git add` has swept stray files
+# into a commit here before.
+/whitelabelidea/
