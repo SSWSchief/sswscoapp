@@ -30,7 +30,10 @@ interface Options {
   selectError?: DatabaseFailure;
 }
 
-type Filter = ["eq" | "neq" | "ilike" | "is", string, unknown];
+type Filter =
+  | ["eq" | "neq" | "ilike" | "is", string, unknown]
+  | ["in", string, unknown[]]
+  | ["notis", string, unknown];
 
 /** A `LIKE` pattern as Postgres reads it: `%` and `_` are wildcards unless escaped. */
 function likeMatcher(pattern: string) {
@@ -55,6 +58,8 @@ function matches(row: Row, filters: Filter[]) {
     if (operator === "eq") return actual === value;
     if (operator === "neq") return actual !== value;
     if (operator === "is") return actual === value;
+    if (operator === "in") return (value as unknown[]).includes(actual);
+    if (operator === "notis") return actual !== value;
     return typeof actual === "string" && likeMatcher(String(value)).test(actual);
   });
 }
@@ -104,6 +109,10 @@ export function fakeAdminClient(tables: Tables, options: Options = {}) {
       eq: (column: string, value: unknown) => (filters.push(["eq", column, value]), chain),
       neq: (column: string, value: unknown) => (filters.push(["neq", column, value]), chain),
       is: (column: string, value: unknown) => (filters.push(["is", column, value]), chain),
+      in: (column: string, values: unknown[]) => (filters.push(["in", column, values]), chain),
+      /** Only the `not(column, "is", value)` form the queries here use. */
+      not: (column: string, _operator: string, value: unknown) =>
+        (filters.push(["notis", column, value]), chain),
       ilike: (column: string, value: unknown) => (filters.push(["ilike", column, value]), chain),
       limit: () => chain,
       order: () => chain,
