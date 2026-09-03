@@ -49,7 +49,7 @@ dropdb --if-exists "$DB"
 createdb "$DB"
 
 step "Applying the Supabase compatibility shim"
-psql -q -d "$DB" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/local-bootstrap.sql" >/dev/null
+psql -q -d "$DB" -v ON_ERROR_STOP=1 -f "$ROOT/scripts/sql/supabase-bootstrap.sql" >/dev/null
 
 step "Applying the migration chain"
 for migration in "$ROOT"/supabase/migrations/*.sql; do
@@ -83,7 +83,7 @@ step "Rehearsing the data conversion on legacy-shape rows"
 DATA_DB="${DB}_data"
 dropdb --if-exists "$DATA_DB"
 createdb "$DATA_DB"
-psql -q -d "$DATA_DB" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/local-bootstrap.sql" >/dev/null
+psql -q -d "$DATA_DB" -v ON_ERROR_STOP=1 -f "$ROOT/scripts/sql/supabase-bootstrap.sql" >/dev/null
 STRIPE_MIGRATION=""
 for migration in "$ROOT"/supabase/migrations/*.sql; do
   case "$migration" in

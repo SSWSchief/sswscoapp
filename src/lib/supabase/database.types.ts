@@ -275,6 +275,11 @@ export interface InvoiceJobRow extends Record<string, unknown> {
   active: boolean;
   created_at: string;
 }
+export interface InvoiceNumberCounterRow extends Record<string, unknown> {
+  prefix: string;
+  next_value: number;
+  updated_at: string;
+}
 export interface StripeWebhookEventRow extends Record<string, unknown> {
   event_id: string;
   event_type: string;
@@ -480,6 +485,7 @@ export interface Database {
       invoices: Table<InvoiceRow>;
       invoice_line_items: Table<InvoiceLineItemRow>;
       invoice_jobs: Table<InvoiceJobRow>;
+      invoice_number_counters: Table<InvoiceNumberCounterRow>;
       stripe_webhook_events: Table<StripeWebhookEventRow>;
       message_channels: Table<MessageChannelRow>;
       message_channel_members: Table<
@@ -685,6 +691,10 @@ export interface Database {
       create_invoice_draft: {
         Args: { payload: Json };
         Returns: InvoiceRow;
+      };
+      next_invoice_number: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
       };
       claim_stripe_webhook_event: {
         Args: {

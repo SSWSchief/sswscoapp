@@ -31,12 +31,17 @@ $$;
 
 grant usage on schema public to anon, authenticated, service_role;
 
--- Supabase grants the API roles full table privileges by default and leaves
--- row visibility entirely to RLS. Reproducing that here is not a convenience:
--- the chain's `revoke insert,update,delete on public.invoices from
--- authenticated` only means anything against a role that was granted them in
--- the first place. Without these defaults the revoke passes vacuously and the
--- suite would prove nothing.
+-- These defaults exist so the chain's `revoke insert,update,delete on
+-- public.invoices from authenticated` means something: a revoke against a role
+-- that never held the privilege proves nothing at all.
+--
+-- Be aware that this is deliberately more permissive than `supabase start`,
+-- which does not hand the API roles write privileges on tables created by
+-- migrations. That difference is not cosmetic — it once let a pgTAP assertion
+-- pass here and fail in CI. Treat the `migrations` CI job, which runs the real
+-- stack, as the authority on what the API roles may actually do; this file is
+-- for answering "does the chain apply, and does it convert the data correctly"
+-- without Docker or hosted credentials.
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
