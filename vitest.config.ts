@@ -26,6 +26,12 @@ export default defineConfig({
         "src/lib/{client-api,client-download,csv,email-delivery,employee-conflict,job-dates,job-transitions,logger,owners,password-policy,permissions,portal-access,time-clock,utils,validation}.ts",
         "src/lib/operations/route-domains.ts",
         "src/lib/supabase/mappers.ts",
+        // The billing modules are gated here deliberately. They decide what
+        // gets charged to a customer and what the office is told when that
+        // fails, and they were the least covered code in the repository at the
+        // point Stripe went in.
+        "src/lib/stripe/*.ts",
+        "src/lib/invoices/*.ts",
         "src/components/ui/{Modal,Button,Field}.tsx",
         "src/components/navigation/PortalSwitch.tsx",
         "src/components/dispatcher/TrainingDataPanel.tsx",
