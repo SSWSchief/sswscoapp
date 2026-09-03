@@ -30,15 +30,27 @@ jobs:
       - uses: supabase/setup-cli@v1
         with: { version: 2.111.0 }
       - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      # Every step here pipes to tee so the evidence artifact is written even
+      # on failure. Without pipefail the exit status is tee's, which is always
+      # zero -- the pgTAP suite failed silently on main for weeks while this
+      # job reported success.
       - name: Rebuild schema from zero
+        shell: bash
         run: |
+          set -o pipefail
           mkdir -p migration-evidence
           supabase db reset 2>&1 | tee migration-evidence/reset.log
           supabase migration list --local 2>&1 | tee migration-evidence/migrations.log
       - name: Lint database
-        run: supabase db lint --local --level warning 2>&1 | tee migration-evidence/lint.log
+        shell: bash
+        run: |
+          set -o pipefail
+          supabase db lint --local --level warning 2>&1 | tee migration-evidence/lint.log
       - name: Run schema and behavioral pgTAP
-        run: supabase test db 2>&1 | tee migration-evidence/pgtap.log
+        shell: bash
+        run: |
+          set -o pipefail
+          supabase test db 2>&1 | tee migration-evidence/pgtap.log
       - name: Capture generated database types
         run: supabase gen types typescript --local > migration-evidence/database.types.generated.ts
       - name: Verify committed database contract

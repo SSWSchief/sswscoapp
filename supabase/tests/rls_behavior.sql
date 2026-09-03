@@ -10,12 +10,19 @@ exception when others then
 end;
 $$;
 
-create function pg_temp.execute_row_count(command text) returns bigint language plpgsql as $$
+-- Denied is denied. A browser session can be stopped either by RLS matching no
+-- rows or by the privilege system raising 42501, and which one fires depends on
+-- grants the schema does not set. Both satisfy the invariant, so assert the
+-- outcome rather than the mechanism -- pinning the mechanism is what made this
+-- suite pass against the hosted project and abort against a fresh one.
+create function pg_temp.write_blocked(command text) returns boolean language plpgsql as $$
 declare affected bigint;
 begin
   execute command;
   get diagnostics affected = row_count;
-  return affected;
+  return affected = 0;
+exception when insufficient_privilege then
+  return true;
 end;
 $$;
 
@@ -86,7 +93,7 @@ select is((select amount_cents from public.invoices where job_id='rls-invoice-jo
 select matches((select invoice_number from public.invoices where job_id='rls-invoice-job'),'^QA-[0-9]{6}$','invoice number is generated from the transactional prefix counter');
 select is(pg_temp.capture_sqlstate($$update public.invoices set amount_cents=1 where job_id='rls-invoice-job'$$),'42501','even an administrator cannot edit invoices directly from the browser role');
 select is(pg_temp.capture_sqlstate($$select public.create_invoice_draft('{"customerId":"rls-customer-a","billingMode":"per_job","jobIds":["rls-invoice-job"],"paymentTerms":"net_30","poNumber":"","notes":"","items":[{"description":"duplicate","amountCents":1,"jobId":"rls-invoice-job","category":"service","position":0}]}'::jsonb)$$),'23505','one completed job cannot be billed on two active invoices');
-select is(pg_temp.execute_row_count($$update public.company_settings set company_name='Direct Hack' where id=true$$),0::bigint,'direct settings table update is denied even for an administrator session');
+select is(pg_temp.write_blocked($$update public.company_settings set company_name='Direct Hack' where id=true$$),true,'direct settings table update is denied even for an administrator session');
 select is((public.publish_sop_document('RLS Safety SOP','Safety','Use wheel chocks before inspection.',true)).version,1,'admin publishes SOP versions through RPC');
 select is((public.publish_pretrip_template('RLS Pretrip',array['Tires','Lights'])).version,1,'admin publishes pre-trip templates through RPC');
 select results_eq(
