@@ -1,205 +1,125 @@
 import type Stripe from "stripe";
-import {
-  apiFailure,
-  apiSuccess,
-  logRequest,
-  requestId,
-} from "@/lib/api-response";
+import { apiFailure, apiSuccess, logRequest, requestId } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createStripeClient } from "@/lib/stripe/client";
 import { webhookSigningSecret } from "@/lib/stripe/env";
-import {
-  invoiceStatusFromStripe,
-  shouldApplyStatus,
-  type StripeInvoiceStatus,
-} from "@/lib/stripe/invoice-status";
+import { applyStripeInvoiceSnapshot } from "@/lib/stripe/reconcile";
 
 const route = "/api/webhooks/stripe";
-
-const HANDLED = [
+const INVOICE_EVENTS = new Set([
+  "invoice.created",
+  "invoice.updated",
+  "invoice.finalized",
+  "invoice.sent",
   "invoice.paid",
   "invoice.payment_failed",
+  "invoice.payment_action_required",
   "invoice.marked_uncollectible",
   "invoice.voided",
-  "invoice.sent",
-];
+]);
+const PAYMENT_EVENTS = new Set(["payment_intent.processing", "payment_intent.payment_failed"]);
 
-/**
- * Money events coming back from Stripe.
- *
- * Deliberately outside the session-protected prefixes in middleware: Stripe
- * has no session, and the signature is the authentication. The service-role
- * client is used for the same reason — there is no user to attribute the write
- * to, and row level security would otherwise reject it.
- *
- * Every path is replay-safe. Stripe retries on any non-2xx and promises no
- * ordering, so an event arriving twice, or late, must not walk an invoice
- * backwards. Anything we cannot act on is acknowledged rather than refused,
- * because a non-2xx would have Stripe retry it indefinitely.
- */
+async function processEvent(event: Stripe.Event) {
+  const db = createAdminClient();
+  const stripe = createStripeClient();
+  if (INVOICE_EVENTS.has(event.type)) {
+    const eventInvoice = event.data.object as Stripe.Invoice;
+    const remote = await stripe.invoices.retrieve(eventInvoice.id);
+    const local = await applyStripeInvoiceSnapshot(db, remote, event.created);
+    if (!local) return "ignored" as const;
+    const patch: Record<string, string | null> = {};
+    if (event.type === "invoice.payment_failed") {
+      patch.payment_failed_at = new Date(event.created * 1000).toISOString();
+      patch.payment_processing_at = null;
+    }
+    if (event.type === "invoice.payment_action_required") {
+      patch.payment_processing_at = new Date(event.created * 1000).toISOString();
+      patch.payment_failed_at = null;
+    }
+    if (Object.keys(patch).length && local.status === "open") {
+      const updated = await db.from("invoices").update(patch).eq("id", local.id);
+      if (updated.error) throw updated.error;
+    }
+    return "processed" as const;
+  }
+  if (PAYMENT_EVENTS.has(event.type)) {
+    const intent = event.data.object as Stripe.PaymentIntent;
+    const payments = await stripe.invoicePayments.list({
+      payment: { type: "payment_intent", payment_intent: intent.id },
+      limit: 1,
+    });
+    const invoicePayment = payments.data[0];
+    const invoiceId = typeof invoicePayment?.invoice === "string"
+      ? invoicePayment.invoice
+      : invoicePayment?.invoice?.id;
+    if (!invoiceId) return "ignored" as const;
+    const remote = await stripe.invoices.retrieve(invoiceId);
+    const local = await applyStripeInvoiceSnapshot(db, remote, event.created);
+    if (!local) return "ignored" as const;
+    if (local.status !== "open") return "processed" as const;
+    const timestamp = new Date(event.created * 1000).toISOString();
+    const updated = await db.from("invoices").update(
+      event.type === "payment_intent.processing"
+        ? { payment_processing_at: timestamp, payment_failed_at: null }
+        : { payment_failed_at: timestamp, payment_processing_at: null },
+    ).eq("id", local.id);
+    if (updated.error) throw updated.error;
+    return "processed" as const;
+  }
+  return "ignored" as const;
+}
+
 export async function POST(request: Request) {
   const startedAt = Date.now();
-  const requestIdValue = requestId(request);
+  const id = requestId(request);
+  const fail = (code: string, message: string, status: number) => {
+    logRequest(status >= 500 ? "error" : "warn", "stripe_webhook_failed", {
+      requestId: id, route, method: "POST", startedAt, status, code,
+    });
+    return apiFailure(code, message, status, id);
+  };
   const secret = webhookSigningSecret();
+  if (!secret) return fail("webhook_not_configured", "Stripe webhook secret is not configured for this deployment.", 500);
   const signature = request.headers.get("stripe-signature");
-
-  // A deployment that never received its signing secret is a configuration
-  // fault on this side, not a malformed request, and must not be reported as
-  // one: conflating the two makes a missing environment variable look exactly
-  // like Stripe sending garbage. 500 also keeps Stripe retrying, so events
-  // are not lost while the deployment is being fixed.
-  if (!secret) {
-    logRequest("error", "stripe_webhook_not_configured", {
-      requestId: requestIdValue,
-      route,
-      method: "POST",
-      startedAt,
-      status: 500,
-      code: "webhook_not_configured",
-    });
-    return apiFailure(
-      "webhook_not_configured",
-      "Stripe webhook secret is not configured for this deployment.",
-      500,
-      requestIdValue,
-    );
-  }
-
-  if (!signature) {
-    logRequest("warn", "stripe_webhook_unsigned", {
-      requestId: requestIdValue,
-      route,
-      method: "POST",
-      startedAt,
-      status: 400,
-      code: "missing_signature",
-    });
-    return apiFailure(
-      "missing_signature",
-      "Missing Stripe signature.",
-      400,
-      requestIdValue,
-    );
-  }
-
-  // The raw body, byte for byte: any reserialisation invalidates the signature.
+  if (!signature) return fail("missing_signature", "Missing Stripe signature.", 400);
   const payload = await request.text();
   let event: Stripe.Event;
-  try {
-    event = createStripeClient().webhooks.constructEvent(
-      payload,
-      signature,
-      secret,
-    );
-  } catch {
-    logRequest("warn", "stripe_webhook_rejected", {
-      requestId: requestIdValue,
-      route,
-      method: "POST",
-      startedAt,
-      status: 400,
-      code: "invalid_signature",
-    });
-    return apiFailure(
-      "invalid_signature",
-      "Signature verification failed.",
-      400,
-      requestIdValue,
-    );
-  }
+  try { event = createStripeClient().webhooks.constructEvent(payload, signature, secret); }
+  catch { return fail("invalid_signature", "Signature verification failed.", 400); }
 
-  if (!HANDLED.includes(event.type)) {
-    return apiSuccess({ ignored: event.type }, requestIdValue);
-  }
+  const expected = process.env.STRIPE_EXPECTED_MODE;
+  if (expected && event.livemode !== (expected === "live"))
+    return fail("stripe_mode_mismatch", "Webhook mode does not match this deployment.", 400);
 
-  const invoice = event.data.object as Stripe.Invoice;
-  if (!invoice.id) {
-    return apiSuccess({ ignored: "invoice_without_id" }, requestIdValue);
-  }
-
-  const admin = createAdminClient();
-  const existing = await admin
-    .from("invoices")
-    .select("id,status,due_date")
-    .eq("stripe_invoice_id", invoice.id)
-    .maybeSingle();
-
-  if (existing.error) {
-    logRequest("error", "stripe_webhook_lookup_failed", {
-      requestId: requestIdValue,
-      route,
-      method: "POST",
-      startedAt,
-      status: 500,
-      code: "lookup_failed",
-    });
-    return apiFailure(
-      "lookup_failed",
-      "Invoice lookup failed.",
-      500,
-      requestIdValue,
-    );
-  }
-
-  // An invoice raised directly in the Stripe dashboard has no counterpart
-  // here. Acknowledge it and say so in the logs rather than inventing a record
-  // this system never issued.
-  if (!existing.data) {
-    logRequest("info", "stripe_webhook_unknown_invoice", {
-      requestId: requestIdValue,
-      route,
-      method: "POST",
-      startedAt,
-      status: 200,
-      detail: { stripeInvoiceId: invoice.id, type: event.type },
-    });
-    return apiSuccess({ ignored: "unknown_invoice" }, requestIdValue);
-  }
-
-  const current = existing.data.status as Parameters<
-    typeof shouldApplyStatus
-  >[0];
-  const next = invoiceStatusFromStripe(
-    invoice.status as StripeInvoiceStatus,
-    existing.data.due_date as string,
-  );
-  const patch: Record<string, unknown> = {
-    amount_paid_cents: invoice.amount_paid ?? 0,
-  };
-  if (invoice.hosted_invoice_url)
-    patch.hosted_invoice_url = invoice.hosted_invoice_url;
-  if (invoice.invoice_pdf) patch.invoice_pdf_url = invoice.invoice_pdf;
-  if (shouldApplyStatus(current, next)) patch.status = next;
-
-  const update = await admin
-    .from("invoices")
-    .update(patch)
-    .eq("id", existing.data.id as string);
-
-  if (update.error) {
-    logRequest("error", "stripe_webhook_update_failed", {
-      requestId: requestIdValue,
-      route,
-      method: "POST",
-      startedAt,
-      status: 500,
-      code: "update_failed",
-    });
-    return apiFailure(
-      "update_failed",
-      "Invoice update failed.",
-      500,
-      requestIdValue,
-    );
-  }
-
-  logRequest("info", "stripe_webhook_applied", {
-    requestId: requestIdValue,
-    route,
-    method: "POST",
-    startedAt,
-    status: 200,
-    detail: { type: event.type, status: patch.status ?? current },
+  const object = event.data.object as { id?: string };
+  const db = createAdminClient();
+  const claim = await db.rpc("claim_stripe_webhook_event", {
+    stripe_event_id: event.id,
+    stripe_event_type: event.type,
+    stripe_object_id: object.id ?? "unknown",
+    stripe_livemode: event.livemode,
+    stripe_event_created: event.created,
   });
-  return apiSuccess({ applied: event.type }, requestIdValue);
+  if (claim.error)
+    return fail("webhook_record_failed", "Webhook event could not be recorded.", 500);
+  if (claim.data !== "claimed") return apiSuccess({ duplicate: event.id, status: claim.data }, id);
+
+  try {
+    const status = await processEvent(event);
+    const saved = await db.from("stripe_webhook_events").update({
+      status,
+      last_error: null,
+      processing_started_at: null,
+      processed_at: new Date().toISOString(),
+    }).eq("event_id", event.id);
+    if (saved.error) throw saved.error;
+    return apiSuccess({ status, type: event.type }, id);
+  } catch (error) {
+    await db.from("stripe_webhook_events").update({
+      status: "pending",
+      last_error: (error instanceof Error ? error.message : "Processing failed.").slice(0, 500),
+      processing_started_at: null,
+    }).eq("event_id", event.id);
+    return fail("webhook_processing_failed", "Webhook processing failed and will be retried.", 500);
+  }
 }

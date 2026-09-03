@@ -32,6 +32,10 @@ const defaults: CompanySettings = {
   messageRetentionDays: 365,
   invoicePrefix: "INV",
   invoiceTerms: "",
+  defaultPaymentTerms: "net_30",
+  taxPolicyStatus: "pending",
+  taxPolicyApprovedAt: null,
+  taxPolicyNote: "",
 };
 const tabs = [
   "company",
@@ -501,6 +505,16 @@ export default function Page() {
                     }
                   />
                 </FormField>
+                <FormField label="Default payment terms">
+                  <Select value={form.defaultPaymentTerms} onChange={(event) => setForm({ ...form, defaultPaymentTerms: event.target.value as CompanySettings["defaultPaymentTerms"] })}>
+                    <option value="due_on_receipt">Due on receipt</option>
+                    <option value="net_15">Net 15</option>
+                    <option value="net_30">Net 30</option>
+                  </Select>
+                </FormField>
+                <div className="rounded border border-brand-ice p-3 text-sm text-brand-steel">
+                  Live tax gate: <strong className="text-brand-charcoal">{form.taxPolicyStatus.replaceAll("_", " ")}</strong>. This controlled field must be approved during the launch process before live invoices can be sent.
+                </div>
                 <Button
                   disabled={disabled || !settings}
                   onClick={() => void save()}

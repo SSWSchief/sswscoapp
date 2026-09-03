@@ -1,5 +1,26 @@
 # Production-Readiness Report
 
+## Stripe invoicing readiness update — September 2, 2026
+
+The repository now contains the itemized, office-reviewed Stripe invoicing
+release described below: canonical lifecycle states, dedicated billing
+contacts, transactional numbering, per-job and multi-job statements,
+immutable lines and finalized invoices, card/ACH hosted payment, resumable
+send, revisions, resends, void/write-off actions, a signed atomically claimed
+webhook inbox, lost-link recovery, on-demand/daily reconciliation, and updated
+health/deployment gates. Automatic rates, rental-day/tonnage/surcharge/tax
+calculation, reminders, credit notes, and refunds remain deferred.
+
+Production billing remains deliberately disabled. The three unmatched Stripe
+test invoices are recorded as stale test artifacts and are not application
+ledger data. The mislabeled local environment was confirmed to reference
+production and was quarantined outside the iCloud checkout; it must be replaced
+with genuine staging credentials. The production Supabase server secret that
+was present there must be rotated by the account owner. Migration execution,
+pgTAP, authenticated Stripe staging E2E, account-profile completion, CPA tax
+approval, webhook delivery evidence, and the low-value live invoice are still
+required before activation.
+
 Date: August 7, 2026
 Scope: three-layer production-readiness implementation and local verification
 
@@ -15,7 +36,7 @@ This repository is code-complete for staging promotion. It is not approved for p
 - Pacific-day dashboards, functional Today/Upcoming views, deterministic queues, unassigned work, scheduled asset reuse, transactional active-asset conflicts, audited job transitions, validated cancellation/override dialogs, and dry-run cancellation with required reason and asset release.
 - Flexible time event sequencing, multiple completed breaks, corrections, PTO review, Pacific-day summaries, and immutable audit records.
 - Production customer, employee, truck, and dumpster validation/lifecycle behavior with active-assignment safeguards.
-- Manual invoice records in integer cents; audited, formula-safe CSV exports; operational/time/asset/invoice reports; truthful manual/operational AirTag locations; and administrator management oversight.
+- Office-reviewed itemized invoices and multi-job statements in integer cents, authenticated Stripe lifecycle endpoints, card/ACH hosted payment, immutable finalized records, durable webhook deduplication, bounded reconciliation, audited formula-safe CSV exports, operational/time/asset/invoice reports, truthful manual/operational AirTag locations, and administrator management oversight.
 - Role-scoped Realtime messages and read receipts; versioned pre-trip templates/submissions and failure alerts; versioned SOP publishing and re-acknowledgement; and audited company settings.
 - Expanded health/readiness and concurrency-safe scheduled-maintenance endpoints, structured redacted logging with request IDs, database-backed application rate limits, a scheduled GitHub production health check, staging acceptance CI, drift checks, rollback/restore guidance, and secure ignored import workspace.
 - Obsolete feature/MFA UI, unused placeholder components, duplicate navigation/CSV utilities, and unused dependencies/exports were removed. Runtime-loaded `public/sw.js` is explicitly documented in dead-code configuration.
@@ -50,6 +71,7 @@ The hardening migration adds:
 - Approve and verify the production maintenance cadence. The connected Vercel preview account only accepts daily cron schedules; 15-minute dispatch maintenance alerts require a Vercel plan that supports sub-daily cron or an approved external scheduler using `CRON_SECRET`.
 - Run the authenticated admin, dispatcher, driver, inactive, and reduced-permission Playwright suites against staging on Chromium and mobile WebKit with no production-critical skips.
 - Rehearse client import dry-run/application/reconciliation, pre-migration backup, database and private-photo restore, failed deployment rollback, credential rotation, and production smoke tests. Rotate workbook-held credentials only after staging is operational.
+- Keep production Stripe sending disabled until the account profile is complete, CPA tax treatment is recorded, staging card/ACH and webhook acceptance passes, the production database secret found in the iCloud checkout is rotated, and the controlled low-value live-invoice test is approved.
 - Complete physical iPhone/iPad and desktop UAT, keyboard/screen-reader and large-text checks, camera denial, slow/offline/reconnect, PWA update, and realistic-load verification.
 - Record named business, security/privacy, and technical approvals.
 

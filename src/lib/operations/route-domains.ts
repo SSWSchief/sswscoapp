@@ -47,7 +47,10 @@ export function coreDomainsForPath(pathname: string): Set<CoreDomain> {
   if (pathname.startsWith("/dispatcher/customers")) domains.add("customers");
   if (pathname.startsWith("/dispatcher/vendors")) domains.add("vendors");
   if (pathname.startsWith("/dispatcher/employees")) domains.add("people");
-  if (pathname.startsWith("/dispatcher/invoices")) domains.add("customers");
+  if (pathname.startsWith("/dispatcher/invoices")) {
+    domains.add("customers");
+    domains.add("jobs");
+  }
   if (pathname.startsWith("/dispatcher/settings")) domains.add("people");
   if (pathname.startsWith("/dispatcher/trucks")) {
     domains.add("fleet");

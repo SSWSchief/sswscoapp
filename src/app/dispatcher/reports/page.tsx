@@ -48,7 +48,7 @@ export default function Page() {
     return d >= from && d <= to;
   });
   const revenue = invoices
-    .filter((i) => i.dueDate >= from && i.dueDate <= to)
+    .filter((i) => i.dueDate !== null && i.dueDate >= from && i.dueDate <= to)
     .reduce((n, i) => n + i.amountCents, 0);
   const href = (type: string) =>
     `/api/exports/${type}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;

@@ -106,17 +106,25 @@ export async function GET(
       headers = [
         "Invoice",
         "Customer ID",
+        "Billing Mode",
         "Amount",
+        "Paid",
+        "Remaining",
         "Status",
         "Due Date",
+        "PO Number",
         "Notes",
       ];
       rows = (result.data ?? []).map((invoice) => [
         invoice.invoice_number,
         invoice.customer_id,
+        invoice.billing_mode,
         (Number(invoice.amount_cents) / 100).toFixed(2),
+        (Number(invoice.amount_paid_cents) / 100).toFixed(2),
+        (Number(invoice.amount_remaining_cents) / 100).toFixed(2),
         invoice.status,
         invoice.due_date,
+        invoice.po_number,
         invoice.notes,
       ]);
     } else if (type === "time") {

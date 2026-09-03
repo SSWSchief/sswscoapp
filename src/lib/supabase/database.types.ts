@@ -51,6 +51,15 @@ export interface CustomerRow extends Record<string, unknown> {
   phone: string;
   email: string;
   address: string;
+  billing_contact_name: string;
+  billing_email: string;
+  billing_address_line1: string;
+  billing_address_line2: string;
+  billing_city: string;
+  billing_state: string;
+  billing_postal_code: string;
+  billing_country: "US";
+  stripe_customer_id: string | null;
   customer_group: "Big GC" | "Commercial" | "Residential" | null;
   is_active: boolean;
   created_at: string;
@@ -214,20 +223,70 @@ export interface InvoiceRow extends Record<string, unknown> {
   customer_id: string;
   job_id: string | null;
   amount_cents: number;
-  status: "draft" | "sent" | "paid" | "overdue" | "closed" | "void";
-  due_date: string;
+  status: "draft" | "open" | "paid" | "uncollectible" | "void";
+  billing_mode: "per_job" | "statement";
+  payment_terms: "due_on_receipt" | "net_15" | "net_30";
+  due_date: string | null;
   notes: string;
   po_number: string;
+  billing_contact_name: string;
+  billing_email: string;
+  billing_address_line1: string;
+  billing_address_line2: string;
+  billing_city: string;
+  billing_state: string;
+  billing_postal_code: string;
+  billing_country: "US";
   stripe_invoice_id: string | null;
+  stripe_customer_id_snapshot: string | null;
   hosted_invoice_url: string | null;
   invoice_pdf_url: string | null;
   amount_paid_cents: number;
+  amount_remaining_cents: number;
+  stripe_sync_state: "not_started" | "processing" | "synced" | "failed";
+  stripe_sync_error: string | null;
+  payment_processing_at: string | null;
+  payment_failed_at: string | null;
+  last_stripe_event_created: number | null;
+  issued_at: string | null;
+  revised_from_id: string | null;
+  latest_revision_id: string | null;
   sent_at: string | null;
   paid_at: string | null;
   closed_at: string | null;
   created_by_id: string | null;
   created_at: string;
   updated_at: string;
+}
+export interface InvoiceLineItemRow extends Record<string, unknown> {
+  id: string;
+  invoice_id: string;
+  description: string;
+  amount_cents: number;
+  position: number;
+  job_id: string | null;
+  category: "service" | "rental" | "tonnage" | "fee" | "surcharge" | "adjustment";
+  created_at: string;
+  updated_at: string;
+}
+export interface InvoiceJobRow extends Record<string, unknown> {
+  invoice_id: string;
+  job_id: string;
+  active: boolean;
+  created_at: string;
+}
+export interface StripeWebhookEventRow extends Record<string, unknown> {
+  event_id: string;
+  event_type: string;
+  object_id: string;
+  livemode: boolean;
+  event_created: number;
+  status: "pending" | "processing" | "processed" | "ignored";
+  attempts: number;
+  last_error: string | null;
+  received_at: string;
+  processing_started_at: string | null;
+  processed_at: string | null;
 }
 export interface MessageChannelRow extends Record<string, unknown> {
   id: string;
@@ -305,6 +364,10 @@ export interface CompanySettingsRow extends Record<string, unknown> {
   message_retention_days: number;
   invoice_prefix: string;
   invoice_terms: string;
+  default_payment_terms: "due_on_receipt" | "net_15" | "net_30";
+  tax_policy_status: "pending" | "non_taxable_approved" | "follow_up_required";
+  tax_policy_approved_at: string | null;
+  tax_policy_note: string;
   updated_at: string;
 }
 export interface PriceListRow extends Record<string, unknown> {
@@ -415,6 +478,9 @@ export interface Database {
       time_entry_corrections: Table<CorrectionRow>;
       audit_log: Table<AuditRow>;
       invoices: Table<InvoiceRow>;
+      invoice_line_items: Table<InvoiceLineItemRow>;
+      invoice_jobs: Table<InvoiceJobRow>;
+      stripe_webhook_events: Table<StripeWebhookEventRow>;
       message_channels: Table<MessageChannelRow>;
       message_channel_members: Table<
         Record<string, unknown> & { channel_id: string; user_id: string }
@@ -612,8 +678,27 @@ export interface Database {
           retention_days: number;
           invoice_prefix: string;
           invoice_terms?: string;
+          default_payment_terms?: "due_on_receipt" | "net_15" | "net_30";
         };
         Returns: CompanySettingsRow;
+      };
+      create_invoice_draft: {
+        Args: { payload: Json };
+        Returns: InvoiceRow;
+      };
+      claim_stripe_webhook_event: {
+        Args: {
+          stripe_event_id: string;
+          stripe_event_type: string;
+          stripe_object_id: string;
+          stripe_livemode: boolean;
+          stripe_event_created: number;
+        };
+        Returns: "claimed" | "processing" | "processed" | "ignored" | "missing";
+      };
+      update_invoice_draft: {
+        Args: { target_invoice_id: string; payload: Json };
+        Returns: InvoiceRow;
       };
       publish_sop_document: {
         Args: {
@@ -679,6 +764,9 @@ export interface Database {
       employee_status: EmployeeStatus;
       job_status: JobStatus;
       time_entry_type: TimeEntryType;
+      invoice_lifecycle_status: InvoiceRow["status"];
+      invoice_billing_mode: InvoiceRow["billing_mode"];
+      invoice_payment_terms: InvoiceRow["payment_terms"];
     };
     CompositeTypes: Record<string, never>;
   };

@@ -6,6 +6,7 @@ import {
   mapAcknowledgement,
   mapCompanySettings,
   mapInvoice,
+  mapInvoiceLineItem,
   mapMessageChannel,
   mapPretripSubmission,
   mapPretripTemplate,
@@ -19,7 +20,7 @@ import type {
   CompanySettings,
   DumpsterSize,
   InvoiceRecord,
-  InvoiceStatus,
+  InvoiceDraftInput,
   MessageChannel,
   PretripSubmission,
   PretripTemplate,
@@ -35,6 +36,8 @@ import type {
   AcknowledgementRow,
   CompanySettingsRow,
   InvoiceRow,
+  InvoiceLineItemRow,
+  InvoiceJobRow,
   MessageChannelRow,
   MessageReadRow,
   MessageRow,
@@ -59,16 +62,6 @@ import {
 import { log } from "@/lib/logger";
 import { requestNotificationDelivery } from "@/lib/push/notify-client";
 
-interface InvoiceInput {
-  invoiceNumber: string;
-  customerId: string;
-  jobId: string | null;
-  amountCents: number;
-  status: InvoiceStatus;
-  dueDate: string;
-  notes: string;
-  poNumber: string;
-}
 type State = {
   invoices: InvoiceRecord[];
   channels: MessageChannel[];
@@ -89,7 +82,7 @@ type Value = State & {
   unreadChannels: UnreadChannel[];
   refresh: () => Promise<void>;
   saveInvoice: (
-    input: InvoiceInput,
+    input: InvoiceDraftInput,
     id?: string,
   ) => Promise<MutationResult<void>>;
   sendMessage: (
@@ -197,8 +190,10 @@ export function ExpandedOperationsProvider({
         const db = createClient();
         const patch: Partial<State> = {};
         if (domains.has("finance")) {
-          const [result, prices] = await Promise.all([
+          const [result, lines, invoiceJobs, prices] = await Promise.all([
             db.from("invoices").select("*").order("due_date").limit(50),
+            db.from("invoice_line_items").select("*").order("position").limit(500),
+            db.from("invoice_jobs").select("*").limit(500),
             db
               .from("price_list")
               .select("*")
@@ -206,9 +201,17 @@ export function ExpandedOperationsProvider({
               .order("service_type")
               .limit(100),
           ]);
-          const financeError = [result, prices].find((r) => r.error)?.error;
+          const financeError = [result, lines, invoiceJobs, prices].find((r) => r.error)?.error;
           if (financeError) throw financeError;
-          patch.invoices = (result.data as InvoiceRow[]).map(mapInvoice);
+          const lineRows = (lines.data ?? []) as InvoiceLineItemRow[];
+          const jobRows = (invoiceJobs.data ?? []) as InvoiceJobRow[];
+          patch.invoices = (result.data as InvoiceRow[]).map((row) =>
+            mapInvoice(
+              row,
+              lineRows.filter((line) => line.invoice_id === row.id).map(mapInvoiceLineItem),
+              jobRows.filter((job) => job.invoice_id === row.id).map((job) => job.job_id),
+            ),
+          );
           patch.priceList = (prices.data as PriceListRow[]).map(
             mapPriceListItem,
           );
@@ -412,36 +415,20 @@ export function ExpandedOperationsProvider({
       unreadMessageCount,
       unreadChannels,
       refresh,
-      saveInvoice: (input, id) =>
-        run(
-          () =>
-            id
-              ? createClient()
-                  .from("invoices")
-                  .update({
-                    invoice_number: input.invoiceNumber.trim(),
-                    customer_id: input.customerId,
-                    job_id: input.jobId,
-                    amount_cents: input.amountCents,
-                    status: input.status,
-                    due_date: input.dueDate,
-                    notes: input.notes.trim(),
-                    po_number: input.poNumber.trim(),
-                  })
-                  .eq("id", id)
-              : createClient().from("invoices").insert({
-                  invoice_number: input.invoiceNumber.trim(),
-                  customer_id: input.customerId,
-                  job_id: input.jobId,
-                  amount_cents: input.amountCents,
-                  status: input.status,
-                  due_date: input.dueDate,
-                  notes: input.notes.trim(),
-                  po_number: input.poNumber.trim(),
-                  created_by_id: currentUser?.id,
-                }),
-          "finance",
-        ),
+      saveInvoice: async (input, id) => {
+        if (!canMutate) return fail({ message: "Changes are disabled until the live connection is restored." });
+        try {
+          const response = await fetch(id ? `/api/invoices/${id}` : "/api/invoices", {
+            method: id ? "PATCH" : "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(input),
+          });
+          const body = (await response.json()) as { error?: { code: string; message: string } };
+          if (!response.ok) return fail(body.error ?? { message: "Invoice could not be saved." });
+          await refresh(new Set(["finance"]));
+          return { ok: true, data: undefined };
+        } catch (error) { return fail(error); }
+      },
       sendMessage: async (channelId, body) => {
         const result = await run(
           () =>
@@ -556,6 +543,7 @@ export function ExpandedOperationsProvider({
               retention_days: settings.messageRetentionDays,
               invoice_prefix: settings.invoicePrefix,
               invoice_terms: settings.invoiceTerms,
+              default_payment_terms: settings.defaultPaymentTerms,
             }),
           "settings",
         ),

@@ -169,6 +169,14 @@ interface CustomerInput {
   phone: string;
   email: string;
   address: string;
+  billingContactName: string;
+  billingEmail: string;
+  billingAddressLine1: string;
+  billingAddressLine2: string;
+  billingCity: string;
+  billingState: string;
+  billingPostalCode: string;
+  billingCountry: "US";
   group?: Customer["group"];
 }
 interface VendorInput {
@@ -1115,6 +1123,14 @@ export function OperationsProvider({
           phone: input.phone.trim(),
           email: input.email.trim(),
           address: input.address.trim(),
+          billing_contact_name: input.billingContactName.trim(),
+          billing_email: input.billingEmail.trim().toLowerCase(),
+          billing_address_line1: input.billingAddressLine1.trim(),
+          billing_address_line2: input.billingAddressLine2.trim(),
+          billing_city: input.billingCity.trim(),
+          billing_state: input.billingState.trim().toUpperCase(),
+          billing_postal_code: input.billingPostalCode.trim(),
+          billing_country: input.billingCountry,
           customer_group: input.group ?? null,
           is_active: true,
         };

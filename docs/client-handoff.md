@@ -132,6 +132,10 @@ confirm. The database validates the exact registry before deleting anything,
 deletes all five records in one transaction, and records the action in audit
 history. Repeating either create or remove is safe.
 
+The training invoice is a legacy containment fixture and cannot be sent. Stripe
+acceptance invoices must be created from completed staging jobs through the
+invoice builder with positive, reviewed line items.
+
 ## Staff launch
 
 - Issue temporary passwords only after each employee profile has been reviewed.

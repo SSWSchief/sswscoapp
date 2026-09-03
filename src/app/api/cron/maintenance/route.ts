@@ -7,6 +7,8 @@ import {
 import { deliverPendingNotifications } from "@/lib/push/deliver";
 import { log } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { reconcileNonterminalInvoices } from "@/lib/stripe/reconcile";
+import { stripeInvoicingEnabled } from "@/lib/stripe/client";
 
 const route = "/api/cron/maintenance";
 
@@ -50,12 +52,22 @@ export async function GET(request: Request) {
   // and nobody's browser is open to ask for those to be delivered. The pass
   // only sends what is still fresh, so this cannot resurrect a stale backlog.
   let delivery = null;
+  let invoiceReconciliation = null;
   try {
     delivery = await deliverPendingNotifications(admin);
   } catch (error) {
     log("warn", "scheduled_push_delivery_failed", {
       message: error instanceof Error ? error.message : "unknown",
     });
+  }
+  if (stripeInvoicingEnabled()) {
+    try {
+      invoiceReconciliation = await reconcileNonterminalInvoices(50);
+    } catch (error) {
+      log("warn", "scheduled_invoice_reconciliation_failed", {
+        message: error instanceof Error ? error.message : "unknown",
+      });
+    }
   }
   logRequest("info", "scheduled_maintenance_complete", {
     requestId: requestIdValue,
@@ -65,7 +77,7 @@ export async function GET(request: Request) {
     status: 200,
   });
   return apiSuccess(
-    { status: "ok", result: result.data, delivery },
+    { status: "ok", result: result.data, delivery, invoiceReconciliation },
     requestIdValue,
   );
 }

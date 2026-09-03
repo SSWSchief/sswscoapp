@@ -23,6 +23,14 @@ export function CustomerModal({
     phone: "",
     email: "",
     address: "",
+    billingContactName: "",
+    billingEmail: "",
+    billingAddressLine1: "",
+    billingAddressLine2: "",
+    billingCity: "",
+    billingState: "",
+    billingPostalCode: "",
+    billingCountry: "US" as const,
     group: "Commercial" as NonNullable<Customer["group"]>,
   });
   React.useEffect(() => {
@@ -32,6 +40,14 @@ export function CustomerModal({
         phone: customer?.phone ?? "",
         email: customer?.email ?? "",
         address: customer?.address ?? "",
+        billingContactName: customer?.billingContactName ?? customer?.name ?? "",
+        billingEmail: customer?.billingEmail ?? customer?.email ?? "",
+        billingAddressLine1: customer?.billingAddressLine1 ?? customer?.address ?? "",
+        billingAddressLine2: customer?.billingAddressLine2 ?? "",
+        billingCity: customer?.billingCity ?? "",
+        billingState: customer?.billingState ?? "",
+        billingPostalCode: customer?.billingPostalCode ?? "",
+        billingCountry: "US",
         group: customer?.group ?? "Commercial",
       });
   }, [open, customer]);
@@ -103,6 +119,33 @@ export function CustomerModal({
             <option>Residential</option>
           </Select>
         </FormField>
+        <div className="border-t border-brand-ice pt-4">
+          <h3 className="font-heading font-semibold text-brand-charcoal">Billing contact</h3>
+          <p className="mt-1 text-sm text-brand-steel">These reviewed details are frozen onto each invoice.</p>
+        </div>
+        <FormField label="Billing contact name">
+          <Input value={form.billingContactName} onChange={(e) => setForm({ ...form, billingContactName: e.target.value })} />
+        </FormField>
+        <FormField label="Billing email">
+          <Input type="email" value={form.billingEmail} onChange={(e) => setForm({ ...form, billingEmail: e.target.value })} />
+        </FormField>
+        <FormField label="Billing address line 1">
+          <Input value={form.billingAddressLine1} onChange={(e) => setForm({ ...form, billingAddressLine1: e.target.value })} />
+        </FormField>
+        <FormField label="Billing address line 2">
+          <Input value={form.billingAddressLine2} onChange={(e) => setForm({ ...form, billingAddressLine2: e.target.value })} />
+        </FormField>
+        <FormField label="Billing city">
+          <Input value={form.billingCity} onChange={(e) => setForm({ ...form, billingCity: e.target.value })} />
+        </FormField>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="State">
+            <Input maxLength={2} value={form.billingState} onChange={(e) => setForm({ ...form, billingState: e.target.value.toUpperCase() })} />
+          </FormField>
+          <FormField label="ZIP code">
+            <Input value={form.billingPostalCode} onChange={(e) => setForm({ ...form, billingPostalCode: e.target.value })} />
+          </FormField>
+        </div>
       </div>
     </Modal>
   );

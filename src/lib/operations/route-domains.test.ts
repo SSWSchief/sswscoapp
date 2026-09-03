@@ -56,7 +56,7 @@ describe("route domain selection", () => {
     ["/dispatcher/time-clock", ["notifications", "time", "people"]],
     ["/dispatcher/absence-calendar", ["notifications", "time", "people"]],
     ["/dispatcher/employees", ["notifications", "people"]],
-    ["/dispatcher/invoices", ["notifications", "customers"]],
+    ["/dispatcher/invoices", ["notifications", "customers", "jobs"]],
     ["/driver/profile", ["notifications", "fleet"]],
   ])("selects core dependencies for %s", (path, expected) => {
     expect([...coreDomainsForPath(path)]).toEqual(expected);
