@@ -92,6 +92,14 @@ export interface Customer {
   phone: string;
   email: string;
   address: string;
+  billingContactName: string;
+  billingEmail: string;
+  billingAddressLine1: string;
+  billingAddressLine2: string;
+  billingCity: string;
+  billingState: string;
+  billingPostalCode: string;
+  billingCountry: "US";
   activeJobs: number;
   group?: "Big GC" | "Commercial" | "Residential";
 }
@@ -281,26 +289,90 @@ export interface AbsenceEvent {
 
 export type InvoiceStatus =
   | "draft"
-  | "sent"
+  | "open"
   | "paid"
-  | "overdue"
-  | "closed"
+  | "uncollectible"
   | "void";
+export type InvoiceDisplayStatus =
+  | InvoiceStatus
+  | "overdue"
+  | "processing"
+  | "payment_failed"
+  | "partially_paid";
+export type InvoiceBillingMode = "per_job" | "statement";
+export type InvoicePaymentTerms = "due_on_receipt" | "net_15" | "net_30";
+export type InvoiceSyncState =
+  | "not_started"
+  | "processing"
+  | "synced"
+  | "failed";
+export type InvoiceLineCategory =
+  | "service"
+  | "rental"
+  | "tonnage"
+  | "fee"
+  | "surcharge"
+  | "adjustment";
+export interface InvoiceLineItem {
+  id: string;
+  invoiceId: string;
+  description: string;
+  amountCents: number;
+  position: number;
+  jobId: string | null;
+  category: InvoiceLineCategory;
+}
+export interface InvoiceDraftItem {
+  description: string;
+  amountCents: number;
+  jobId?: string | null;
+  category: InvoiceLineCategory;
+}
+export interface InvoiceDraftInput {
+  customerId: string;
+  billingMode: InvoiceBillingMode;
+  jobIds: string[];
+  paymentTerms: InvoicePaymentTerms;
+  poNumber: string;
+  notes: string;
+  items: InvoiceDraftItem[];
+}
 export interface InvoiceRecord {
   id: string;
   invoiceNumber: string;
   customerId: string;
   jobId: string | null;
+  jobIds: string[];
+  lineItems: InvoiceLineItem[];
   amountCents: number;
   status: InvoiceStatus;
-  dueDate: string;
+  displayStatus: InvoiceDisplayStatus;
+  billingMode: InvoiceBillingMode;
+  paymentTerms: InvoicePaymentTerms;
+  dueDate: string | null;
   notes: string;
   poNumber: string;
+  billingContactName: string;
+  billingEmail: string;
+  billingAddressLine1: string;
+  billingAddressLine2: string;
+  billingCity: string;
+  billingState: string;
+  billingPostalCode: string;
+  billingCountry: "US";
   /** Set once the invoice has been raised in Stripe; null means never sent. */
   stripeInvoiceId: string | null;
   hostedInvoiceUrl: string | null;
   invoicePdfUrl: string | null;
   amountPaidCents: number;
+  amountRemainingCents: number;
+  stripeSyncState: InvoiceSyncState;
+  stripeSyncError: string | null;
+  paymentProcessingAt: string | null;
+  paymentFailedAt: string | null;
+  issuedAt: string | null;
+  revisedFromId: string | null;
+  latestRevisionId: string | null;
   sentAt: string | null;
   paidAt: string | null;
   closedAt: string | null;
@@ -431,6 +503,10 @@ export interface CompanySettings {
   invoicePrefix: string;
   /** Rental terms printed on every invoice. See 202609010005. */
   invoiceTerms: string;
+  defaultPaymentTerms: InvoicePaymentTerms;
+  taxPolicyStatus: "pending" | "non_taxable_approved" | "follow_up_required";
+  taxPolicyApprovedAt: string | null;
+  taxPolicyNote: string;
 }
 
 export type TrainingDatasetStatus = "not_provisioned" | "active" | "removed";

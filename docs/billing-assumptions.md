@@ -115,7 +115,8 @@ wrong money on a customer's invoice.
 - **10 and 30 yard containers** — offered by the app, unpriced on the sheet.
 - **Dump & Return** — a service in the app with no price on the sheet.
 - **PO numbers** — GC accounts-payable departments commonly reject invoices
-  without one; `invoices` has no field for it.
+  without one. The first release stores and prints a reviewed PO number, but
+  does not derive or require one automatically for every customer.
 - **Per-haul vs monthly statement billing.**
 - **Prepay vs net terms** for residential and one-off commercial.
 - **Payment terms** — due on receipt, Net 15, Net 30.

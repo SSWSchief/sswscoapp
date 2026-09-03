@@ -16,6 +16,8 @@ jobs:
       - name: Verify production health endpoint
         env:
           HEALTH_URL: https://sswscoapp.vercel.app/api/health
+          EXPECTED_STRIPE_MODE: test
+          EXPECTED_INVOICING_ENABLED: "false"
         run: |
           response="$(curl --fail-with-body --silent --show-error \
             --connect-timeout 10 --max-time 30 \
@@ -31,5 +33,14 @@ jobs:
             }
             if (!data.release || data.release === "local") {
               throw new Error("Production health response reports no release SHA");
+            }
+            if (!data.stripe?.configured) {
+              throw new Error("Stripe account, key, and webhook configuration is incomplete");
+            }
+            if (data.stripe.mode !== process.env.EXPECTED_STRIPE_MODE || data.stripe.expectedMode !== process.env.EXPECTED_STRIPE_MODE) {
+              throw new Error("Stripe mode differs from the controlled rollout mode");
+            }
+            if (String(data.stripe.invoicingEnabled) !== process.env.EXPECTED_INVOICING_ENABLED) {
+              throw new Error("Stripe sending feature flag differs from the controlled rollout state");
             }
           ' "$response"

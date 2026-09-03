@@ -2,160 +2,97 @@ import Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const SECRET = "whsec_test_secret_for_signing";
-
-// A real Stripe instance: constructEvent is local crypto and never touches the
-// network, so the signature this test produces is verified for real.
 const stripe = new Stripe("sk_test_not_a_real_key");
-
-const db = {
-  row: null as Record<string, unknown> | null,
-  lookupError: null as { message: string } | null,
-  updateError: null as { message: string } | null,
-  patched: null as Record<string, unknown> | null,
+const state = {
+  events: new Map<string, Record<string, unknown>>(),
+  remote: { id: "in_1", status: "paid", amount_paid: 40000, amount_remaining: 0 } as unknown as Stripe.Invoice,
+  invoicePatch: null as Record<string, unknown> | null,
 };
+const applySnapshot = vi.fn(async (_db: unknown, remote: Stripe.Invoice) => remote.id === "in_unknown" ? null : { id: "inv-1", status: remote.status });
+const responseInvoice = () => state.remote as Awaited<ReturnType<typeof stripe.invoices.retrieve>>;
 
-vi.mock("@/lib/stripe/client", () => ({
-  createStripeClient: () => stripe,
-}));
-
+vi.mock("@/lib/stripe/client", () => ({ createStripeClient: () => stripe }));
+vi.mock("@/lib/stripe/reconcile", () => ({ applyStripeInvoiceSnapshot: (...args: unknown[]) => applySnapshot(...args as [unknown, Stripe.Invoice]) }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => ({
-            data: db.row,
-            error: db.lookupError,
-          }),
-        }),
-      }),
-      update: (patch: Record<string, unknown>) => {
-        db.patched = patch;
-        return { eq: async () => ({ error: db.updateError }) };
-      },
-    }),
+    rpc: async (_name: string, args: Record<string, unknown>) => {
+      const id = args.stripe_event_id as string;
+      const prior = state.events.get(id);
+      if (prior && prior.status !== "pending") return { data: prior.status, error: null };
+      state.events.set(id, { ...prior, event_id: id, status: "processing", attempts: Number(prior?.attempts ?? 0) + 1 });
+      return { data: "claimed", error: null };
+    },
+    from: (table: string) => table === "stripe_webhook_events" ? {
+      update: (patch: Record<string, unknown>) => ({ eq: async (_field: string, value: string) => { state.events.set(value, { ...state.events.get(value), ...patch }); return { error: null }; } }),
+    } : {
+      update: (patch: Record<string, unknown>) => ({ eq: async () => { state.invoicePatch = patch; return { error: null }; } }),
+    },
   }),
 }));
 
 const { POST } = await import("./route");
-
-const send = async (
-  type: string,
-  invoice: Record<string, unknown>,
-  signed = true,
-) => {
-  const payload = JSON.stringify({
-    id: "evt_1",
-    object: "event",
-    type,
-    data: { object: { object: "invoice", ...invoice } },
-  });
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-  };
-  if (signed) {
-    headers["stripe-signature"] = stripe.webhooks.generateTestHeaderString({
-      payload,
-      secret: SECRET,
-    });
-  }
-  const response = await POST(
-    new Request("https://example.test/api/webhooks/stripe", {
-      method: "POST",
-      headers,
-      body: payload,
-    }),
-  );
+const send = async (type: string, object: Record<string, unknown>, signed = true, id = "evt_1") => {
+  const payload = JSON.stringify({ id, object: "event", type, livemode: false, created: 1788400000, data: { object } });
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (signed) headers["stripe-signature"] = stripe.webhooks.generateTestHeaderString({ payload, secret: SECRET });
+  const response = await POST(new Request("https://example.test/api/webhooks/stripe", { method: "POST", headers, body: payload }));
   return { status: response.status, body: await response.json() };
 };
 
 describe("POST /api/webhooks/stripe", () => {
   beforeEach(() => {
     process.env.STRIPE_WEBHOOK_SECRET = SECRET;
-    db.row = {
-      id: "inv-1",
-      status: "sent",
-      due_date: "2026-09-30",
-    };
-    db.lookupError = null;
-    db.updateError = null;
-    db.patched = null;
+    delete process.env.STRIPE_EXPECTED_MODE;
+    state.events.clear(); state.invoicePatch = null; applySnapshot.mockClear();
+    state.remote = { id: "in_1", status: "paid", amount_paid: 40000, amount_remaining: 0 } as unknown as Stripe.Invoice;
+    vi.spyOn(stripe.invoices, "retrieve").mockResolvedValue(responseInvoice());
   });
-
-  it("reports a deployment that never received its signing secret", async () => {
+  it("reports missing webhook configuration", async () => {
     delete process.env.STRIPE_WEBHOOK_SECRET;
-    const { status, body } = await send("invoice.paid", { id: "in_1" }, false);
-    // 500, not 400: this is our misconfiguration, and Stripe should retry
-    // rather than treat the event as malformed and drop it.
-    expect(status).toBe(500);
-    expect(body.error.code).toBe("webhook_not_configured");
-    expect(db.patched).toBeNull();
+    const result = await send("invoice.paid", { id: "in_1" }, false);
+    expect(result.status).toBe(500); expect(result.body.error.code).toBe("webhook_not_configured");
   });
-
-  it("refuses a request carrying no signature", async () => {
-    const { status, body } = await send("invoice.paid", { id: "in_1" }, false);
-    expect(status).toBe(400);
-    expect(body.error.code).toBe("missing_signature");
-    expect(db.patched).toBeNull();
+  it("requires and verifies the real Stripe signature", async () => {
+    expect((await send("invoice.paid", { id: "in_1" }, false)).status).toBe(400);
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_wrong";
+    expect((await send("invoice.paid", { id: "in_1" })).body.error.code).toBe("invalid_signature");
   });
-
-  it("refuses a payload whose signature does not match", async () => {
-    process.env.STRIPE_WEBHOOK_SECRET = "whsec_a_different_secret";
-    const { status, body } = await send("invoice.paid", { id: "in_1" });
-    expect(status).toBe(400);
-    expect(body.error.code).toBe("invalid_signature");
-    expect(db.patched).toBeNull();
+  it("records the event before retrieving and applying canonical Stripe state", async () => {
+    const result = await send("invoice.paid", { id: "in_1", status: "open" });
+    expect(result.status).toBe(200); expect(result.body.data.status).toBe("processed");
+    expect(applySnapshot).toHaveBeenCalled(); expect(state.events.get("evt_1")?.status).toBe("processed");
   });
-
-  it("marks an invoice paid and stores what Stripe settled", async () => {
-    const { status, body } = await send("invoice.paid", {
-      id: "in_1",
-      status: "paid",
-      amount_paid: 40000,
-      hosted_invoice_url: "https://pay.stripe.com/i/abc",
-      invoice_pdf: "https://pay.stripe.com/i/abc.pdf",
-    });
-    expect(status).toBe(200);
-    expect(body.data.applied).toBe("invoice.paid");
-    expect(db.patched).toMatchObject({
-      status: "paid",
-      amount_paid_cents: 40000,
-      hosted_invoice_url: "https://pay.stripe.com/i/abc",
-      invoice_pdf_url: "https://pay.stripe.com/i/abc.pdf",
-    });
+  it("derives payment failure from a current open invoice", async () => {
+    state.remote = { id: "in_1", status: "open", amount_paid: 1000, amount_remaining: 39000 } as unknown as Stripe.Invoice;
+    vi.spyOn(stripe.invoices, "retrieve").mockResolvedValue(responseInvoice());
+    const result = await send("invoice.payment_failed", { id: "in_1", status: "open" }, true, "evt_failed");
+    expect(result.status).toBe(200);
+    expect(state.invoicePatch).toMatchObject({ payment_processing_at: null });
+    expect(state.invoicePatch?.payment_failed_at).toEqual(expect.any(String));
   });
-
-  it("does not walk a paid invoice back when a stale event replays", async () => {
-    db.row = { id: "inv-1", status: "paid", due_date: "2026-09-30" };
-    await send("invoice.sent", { id: "in_1", status: "open", amount_paid: 0 });
-    expect(db.patched).not.toHaveProperty("status");
+  it("represents ACH processing without changing the canonical lifecycle", async () => {
+    state.remote = { id: "in_1", status: "open", amount_paid: 0, amount_remaining: 40000 } as unknown as Stripe.Invoice;
+    vi.spyOn(stripe.invoices, "retrieve").mockResolvedValue(responseInvoice());
+    vi.spyOn(stripe.invoicePayments, "list").mockResolvedValue({ data: [{ invoice: "in_1" }] } as unknown as Awaited<ReturnType<typeof stripe.invoicePayments.list>>);
+    const result = await send("payment_intent.processing", { id: "pi_1", object: "payment_intent" }, true, "evt_processing");
+    expect(result.status).toBe(200);
+    expect(state.invoicePatch).toMatchObject({ payment_failed_at: null });
+    expect(state.invoicePatch?.payment_processing_at).toEqual(expect.any(String));
   });
-
-  it("acknowledges an event type it does not handle", async () => {
-    const { status, body } = await send("customer.created", { id: "cus_1" });
-    expect(status).toBe(200);
-    expect(body.data.ignored).toBe("customer.created");
-    expect(db.patched).toBeNull();
+  it("deduplicates an already processed event", async () => {
+    state.events.set("evt_1", { status: "processed" });
+    const result = await send("invoice.paid", { id: "in_1" });
+    expect(result.body.data.duplicate).toBe("evt_1"); expect(applySnapshot).not.toHaveBeenCalled();
   });
-
-  it("acknowledges an invoice this system never issued", async () => {
-    db.row = null;
-    const { status, body } = await send("invoice.paid", {
-      id: "in_unknown",
-      status: "paid",
-    });
-    // 200, not an error: a non-2xx would have Stripe retry this forever.
-    expect(status).toBe(200);
-    expect(body.data.ignored).toBe("unknown_invoice");
+  it("records unsupported and unknown invoices as ignored", async () => {
+    expect((await send("customer.created", { id: "cus_1" }, true, "evt_unsupported")).body.data.status).toBe("ignored");
+    state.remote = { id: "in_unknown", status: "paid" } as Stripe.Invoice;
+    vi.spyOn(stripe.invoices, "retrieve").mockResolvedValue(responseInvoice());
+    expect((await send("invoice.paid", { id: "in_unknown" }, true, "evt_unknown")).body.data.status).toBe("ignored");
   });
-
-  it("reports a database failure so Stripe retries", async () => {
-    db.lookupError = { message: "boom" };
-    const { status, body } = await send("invoice.paid", {
-      id: "in_1",
-      status: "paid",
-    });
-    expect(status).toBe(500);
-    expect(body.error.code).toBe("lookup_failed");
+  it("keeps a failed event pending so Stripe retries", async () => {
+    applySnapshot.mockRejectedValueOnce(new Error("database unavailable"));
+    const result = await send("invoice.paid", { id: "in_1" });
+    expect(result.status).toBe(500); expect(state.events.get("evt_1")?.status).toBe("pending");
   });
 });

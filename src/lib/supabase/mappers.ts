@@ -8,6 +8,7 @@ import type {
   Vendor,
   Dumpster,
   InvoiceRecord,
+  InvoiceLineItem,
   Job,
   JobActivity,
   JobNote,
@@ -37,6 +38,7 @@ import type {
   VendorRow,
   DumpsterRow,
   InvoiceRow,
+  InvoiceLineItemRow,
   JobActivityRow,
   JobEventRow,
   JobNoteRow,
@@ -80,6 +82,14 @@ export function mapCustomer(row: CustomerRow, activeJobs = 0): Customer {
     phone: row.phone,
     email: row.email,
     address: row.address,
+    billingContactName: row.billing_contact_name ?? row.name,
+    billingEmail: row.billing_email ?? row.email,
+    billingAddressLine1: row.billing_address_line1 ?? row.address,
+    billingAddressLine2: row.billing_address_line2 ?? "",
+    billingCity: row.billing_city ?? "",
+    billingState: row.billing_state ?? "",
+    billingPostalCode: row.billing_postal_code ?? "",
+    billingCountry: row.billing_country ?? "US",
     activeJobs,
     group: row.customer_group ?? undefined,
   };
@@ -250,25 +260,72 @@ export function mapAbsence(row: AbsenceRow) {
     note: row.note,
   } as const;
 }
-export const mapInvoice = (row: InvoiceRow): InvoiceRecord => ({
+export const mapInvoice = (
+  row: InvoiceRow,
+  lineItems: InvoiceRecord["lineItems"] = [],
+  jobIds: string[] = row.job_id ? [row.job_id] : [],
+): InvoiceRecord => ({
   id: row.id,
   invoiceNumber: row.invoice_number,
   customerId: row.customer_id,
   jobId: row.job_id,
+  jobIds,
+  lineItems,
   amountCents: Number(row.amount_cents),
   status: row.status,
+  displayStatus: invoiceDisplayStatus(row),
+  billingMode: row.billing_mode ?? "per_job",
+  paymentTerms: row.payment_terms ?? "net_30",
   dueDate: row.due_date,
   notes: row.notes,
   poNumber: row.po_number ?? "",
+  billingContactName: row.billing_contact_name ?? "",
+  billingEmail: row.billing_email ?? "",
+  billingAddressLine1: row.billing_address_line1 ?? "",
+  billingAddressLine2: row.billing_address_line2 ?? "",
+  billingCity: row.billing_city ?? "",
+  billingState: row.billing_state ?? "",
+  billingPostalCode: row.billing_postal_code ?? "",
+  billingCountry: row.billing_country ?? "US",
   stripeInvoiceId: row.stripe_invoice_id ?? null,
   hostedInvoiceUrl: row.hosted_invoice_url ?? null,
   invoicePdfUrl: row.invoice_pdf_url ?? null,
   amountPaidCents: Number(row.amount_paid_cents ?? 0),
+  amountRemainingCents: Number(row.amount_remaining_cents ?? 0),
+  stripeSyncState: row.stripe_sync_state ?? "not_started",
+  stripeSyncError: row.stripe_sync_error ?? null,
+  paymentProcessingAt: row.payment_processing_at ?? null,
+  paymentFailedAt: row.payment_failed_at ?? null,
+  issuedAt: row.issued_at ?? null,
+  revisedFromId: row.revised_from_id ?? null,
+  latestRevisionId: row.latest_revision_id ?? null,
   sentAt: row.sent_at,
   paidAt: row.paid_at,
   closedAt: row.closed_at,
   createdAt: row.created_at,
 });
+
+export const mapInvoiceLineItem = (
+  row: InvoiceLineItemRow,
+): InvoiceLineItem => ({
+  id: row.id,
+  invoiceId: row.invoice_id,
+  description: row.description,
+  amountCents: Number(row.amount_cents),
+  position: row.position,
+  jobId: row.job_id,
+  category: row.category,
+});
+
+function invoiceDisplayStatus(row: InvoiceRow): InvoiceRecord["displayStatus"] {
+  if (row.status !== "open") return row.status;
+  if (row.payment_processing_at) return "processing";
+  if (row.payment_failed_at) return "payment_failed";
+  if (Number(row.amount_paid_cents) > 0) return "partially_paid";
+  if (row.due_date && row.due_date < new Date().toISOString().slice(0, 10))
+    return "overdue";
+  return "open";
+}
 export const mapDisposalTicket = (row: DisposalTicketRow): DisposalTicket => ({
   id: row.id,
   jobId: row.job_id,
@@ -378,4 +435,8 @@ export const mapCompanySettings = (
   messageRetentionDays: row.message_retention_days,
   invoicePrefix: row.invoice_prefix,
   invoiceTerms: row.invoice_terms ?? "",
+  defaultPaymentTerms: row.default_payment_terms ?? "net_30",
+  taxPolicyStatus: row.tax_policy_status ?? "pending",
+  taxPolicyApprovedAt: row.tax_policy_approved_at ?? null,
+  taxPolicyNote: row.tax_policy_note ?? "",
 });

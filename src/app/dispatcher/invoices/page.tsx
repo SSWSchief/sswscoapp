@@ -24,8 +24,8 @@ export default function InvoicesPage() {
   const [exporting, setExporting] = React.useState(false);
   const [sending, setSending] = React.useState<string | null>(null);
   const receivables = invoices
-    .filter((invoice) => !["paid", "closed", "void"].includes(invoice.status))
-    .reduce((total, invoice) => total + invoice.amountCents, 0);
+    .filter((invoice) => !["paid", "void"].includes(invoice.status))
+    .reduce((total, invoice) => total + invoice.amountRemainingCents, 0);
 
   const editInvoice = (invoice: InvoiceRecord) => {
     setEditing(invoice);
@@ -52,21 +52,25 @@ export default function InvoicesPage() {
         );
         return;
       }
-      const body = (await response.json()) as {
-        data: { alreadySent: boolean };
-      };
-      toast(
-        body.data.alreadySent
-          ? `${invoice.invoiceNumber} was already sent.`
-          : `${invoice.invoiceNumber} sent to the customer.`,
-        { tone: "success" },
-      );
+      toast(`${invoice.invoiceNumber} sent to the customer.`, { tone: "success" });
       await refresh();
     } catch {
       toast("The invoice could not be sent.", { tone: "error" });
     } finally {
       setSending(null);
     }
+  };
+
+  const lifecycleAction = async (invoice: InvoiceRecord, action: "resend" | "revise" | "void" | "uncollectible" | "reconcile") => {
+    if ((action === "void" || action === "uncollectible") && !window.confirm(`${action === "void" ? "Void" : "Write off"} ${invoice.invoiceNumber}?`)) return;
+    setSending(invoice.id);
+    try {
+      const response = await fetch(`/api/invoices/${invoice.id}/${action}`, { method: "POST" });
+      if (!response.ok) { toast(await apiErrorMessage(response, "Invoice action failed."), { tone: "error" }); return; }
+      toast(action === "revise" ? "Revision draft created." : `${invoice.invoiceNumber} updated.`, { tone: "success" });
+      await refresh();
+    } catch { toast("Invoice action failed.", { tone: "error" }); }
+    finally { setSending(null); }
   };
 
   const exportInvoices = async () => {
@@ -113,7 +117,7 @@ export default function InvoicesPage() {
             label="Open Invoices"
             value={
               invoices.filter(
-                (invoice) => !["closed", "void"].includes(invoice.status),
+                (invoice) => !["paid", "void"].includes(invoice.status),
               ).length
             }
           />
@@ -153,14 +157,14 @@ export default function InvoicesPage() {
                   <TD>
                     <InvoiceStatus invoice={invoice} />
                   </TD>
-                  <TD>{formatDate(invoice.dueDate)}</TD>
+                  <TD>{invoice.dueDate ? formatDate(invoice.dueDate) : "—"}</TD>
                   <TD>
                     <div className="flex items-center gap-3">
                       <button
                         className="min-h-11 text-brand-blue"
                         onClick={() => editInvoice(invoice)}
                       >
-                        Edit
+                        {invoice.status === "draft" ? "Edit" : "View"}
                       </button>
                       <StripeAction
                         invoice={invoice}
@@ -168,6 +172,7 @@ export default function InvoicesPage() {
                         disabled={!canMutate}
                         onSend={() => void sendViaStripe(invoice)}
                       />
+                      <LifecycleActions invoice={invoice} busy={sending === invoice.id} onAction={(action) => void lifecycleAction(invoice, action)} />
                     </div>
                   </TD>
                 </TR>
@@ -198,7 +203,7 @@ export default function InvoicesPage() {
                   />
                   <InvoiceValue
                     label="Due"
-                    value={formatDate(invoice.dueDate)}
+                    value={invoice.dueDate ? formatDate(invoice.dueDate) : "—"}
                   />
                 </dl>
                 <div className="mt-4 grid gap-2">
@@ -206,7 +211,7 @@ export default function InvoicesPage() {
                     variant="secondary"
                     onClick={() => editInvoice(invoice)}
                   >
-                    Edit Invoice
+                    {invoice.status === "draft" ? "Edit invoice" : "View invoice"}
                   </Button>
                   <StripeAction
                     invoice={invoice}
@@ -215,6 +220,7 @@ export default function InvoicesPage() {
                     onSend={() => void sendViaStripe(invoice)}
                     full
                   />
+                  <LifecycleActions invoice={invoice} busy={sending === invoice.id} onAction={(action) => void lifecycleAction(invoice, action)} full />
                 </div>
               </li>
             ))}
@@ -235,9 +241,7 @@ export default function InvoicesPage() {
 }
 
 /**
- * Either send the invoice through Stripe, or open the payment page it already
- * has. Never both: once an invoice has a Stripe id it has been billed, and
- * offering "send" again invites a second invoice for the same work.
+ * Drafts can be sent exactly once; finalized invoices expose Stripe links.
  */
 function StripeAction({
   invoice,
@@ -263,7 +267,7 @@ function StripeAction({
         Payment page
       </a>
     );
-  if (invoice.stripeInvoiceId) return null;
+  if (invoice.stripeInvoiceId || invoice.status !== "draft") return null;
   return (
     <button
       className={`min-h-11 text-brand-blue disabled:opacity-40 ${full ? "w-full rounded border border-brand-ice" : ""}`}
@@ -279,15 +283,27 @@ function InvoiceStatus({ invoice }: { invoice: InvoiceRecord }) {
   return (
     <Badge
       tone={
-        invoice.status === "overdue"
+        ["overdue", "payment_failed"].includes(invoice.displayStatus)
           ? "amber"
-          : ["paid", "closed"].includes(invoice.status)
+          : ["paid", "uncollectible"].includes(invoice.displayStatus)
             ? "green"
             : "blue"
       }
-      label={invoice.status}
+      label={invoice.displayStatus.replaceAll("_", " ")}
     />
   );
+}
+
+function LifecycleActions({ invoice, busy, onAction, full }: { invoice: InvoiceRecord; busy: boolean; onAction: (action: "resend" | "revise" | "void" | "uncollectible" | "reconcile") => void; full?: boolean }) {
+  if (!invoice.stripeInvoiceId) return null;
+  return <div className={`flex flex-wrap gap-2 ${full ? "justify-center" : ""}`}>
+    {invoice.invoicePdfUrl && <a className="inline-flex min-h-11 items-center text-brand-blue" href={invoice.invoicePdfUrl} target="_blank" rel="noreferrer">PDF</a>}
+    {invoice.status === "open" && <button className="min-h-11 text-brand-blue disabled:opacity-40" disabled={busy} onClick={() => onAction("resend")}>Resend</button>}
+    {["open", "uncollectible"].includes(invoice.status) && !invoice.latestRevisionId && <button className="min-h-11 text-brand-blue disabled:opacity-40" disabled={busy} onClick={() => onAction("revise")}>Revise</button>}
+    {invoice.status === "open" && <button className="min-h-11 text-brand-blue disabled:opacity-40" disabled={busy} onClick={() => onAction("void")}>Void</button>}
+    {invoice.status === "open" && <button className="min-h-11 text-brand-blue disabled:opacity-40" disabled={busy} onClick={() => onAction("uncollectible")}>Write off</button>}
+    {!["paid", "void"].includes(invoice.status) && <button className="min-h-11 text-brand-blue disabled:opacity-40" disabled={busy} onClick={() => onAction("reconcile")}>Refresh Stripe</button>}
+  </div>;
 }
 
 function InvoiceValue({

@@ -33,7 +33,7 @@ export default function DashboardPage() {
     (request) => request.status === "pending",
   ).length;
   const openReceivables = invoices.filter(
-    (invoice) => !["paid", "closed", "void"].includes(invoice.status),
+    (invoice) => !["paid", "void"].includes(invoice.status),
   ).length;
   const stats = {
     enRoute: todaysJobs.filter((job) => job.status === "en_route").length,

@@ -86,7 +86,11 @@ notes; this is enforced by the database, not just the screens.
 
 Administrators can create a small practice dataset from **Settings → Training
 Data**. It creates exactly five linked records — one customer, one truck, one
-dumpster, one pending unassigned job, and one zero-dollar draft invoice.
+dumpster and one pending unassigned job. Invoice acceptance uses completed staging jobs and positive reviewed line items; zero-dollar invoices are rejected.
+
+## Stripe invoice acceptance
+
+Use only the isolated staging Supabase project and Stripe test mode. Review a customer's dedicated billing contact and full US billing address, complete at least two jobs, then create one per-job invoice and one multi-job statement. Confirm the generated number cannot be edited, line totals match, already-invoiced jobs disappear from eligibility, and finalized invoices become read-only. Verify card and US bank-account options on Stripe's hosted page, the emailed/PDF recipient, PO, terms and itemized lines, then exercise ACH processing/failure/success, resend, revision, void, write-off and Refresh Stripe. Never use real customer addresses, bank details, or production jobs during this test.
 
 **Every one of them is labeled `TRAINING`.** Anything with that label is safe to
 experiment with. Anything without it is a real record.
@@ -135,15 +139,18 @@ These are expected. Please do not report them as bugs.
   off for now. Use a strong, unique password and do not share it.
 - **Time totals are exact and raw.** There is no payroll math, no overtime rules,
   no rounding, and no automatic deductions of any kind.
-- **Invoices are records only.** Overwatch does not take payments.
+- **Invoices use Stripe-hosted payment pages.** Office staff review every line,
+  recipient, PO, and term before sending; rates and tax are not calculated
+  automatically. Production sending remains disabled until launch approval.
 - **Locations are the last reported position** entered manually or from AirTags.
   There is no live GPS trail.
 
 ## Not in this release
 
-Deliberately out of scope, by agreement: payment processing, payroll, route
-optimization, a customer-facing portal, live GPS tracking, automated fleet
-maintenance, and AI dispatching.
+Deliberately out of scope, by agreement: automatic rate/tax/surcharge
+calculation, refunds and credit notes, payroll, route optimization, a
+customer-facing portal, live GPS tracking, automated fleet maintenance, and AI
+dispatching.
 
 ## Reporting a problem
 

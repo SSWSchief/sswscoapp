@@ -22,8 +22,6 @@ export type StripeInvoiceStatus =
  */
 export function invoiceStatusFromStripe(
   stripeStatus: StripeInvoiceStatus,
-  dueDate: string,
-  asOf: Date = new Date(),
 ): InvoiceStatus {
   switch (stripeStatus) {
     case "draft":
@@ -33,33 +31,8 @@ export function invoiceStatusFromStripe(
     case "void":
       return "void";
     case "uncollectible":
-      return "closed";
-    case "open": {
-      const due = Date.parse(`${dueDate}T23:59:59Z`);
-      if (!Number.isFinite(due)) return "sent";
-      return asOf.getTime() > due ? "overdue" : "sent";
-    }
+      return "uncollectible";
+    case "open":
+      return "open";
   }
-}
-
-/**
- * Whether an incoming Stripe status should be allowed to overwrite what is
- * already stored.
- *
- * Webhooks arrive out of order and get replayed, so a late `invoice.sent`
- * must not walk a paid invoice backwards. Settled states are terminal here;
- * everything else is free to move.
- */
-export function shouldApplyStatus(
-  current: InvoiceStatus,
-  incoming: InvoiceStatus,
-): boolean {
-  if (current === incoming) return false;
-  const settled: InvoiceStatus[] = ["paid", "void", "closed"];
-  if (settled.includes(current)) {
-    // A refund or a reopened dispute can legitimately move a paid invoice on,
-    // but only to another settled state -- never back to sent or overdue.
-    return settled.includes(incoming);
-  }
-  return true;
 }

@@ -20,8 +20,8 @@ export default function Page() {
   const { invoices, pretripSubmissions } = useExpandedOperations();
   const today = jobsForPacificDay(jobs);
   const receivables = invoices
-    .filter((invoice) => !["paid", "closed", "void"].includes(invoice.status))
-    .reduce((total, invoice) => total + invoice.amountCents, 0);
+    .filter((invoice) => !["paid", "void"].includes(invoice.status))
+    .reduce((total, invoice) => total + invoice.amountRemainingCents, 0);
   const activeJobs = today.filter((job) =>
     ["en_route", "arrived"].includes(job.status),
   );

@@ -1,5 +1,5 @@
 begin;
-select plan(36);
+select plan(41);
 
 create function pg_temp.capture_sqlstate(command text) returns text language plpgsql as $$
 begin
@@ -52,7 +52,8 @@ insert into public.customers(id,name,address,is_active) values
   ('rls-customer-b','RLS Customer B','2 Test Way',true);
 insert into public.jobs(id,reference,customer_id,address,service_type,dumpster_size,assigned_driver_id,scheduled_for,status) values
   ('rls-driver-job','#RLS-DRIVER','rls-customer-a','1 Test Way','Delivery','20 Yard','rls-driver',now(),'pending'),
-  ('rls-other-job','#RLS-OTHER','rls-customer-b','2 Test Way','Delivery','20 Yard','rls-other',now(),'pending');
+  ('rls-other-job','#RLS-OTHER','rls-customer-b','2 Test Way','Delivery','20 Yard','rls-other',now(),'pending'),
+  ('rls-invoice-job','#RLS-INVOICE','rls-customer-a','1 Test Way','Delivery','20 Yard',null,now(),'complete');
 
 select is(
   pg_temp.capture_sqlstate($$update public.users
@@ -75,6 +76,12 @@ select is(public.has_permission('management'),true,'active admin AAL1 receives a
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal2"}',true);
 select is(public.has_permission('management'),true,'active admin AAL2 continues to receive administrator permissions');
 select is((public.save_company_settings('RLS Company','100 Test Way','555-0100','settings@example.invalid','America/Los_Angeles','MM/DD/YYYY',365,'QA')).invoice_prefix,'QA','active admin saves validated company settings through RPC');
+update public.customers set billing_contact_name='RLS AP',billing_email='ap@example.invalid',billing_address_line1='1 Test Way',billing_city='Reno',billing_state='NV',billing_postal_code='89501' where id='rls-customer-a';
+select lives_ok($$select public.create_invoice_draft('{"customerId":"rls-customer-a","billingMode":"per_job","jobIds":["rls-invoice-job"],"paymentTerms":"net_30","poNumber":"PO-1","notes":"reviewed","items":[{"description":"20 yard delivery","amountCents":40000,"jobId":"rls-invoice-job","category":"service","position":0}]}'::jsonb)$$,'permitted staff creates a complete itemized draft');
+select is((select amount_cents from public.invoices where job_id='rls-invoice-job'),40000::bigint,'invoice total is calculated from immutable cents lines');
+select matches((select invoice_number from public.invoices where job_id='rls-invoice-job'),'^QA-[0-9]{6}$','invoice number is generated from the transactional prefix counter');
+select is(pg_temp.capture_sqlstate($$update public.invoices set amount_cents=1 where job_id='rls-invoice-job'$$),'42501','even an administrator cannot edit invoices directly from the browser role');
+select is(pg_temp.capture_sqlstate($$select public.create_invoice_draft('{"customerId":"rls-customer-a","billingMode":"per_job","jobIds":["rls-invoice-job"],"paymentTerms":"net_30","poNumber":"","notes":"","items":[{"description":"duplicate","amountCents":1,"jobId":"rls-invoice-job","category":"service","position":0}]}'::jsonb)$$),'23505','one completed job cannot be billed on two active invoices');
 select is(pg_temp.execute_row_count($$update public.company_settings set company_name='Direct Hack' where id=true$$),0::bigint,'direct settings table update is denied even for an administrator session');
 select is((public.publish_sop_document('RLS Safety SOP','Safety','Use wheel chocks before inspection.',true)).version,1,'admin publishes SOP versions through RPC');
 select is((public.publish_pretrip_template('RLS Pretrip',array['Tires','Lights'])).version,1,'admin publishes pre-trip templates through RPC');

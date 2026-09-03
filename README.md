@@ -2,7 +2,7 @@
 
 Supabase-backed internal operations platform for Silver State Waste Solutions. The production scope covers authentication, dispatch/jobs, customers, assets, employees and permissions, private job photos and notes, realtime alerts, flexible audited time events, corrections, absences, invoice records, reports/exports, locations/AirTags, management oversight, internal messaging, pre-trip inspections, SOP acknowledgements, and company settings.
 
-Payment processing, payroll, route optimization, customer portals, live GPS, fleet-maintenance automation, and AI dispatch remain explicitly outside this release.
+The billing workspace supports office-reviewed itemized invoices, per-job and multi-job statements, Stripe-hosted card/ACH payment, revisions, durable webhooks, and reconciliation. Live sending remains feature-gated until the tax and account launch approvals are complete. Payroll, route optimization, customer portals, live GPS, fleet-maintenance automation, and AI dispatch remain outside this release.
 
 ## Stack
 
@@ -17,6 +17,8 @@ npm run dev
 ```
 
 Configure the public Supabase URL and publishable key plus the server-only secret in `.env.local`. Never expose the secret with a `NEXT_PUBLIC_` prefix. Apply migrations in order from `supabase/migrations/` before signing in.
+
+Local and staging billing must use a Stripe test or restricted test key plus that key's account ID, a test webhook secret, `STRIPE_EXPECTED_MODE=test`, and an explicit `STRIPE_INVOICING_ENABLED` switch. Live Stripe secrets belong only in Vercel production; the server refuses live keys elsewhere.
 
 ## Verification
 
@@ -37,6 +39,7 @@ npm audit
 - The Management Overview is an administrator-only workspace whose drill-downs enter the same permission-enforced operations shell. Administrator MFA is intentionally disabled under the current release policy; active-profile, role, immutable-owner, rate-limit, short-session, and audit controls are the compensating safeguards. This accepted residual risk is reviewed before every production release.
 - Driver time events support clock-out after clock-in and zero or more complete break pairs in `America/Los_Angeles`; impossible sequences are rejected. Totals are exact and have no payroll, overtime, rounding, or automatic deductions.
 - Driver completion requires a private-bucket photo. Dispatcher completion without a photo requires an audited reason.
+- Invoice drafts are created through authenticated endpoints, numbered transactionally, totaled from durable integer-cent lines, and locked after Stripe finalization. Corrections use revisions; payment status is reconciled from Stripe rather than edited locally.
 
 ## Mobile acceptance
 
