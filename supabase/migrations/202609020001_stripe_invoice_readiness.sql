@@ -541,6 +541,11 @@ $$;
 -- pass through the functions/API lifecycle above.
 drop policy if exists invoices_write on public.invoices;
 revoke insert,update,delete on public.invoices from authenticated;
+-- Granted explicitly rather than left to whatever the project happens to have.
+-- The office still has to read invoices, and a project restored from this chain
+-- alone -- rather than one carrying Supabase's older blanket grants -- would
+-- otherwise show an empty invoice list with no policy to explain why.
+grant select on public.invoices to authenticated;
 revoke all on public.invoice_line_items, public.invoice_jobs,
   public.invoice_number_counters, public.stripe_webhook_events from anon;
 grant select on public.invoice_line_items, public.invoice_jobs,

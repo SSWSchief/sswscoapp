@@ -31,20 +31,19 @@ $$;
 
 grant usage on schema public to anon, authenticated, service_role;
 
--- These defaults exist so the chain's `revoke insert,update,delete on
--- public.invoices from authenticated` means something: a revoke against a role
--- that never held the privilege proves nothing at all.
+-- Deliberately NO blanket table privileges for the API roles.
 --
--- Be aware that this is deliberately more permissive than `supabase start`,
--- which does not hand the API roles write privileges on tables created by
--- migrations. That difference is not cosmetic — it once let a pgTAP assertion
--- pass here and fail in CI. Treat the `migrations` CI job, which runs the real
--- stack, as the authority on what the API roles may actually do; this file is
--- for answering "does the chain apply, and does it convert the data correctly"
--- without Docker or hosted credentials.
-alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
-alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
-alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+-- An earlier version of this file granted them, on the assumption that
+-- Supabase hands anon/authenticated full table access and leaves rows to RLS.
+-- `supabase start` does not do that for tables created by migrations, and the
+-- difference was not academic: it let a pgTAP assertion pass here and fail in
+-- CI, which is the exact failure mode a rehearsal harness exists to prevent.
+--
+-- So the API roles start with nothing and receive only what the migrations
+-- grant them explicitly. That makes this shim agree with the `migrations` CI
+-- job, and it means a privilege the chain forgets to grant shows up here as a
+-- failure rather than as ambient permission inherited from an older project.
+alter default privileges in schema public grant usage, select on sequences to anon, authenticated, service_role;
 
 -- GoTrue's identity table, reduced to the columns the chain reads: the
 -- employee link trigger matches on `email`, and activation is stamped from

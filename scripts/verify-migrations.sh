@@ -84,14 +84,21 @@ DATA_DB="${DB}_data"
 dropdb --if-exists "$DATA_DB"
 createdb "$DATA_DB"
 psql -q -d "$DATA_DB" -v ON_ERROR_STOP=1 -f "$ROOT/scripts/sql/supabase-bootstrap.sql" >/dev/null
+# Applied in two halves, split at the Stripe migration: everything before it,
+# then the legacy rows, then it and everything after. Migrations that follow it
+# build on the tables it creates, so they cannot simply be skipped.
 STRIPE_MIGRATION=""
+BEFORE=(); AFTER=()
 for migration in "$ROOT"/supabase/migrations/*.sql; do
   case "$migration" in
     *stripe_invoice_readiness*) STRIPE_MIGRATION="$migration"; continue;;
   esac
-  psql -q -d "$DATA_DB" -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+  if [ -z "$STRIPE_MIGRATION" ]; then BEFORE+=("$migration"); else AFTER+=("$migration"); fi
 done
 [ -n "$STRIPE_MIGRATION" ] || fail "the Stripe readiness migration is missing"
+for migration in "${BEFORE[@]}"; do
+  psql -q -d "$DATA_DB" -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+done
 
 psql -q -d "$DATA_DB" -v ON_ERROR_STOP=1 >/dev/null <<'SQL'
 insert into public.customers(id,name,address,email,is_active)
@@ -107,6 +114,9 @@ values
 SQL
 
 psql -q -d "$DATA_DB" -v ON_ERROR_STOP=1 -f "$STRIPE_MIGRATION" >/dev/null
+for migration in "${AFTER[@]}"; do
+  psql -q -d "$DATA_DB" -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+done
 
 expected='inv-closed=uncollectible/50000
 inv-draft=draft/10000
@@ -123,14 +133,15 @@ if [ "$actual" != "$expected" ]; then
 fi
 printf '  ok  every legacy status converted with the right balance\n'
 
-# The revoke is only meaningful against a role that had the privilege. `jobs`
-# is the control: if it ever reports no writes, the shim stopped granting them
-# and the invoices assertion below has become vacuous.
-step "Confirming browser writes were actually revoked"
-control="$(psql -d "$DB" -tAc "select count(*) from information_schema.role_table_grants where table_name='jobs' and grantee='authenticated' and privilege_type in ('INSERT','UPDATE','DELETE');")"
-[ "$control" = "3" ] || fail "control table lost its default grants; the revoke check would prove nothing"
-revoked="$(psql -d "$DB" -tAc "select count(*) from information_schema.role_table_grants where table_name='invoices' and grantee='authenticated' and privilege_type in ('INSERT','UPDATE','DELETE');")"
-[ "$revoked" = "0" ] || fail "authenticated can still write to invoices directly"
-printf '  ok  invoices are read-only to the browser role\n'
+# The API roles begin with no table privileges here, so this asserts the
+# positive half too: the office must still be able to READ invoices. A chain
+# that revokes the writes and forgets the read leaves the invoice list empty
+# with no policy to explain it, which is the bug this check exists to catch.
+step "Confirming the browser role can read invoices but not write them"
+readable="$(psql -d "$DB" -tAc "select count(*) from information_schema.role_table_grants where table_name='invoices' and grantee='authenticated' and privilege_type='SELECT';")"
+[ "$readable" = "1" ] || fail "authenticated cannot read invoices; the office would see an empty list"
+writable="$(psql -d "$DB" -tAc "select count(*) from information_schema.role_table_grants where table_name='invoices' and grantee='authenticated' and privilege_type in ('INSERT','UPDATE','DELETE');")"
+[ "$writable" = "0" ] || fail "authenticated can still write to invoices directly"
+printf '  ok  invoices are readable and write-protected for the browser role\n'
 
 printf '\n\033[32mMigration chain verified.\033[0m\n'
