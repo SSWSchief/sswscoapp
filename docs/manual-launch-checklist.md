@@ -87,6 +87,15 @@ Complete these steps in a staging-first sequence. Record the owner, date, eviden
 
 ## 9. Acceptance and go-live
 
+- Keep production `STRIPE_INVOICING_ENABLED=false` while staging runs Stripe test mode. Confirm `/api/health` reports the configured account, expected test mode, actual test mode, and disabled production sending.
+- Review and complete Stripe's business/legal name, logo/branding, website, support email/phone, statement descriptor, payout account, invoice email settings, card, and ACH setup independently in test and live mode.
+- Configure separate staging/test and production/live webhook endpoints and signing secrets with only the documented invoice and PaymentIntent events. Verify successful signed deliveries, duplicate replay handling, ACH processing/failure, and recovery after a deliberately missed event.
+- Have the CPA document Nevada tax treatment. If any invoice item is taxable, stop activation until Stripe Tax or reviewed manual tax-line behavior is approved and implemented. Record the decision with `npm run invoices:tax-policy -- --apply --status=non_taxable_approved --note="<approver, date, advice>" --confirm-production --project-ref=<ref>`; the settings screen shows the gate but deliberately cannot change it, and the write is audited. Run it with no arguments first to read the current state.
+- Rehearse the migration chain before applying it to a project that holds data: `npm run db:verify-migrations` against a local PostgreSQL 17 with pgTAP. It applies every migration in order, runs both pgTAP suites, and checks the legacy invoice-status conversion against rows in the old shape.
+- Verify migration backup/restore, automatic numbering under concurrency, billing-contact fallback/review, line totals, job double-billing rejection, per-job invoices, multi-job statements, revisions, resends, voids, write-offs, PDF/payment links, report/CSV totals, and daily/on-demand reconciliation in staging.
+- Record the three pre-existing unmatched test invoices as stale test artifacts; do not import them into the application ledger.
+- After account-owner approval, switch production to a live/restricted live key, the matching account ID and live webhook secret, set `STRIPE_EXPECTED_MODE=live`, issue one controlled low-value live invoice, pay and reconcile it, then enable general sending. Preserve rollback evidence.
+
 - Test on physical supported iPhone/iPad devices: portrait/landscape, large text, reduced motion, camera denial, slow/offline/reconnect behavior, and Home Screen mode.
 - Perform keyboard/screen-reader accessibility review and resolve launch-blocking issues.
 - Train administrators, dispatchers, and drivers using staging data.
