@@ -19,6 +19,7 @@
     "check": "npm run clean:conflicts && npm run lint && npm run typecheck && npm run test:coverage && npm run test:scripts && npm run dead-code && npm run build",
     "db:lint": "supabase db lint --linked --level warning",
     "db:verify-migrations": "./scripts/verify-migrations.sh",
+    "invoices:tax-policy": "node scripts/approve-invoice-tax-policy.mjs",
     "import:validate": "node scripts/import-operations.mjs",
     "staging:bootstrap": "node scripts/bootstrap-staging-e2e.mjs",
     "admin:invite": "node scripts/invite-administrator.mjs",
