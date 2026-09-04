@@ -273,6 +273,25 @@ for (const write of fixtureWrites) {
   const result = await write;
   if (result.error) throw result.error;
 }
+// Company invoice terms, because validateForSend refuses every send without
+// them and the billing suite would otherwise prove only that the refusal
+// works. These are fixture text for a test-mode project, not the client's
+// rental agreement — production keeps whatever the office enters in Settings.
+const settings = await service
+  .from("company_settings")
+  .update({
+    invoice_terms:
+      "ACCEPTANCE FIXTURE — not a real rental agreement. " +
+      "Rental period and included tonnage are stated on each line. " +
+      "Prohibited materials include tyres, batteries, paint, solvents, and " +
+      "any hazardous waste; a prohibited material fee applies.",
+  })
+  .eq("id", true)
+  .select("invoice_terms")
+  .single();
+if (settings.error) throw settings.error;
+console.log(`Company invoice terms seeded (${settings.data.invoice_terms.length} chars).`);
+
 // Clear invoices raised against the acceptance customers by earlier runs.
 // The billing suite saves a real draft, and a completed job can sit on only one
 // active invoice, so without this the second run finds nothing eligible and
