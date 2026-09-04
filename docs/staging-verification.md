@@ -10,19 +10,24 @@ Migration 008 may be amended only while it has never been applied to a shared st
 
 ## Lane B: approved staging proof
 
-Configure the GitHub `staging` environment with required reviewers and these secrets:
+Configure the GitHub `staging` environment with required reviewers and these nine secrets. The
+names are exact: the workflows read `secrets.<NAME>` literally, and a secret stored under a
+different name is simply absent, which surfaces later as a confusing failure rather than a missing
+credential.
 
 - `STAGING_PROJECT_REF`
 - `STAGING_DB_URL`
 - `STAGING_SUPABASE_URL`
 - `STAGING_SUPABASE_PUBLISHABLE_KEY`
 - `STAGING_SUPABASE_SECRET_KEY`
-- `PRODUCTION_PROJECT_REF`
-- `STRIPE_SECRET_KEY` (test or restricted test key)
-- `STRIPE_WEBHOOK_SECRET` (staging endpoint only)
-- `STRIPE_ACCOUNT_ID`
-- `STRIPE_EXPECTED_MODE=test`
-- `STRIPE_INVOICING_ENABLED=true`
+- `PRODUCTION_PROJECT_REF` — supplied so the bootstrap can refuse a production target
+- `STAGING_STRIPE_SECRET_KEY` (test or restricted test key)
+- `STAGING_STRIPE_WEBHOOK_SECRET` (the staging endpoint's own secret, never production's)
+- `STAGING_STRIPE_ACCOUNT_ID`
+
+`STRIPE_EXPECTED_MODE=test` and `STRIPE_INVOICING_ENABLED=true` are **not** secrets. The acceptance
+workflow sets both as literal environment values, which is deliberate: sending is enabled against a
+test-mode key on staging while production keeps the flag off.
 
 Run `Staging Database Verification` first with `apply_migrations=false`. Review the migration list and dry-run artifact. After approval and a staging backup, run it again with `apply_migrations=true`. This applies the pending migration set, then runs linked lint and pgTAP.
 
