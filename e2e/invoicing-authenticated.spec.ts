@@ -41,10 +41,19 @@ async function openInvoices(page: Page) {
   await expect(page.getByRole("heading", { level: 1, name: "Invoices" })).toBeVisible();
 }
 
-/** The first completed job offered for a customer, or null when none is free. */
+/**
+ * The first completed job offered for a customer.
+ *
+ * The list arrives from /api/invoices/eligible-jobs after the customer is
+ * chosen, so this waits for it rather than sampling once — reading the DOM
+ * immediately finds an empty list and looks indistinguishable from a customer
+ * with no billable work.
+ */
 async function selectFirstEligibleJob(page: Page) {
   const jobs = page.getByRole("radio");
-  if (!(await jobs.count())) return null;
+  await expect
+    .poll(() => jobs.count(), { timeout: 15_000 })
+    .toBeGreaterThan(0);
   const label = await jobs.first().locator("xpath=..").innerText();
   await jobs.first().check();
   return label;
@@ -60,15 +69,20 @@ test.describe("invoice drafting", () => {
 
     const customer = page.getByLabel(/customer/i);
     await expect(customer).toBeVisible();
-    // Pick the seeded acceptance customer by id rather than by position. It is
+    // Pick the seeded acceptance customer by id rather than by position: it is
     // the one the bootstrap gives a complete billing address and a completed
     // job, and dropdown order depends on whatever else the project holds.
-    const seeded = customer.locator('option[value="e2e-customer"]');
-    test.skip(!(await seeded.count()), "the acceptance customer is not seeded");
+    // Poll for it — the customer list streams in from the operations provider
+    // after the select itself renders, so one immediate read sees a dropdown
+    // holding nothing but the placeholder.
+    await expect
+      .poll(() => customer.locator('option[value="e2e-customer"]').count(), {
+        timeout: 15_000,
+      })
+      .toBe(1);
     await customer.selectOption("e2e-customer");
 
-    const job = await selectFirstEligibleJob(page);
-    test.skip(job === null, "the seeded customer has no uninvoiced completed job");
+    await selectFirstEligibleJob(page);
 
     await page.getByLabel("Line 1 description").fill("Acceptance haul");
     await page.getByLabel("Line 1 amount").fill("425.50");
