@@ -292,30 +292,49 @@ const settings = await service
 if (settings.error) throw settings.error;
 console.log(`Company invoice terms seeded (${settings.data.invoice_terms.length} chars).`);
 
-// Clear invoices raised against the acceptance customers by earlier runs.
-// The billing suite saves a real draft, and a completed job can sit on only one
-// active invoice, so without this the second run finds nothing eligible and
-// quietly skips the very assertions it exists to make. Children first: invoice
-// lines and job links are ON DELETE RESTRICT, and the revision pointers are
-// self-referencing, so they are broken before the rows go.
+// Free the acceptance jobs from invoices raised by earlier runs, so each run
+// starts with billable work again. A completed job can sit on exactly one
+// active invoice, so without this the second run finds nothing to bill.
+//
+// Sent invoices are voided rather than deleted. Finalized invoices and their
+// lines are immutable by design — freeze_finalized_invoice_line rejects the
+// delete outright — and that guarantee is worth more than a tidy table. Voiding
+// is the app's own way of retiring one: release_void_invoice_jobs frees the
+// job, and the record stays, which is what a ledger should do. Only drafts,
+// which were never issued to anyone, are removed.
 const acceptanceCustomers = ["e2e-customer", "e2e-other-customer"];
-const staleInvoices = await service
+const priorInvoices = await service
   .from("invoices")
-  .select("id")
+  .select("id,status")
   .in("customer_id", acceptanceCustomers);
-if (staleInvoices.error) throw staleInvoices.error;
-const staleIds = (staleInvoices.data ?? []).map((invoice) => invoice.id);
-if (staleIds.length) {
+if (priorInvoices.error) throw priorInvoices.error;
+
+const issued = (priorInvoices.data ?? []).filter(
+  (invoice) => invoice.status !== "draft" && invoice.status !== "void",
+);
+if (issued.length) {
+  const voided = await service
+    .from("invoices")
+    .update({ status: "void" })
+    .in("id", issued.map((invoice) => invoice.id));
+  if (voided.error) throw voided.error;
+  console.log(`Voided ${issued.length} issued acceptance invoice(s), releasing their jobs.`);
+}
+
+const drafts = (priorInvoices.data ?? [])
+  .filter((invoice) => invoice.status === "draft")
+  .map((invoice) => invoice.id);
+if (drafts.length) {
   for (const step of [
-    service.from("invoices").update({ latest_revision_id: null, revised_from_id: null }).in("id", staleIds),
-    service.from("invoice_line_items").delete().in("invoice_id", staleIds),
-    service.from("invoice_jobs").delete().in("invoice_id", staleIds),
-    service.from("invoices").delete().in("id", staleIds),
+    service.from("invoices").update({ latest_revision_id: null, revised_from_id: null }).in("id", drafts),
+    service.from("invoice_line_items").delete().in("invoice_id", drafts),
+    service.from("invoice_jobs").delete().in("invoice_id", drafts),
+    service.from("invoices").delete().in("id", drafts),
   ]) {
     const result = await step;
     if (result.error) throw result.error;
   }
-  console.log(`Cleared ${staleIds.length} acceptance invoice(s) from a previous run.`);
+  console.log(`Removed ${drafts.length} unissued acceptance draft(s).`);
 }
 
 const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
