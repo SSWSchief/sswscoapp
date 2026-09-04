@@ -313,21 +313,25 @@ for (const job of [
     customer_id: "e2e-other-customer",
     assigned_driver_id: byKey.OTHER_DRIVER.profileId,
   },
-  // A completed job, because only completed work can be invoiced. Without one
+  // Completed jobs, because only completed work can be invoiced. Without them
   // the billing half of the acceptance suite skips itself for want of an
   // eligible job and proves nothing about the money path.
   //
+  // One per Playwright project. A completed job can sit on exactly one active
+  // invoice, so the first project to save a draft consumes it and the rest
+  // find nothing left to bill.
+  //
   // Deliberately unassigned: the driver isolation check in
   // rls-authenticated.spec.ts asserts the driver sees exactly one job, and
-  // giving this one a driver breaks that boundary assertion to no purpose —
+  // giving these a driver breaks that boundary assertion to no purpose —
   // invoicing selects jobs by customer and completion, never by driver.
-  {
-    id: "e2e-billable-job",
-    reference: "#E2E-BILLABLE",
+  ...["chromium", "tablet", "mobile"].map((slot, index) => ({
+    id: `e2e-billable-job-${index + 1}`,
+    reference: `#E2E-BILLABLE-${slot.toUpperCase()}`,
     customer_id: "e2e-customer",
     assigned_driver_id: null,
     status: "complete",
-  },
+  })),
 ]) {
   const result = await service.from("jobs").upsert({
     address: "100 Test Way",
