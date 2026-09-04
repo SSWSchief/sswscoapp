@@ -22,7 +22,31 @@ jobs:
       - run: npm run test:scripts
       - run: npm run dead-code
       - run: npm run build
-      - run: npm audit --audit-level=high
+      # `npm audit` exits non-zero both for a real advisory and for a registry
+      # it could not reach, and npmjs.org returned 400s and 503s from
+      # /security/audits/quick repeatedly on 2026-09-04, blocking every merge
+      # for reasons that had nothing to do with this repository. Retry only the
+      # transport failure; a genuine finding still fails on the first attempt,
+      # and an endpoint that never recovers still fails the job.
+      - name: Audit dependencies
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if output="$(npm audit --audit-level=high 2>&1)"; then
+              printf '%s\n' "$output"
+              exit 0
+            fi
+            printf '%s\n' "$output"
+            if printf '%s' "$output" | grep -q 'audit endpoint returned an error'; then
+              echo "::warning::npm advisory endpoint unavailable (attempt $attempt of 3); retrying"
+              sleep 30
+              continue
+            fi
+            echo "::error::npm audit reported a high-severity advisory"
+            exit 1
+          done
+          echo "::error::npm advisory endpoint unreachable after 3 attempts"
+          exit 1
   migrations:
     runs-on: ubuntu-latest
     steps:
