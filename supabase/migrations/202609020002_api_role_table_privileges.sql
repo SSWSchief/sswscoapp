@@ -64,3 +64,16 @@ grant delete, insert, select, update on public.vendors to authenticated;
 -- through the transactional RPCs, and the read grant above is all the office
 -- needs. Re-stated here so the intent survives a later blanket grant.
 revoke insert, update, delete on public.invoices from authenticated;
+
+-- Strip the privileges an older Supabase project's blanket `grant all` handed
+-- the API roles and the application has never used.
+--
+-- TRUNCATE is the one that matters: it empties a table outright and is not
+-- filtered by row level security, so every policy in this schema is silent on
+-- it. It is not reachable through PostgREST, which exposes only CRUD and RPC,
+-- so this is depth rather than an open door -- but a role that can read one
+-- customer's rows should not hold a privilege that can discard everybody's.
+-- TRIGGER and REFERENCES go with it for the same reason: the app never needs
+-- either, and both are footholds for anything that does reach raw SQL.
+revoke truncate, trigger, references
+  on all tables in schema public from anon, authenticated;
