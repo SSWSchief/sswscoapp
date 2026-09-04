@@ -273,6 +273,32 @@ for (const write of fixtureWrites) {
   const result = await write;
   if (result.error) throw result.error;
 }
+// Clear invoices raised against the acceptance customers by earlier runs.
+// The billing suite saves a real draft, and a completed job can sit on only one
+// active invoice, so without this the second run finds nothing eligible and
+// quietly skips the very assertions it exists to make. Children first: invoice
+// lines and job links are ON DELETE RESTRICT, and the revision pointers are
+// self-referencing, so they are broken before the rows go.
+const acceptanceCustomers = ["e2e-customer", "e2e-other-customer"];
+const staleInvoices = await service
+  .from("invoices")
+  .select("id")
+  .in("customer_id", acceptanceCustomers);
+if (staleInvoices.error) throw staleInvoices.error;
+const staleIds = (staleInvoices.data ?? []).map((invoice) => invoice.id);
+if (staleIds.length) {
+  for (const step of [
+    service.from("invoices").update({ latest_revision_id: null, revised_from_id: null }).in("id", staleIds),
+    service.from("invoice_line_items").delete().in("invoice_id", staleIds),
+    service.from("invoice_jobs").delete().in("invoice_id", staleIds),
+    service.from("invoices").delete().in("id", staleIds),
+  ]) {
+    const result = await step;
+    if (result.error) throw result.error;
+  }
+  console.log(`Cleared ${staleIds.length} acceptance invoice(s) from a previous run.`);
+}
+
 const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
 for (const job of [
   {
@@ -287,9 +313,18 @@ for (const job of [
     customer_id: "e2e-other-customer",
     assigned_driver_id: byKey.OTHER_DRIVER.profileId,
   },
+  // A completed job, because only completed work can be invoiced. Without one
+  // the billing half of the acceptance suite skips itself for want of an
+  // eligible job and proves nothing about the money path.
+  {
+    id: "e2e-billable-job",
+    reference: "#E2E-BILLABLE",
+    customer_id: "e2e-customer",
+    assigned_driver_id: byKey.DRIVER.profileId,
+    status: "complete",
+  },
 ]) {
   const result = await service.from("jobs").upsert({
-    ...job,
     address: "100 Test Way",
     phone: "555-0100",
     service_type: "Delivery",
@@ -298,6 +333,7 @@ for (const job of [
     status: "pending",
     notes: "Acceptance fixture",
     deleted_at: null,
+    ...job,
   });
   if (result.error) throw result.error;
 }
