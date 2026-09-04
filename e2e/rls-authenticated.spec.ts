@@ -44,6 +44,17 @@ test.describe("authenticated RLS boundaries", () => {
       permission_key: "management",
     });
     expect(permission.data).toBe(true);
+    // Read the invoice terms back and pass them through. save_company_settings
+    // defaults invoice_terms to an empty string, so a call that omits it blanks
+    // the company's terms — and empty terms make validateForSend refuse every
+    // invoice. Omitting it here wiped them mid-run and left the billing suite
+    // failing on whichever project happened to run after this one.
+    const current = await db
+      .from("company_settings")
+      .select("invoice_terms")
+      .eq("id", true)
+      .single();
+    expect(current.error).toBeNull();
     const saved = await db.rpc("save_company_settings", {
       company_name: "Silver State Waste Solutions",
       company_address: "100 Test Way",
@@ -53,6 +64,7 @@ test.describe("authenticated RLS boundaries", () => {
       company_date_format: "MM/DD/YYYY",
       retention_days: 365,
       invoice_prefix: "E2E",
+      invoice_terms: current.data?.invoice_terms ?? "",
     });
     expect(saved.error).toBeNull();
     expect(saved.data?.invoice_prefix).toBe("E2E");
