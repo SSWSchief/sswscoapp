@@ -14,13 +14,17 @@ SOPs, messages, invoices, reports, exports, and audit history. Employees can be
 onboarded with an administrator-issued temporary password or an emailed
 invitation — see the email delivery note below.
 
-**Update — August 17, 2026.** Email delivery is no longer deferred; see below.
-The other two remain switched off by agreement, not oversight:
+**Update — September 4, 2026.** Email delivery is no longer deferred; see below.
+Invoicing has since been built and proven end to end on staging, and is listed
+here because production sending stays off by design until the live-mode
+sequence is signed off. The rest remain switched off by agreement, not
+oversight:
 
 | Deferred | Consequence today | To enable |
 | --- | --- | --- |
 | Administrator MFA | Administrator accounts are password-only. | A deliberate change with factor enrolment rehearsed first — see the accepted risks. |
 | 15-minute maintenance cron | Unassigned-job alerts run once daily instead of every 15 minutes. | A Vercel plan supporting sub-daily cron, or an external scheduler calling `/api/cron/maintenance` with `CRON_SECRET`. |
+| Sending invoices from production | The office can enter customers and jobs and build invoice drafts, but production will not transmit one to a customer. Drafting, numbering and the double-billing guard all work; the send path is proven on staging against Stripe test mode. | Enter the company invoice terms, then the live-mode sequence in `docs/manual-launch-checklist.md` §9 — CPA tax determination, live key and webhook, one controlled low-value live invoice — and finally `STRIPE_INVOICING_ENABLED=true`. See Invoicing below. |
 
 **Email delivery — live since August 16, 2026, through Resend.** Onboarding no
 longer runs exclusively on administrator-issued temporary passwords; emailed
@@ -32,7 +36,7 @@ configured, so before this date they reported success while sending nothing
 whenever it was not. See the appendix for the current configuration and what
 that incident actually turned out to be.
 
-**Accepted risks.** Both were reviewed and accepted; reconfirm them at each
+**Accepted risks.** Each was reviewed and accepted; reconfirm them at each
 release.
 
 1. *Password-only administrator access.* MFA is not enforced. Compensating
@@ -42,6 +46,17 @@ release.
    settings below — the first compensating control is not currently enforced.
 2. *Permanent support administrator.* See "Protected administrator profiles"
    below — this one has consequences worth understanding before signing.
+3. *No database backups.* Accepted September 4, 2026. The Supabase project is on
+   the free tier, which provides none, so there is no point-in-time recovery and
+   nothing to restore from. Stated plainly because the system is about to hold
+   billing records: a mistaken bulk delete, a bad migration, or a project-level
+   failure would be unrecoverable, and the quarterly restore drill that
+   `docs/deployment-runbook.md` requires cannot be performed at all. Checklist
+   §5 stays unsigned. Compensating controls are thin by nature — the destructive
+   paths that exist in the application are audited and confirmation-gated, and
+   `TRUNCATE` has been revoked from the roles the browser runs as. Reversible at
+   any time by upgrading to a paid plan, which is the decision this risk is
+   standing in for.
 
 **Two dashboard settings worth closing.** Neither is exploitable today and
 neither blocks handover, but both are one toggle each and both contradict what
@@ -158,6 +173,100 @@ invoice builder with positive, reviewed line items.
   dispatched under their own name needs a driver-access profile.
 - Reconcile the first live jobs and time events against the previous process.
   Keep the prior Vercel deployment available throughout the rollback window.
+
+## Invoicing
+
+Invoicing is built, deployed and proven end to end on staging against Stripe
+test mode — a draft raised in the app reaches a real hosted payment page. Two
+things stand between that and the office billing customers, and only the
+company can supply them: the invoice terms and the rate card.
+
+**Production cannot send yet, deliberately.** `STRIPE_INVOICING_ENABLED` is
+`false` in Vercel production, so the office can enter customers, complete jobs
+and build drafts today with no risk of a half-finished invoice reaching a
+customer. Sending is exercised on staging until the live-mode steps in
+`docs/manual-launch-checklist.md` §9 are signed off.
+
+### Before anyone can send: the invoice terms
+
+`company_settings.invoice_terms` is **empty**, and every send is refused with
+"Company invoice terms are required before sending" before Stripe is contacted.
+An administrator enters it at **Settings → Company → Invoice terms**. It prints
+as the footer of every Stripe invoice, so the wording is the company's own —
+5000 characters, enforced in the form and again in the database. From the
+binder it should cover the rental period and included tonnage per size, the
+additional-day and additional-tonnage rates, the fuel/environmental surcharge,
+the prohibited-materials list and its $250 fee, and the dry-run fee.
+
+The rate card is the same kind of item: prices are the company's, and the
+mapping onto service types wants Austin's eye before it is seeded.
+
+### Who can raise an invoice
+
+Administrators hold Invoices by role. Dispatchers do not by default, but the
+permission is grantable per person — **Employees & access → the employee →
+Finance & Reporting → Invoices**. That is a per-employee override, not a change
+to what "dispatcher" means, so it stays deliberate and is visible on the
+employee's own record.
+
+### Raising one
+
+1. **Dispatch → Invoices → New invoice.**
+2. Choose the customer. The completed jobs available to bill appear once the
+   customer is chosen; a job already billed does not reappear, which is what
+   stops the same work being invoiced twice.
+3. Select the completed work, then enter the line items. The total is the sum of
+   the lines — it is never typed directly, and a zero-amount line is rejected.
+4. **Save draft.** The invoice number is assigned at that moment by a
+   transactional counter, not before; the field reads "Assigned when saved"
+   until then. Numbers are gap-free and never collide, even if two people save
+   at the same instant.
+5. Read the recipient review block before sending, and see below.
+
+### What a send checks
+
+A send is refused, with the reason shown, unless all of the following hold. All
+of it is checked locally first, so a bad invoice never reaches Stripe:
+
+- the invoice is still a draft, with at least one positive line, and its total
+  matches its lines;
+- every job on it is still complete, still belongs to that customer, and has not
+  been deleted;
+- the billing contact has a name and a valid email address;
+- the billing address is complete — **line 1, city, state and postal code**.
+  This is the one that will bite during data entry: a customer entered with only
+  a street line looks fine everywhere else in the app and fails only at the
+  point of sending, one customer at a time. Enter full addresses from the start;
+- the invoice number fits Stripe's 26-character limit;
+- the company invoice terms are set;
+- in live mode only, the tax policy has been approved.
+
+### After it is sent
+
+A sent invoice is **read-only**. That is the design, not a limitation — it
+matches what the customer has already received. The row then offers:
+
+- **Payment page** — the hosted Stripe page the customer pays on.
+- **Revise** — the way to correct a sent invoice. It supersedes the original in
+  Stripe rather than editing it, so both the customer and the ledger keep an
+  honest record of what changed.
+- **Void** — cancels it and releases its jobs to be billed again.
+- **Write off** — marks it uncollectible without pretending it was paid.
+- **Refresh Stripe** — pulls the current state from Stripe by hand. Routine
+  payment updates arrive on their own through the webhook; this is for when you
+  want to confirm rather than wait.
+
+Payments, failures and ACH "processing" all arrive by webhook and move the
+invoice on their own. Nobody needs to mark an invoice paid.
+
+### Training the office
+
+Walk through it on staging, where sending is on: draft → check the recipient
+review block → send once → open the payment page → pay with a Stripe test card
+→ watch it reach **paid** without anyone touching it. Then show Revise, and say
+plainly that corrections go through Revise rather than through editing or a
+second send. A second send is not offered for an invoice Stripe already holds,
+and the acceptance suite asserts that.
 
 ## Support and incident handling
 
