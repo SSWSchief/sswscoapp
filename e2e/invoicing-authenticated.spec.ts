@@ -60,10 +60,12 @@ test.describe("invoice drafting", () => {
 
     const customer = page.getByLabel(/customer/i);
     await expect(customer).toBeVisible();
-    const options = await customer.locator("option").all();
-    // The first option is the "Select customer" placeholder.
-    test.skip(options.length < 2, "staging has no customers seeded");
-    await customer.selectOption({ index: 1 });
+    // Pick the seeded acceptance customer by id rather than by position. It is
+    // the one the bootstrap gives a complete billing address and a completed
+    // job, and dropdown order depends on whatever else the project holds.
+    const seeded = customer.locator('option[value="e2e-customer"]');
+    test.skip(!(await seeded.count()), "the acceptance customer is not seeded");
+    await customer.selectOption("e2e-customer");
 
     const job = await selectFirstEligibleJob(page);
     test.skip(job === null, "the seeded customer has no uninvoiced completed job");
