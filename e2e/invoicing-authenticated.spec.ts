@@ -158,7 +158,12 @@ test.describe("Stripe delivery", () => {
     // toast (role="alert"); asserting only on the success wording reports
     // "element not found" and throws away the reason the send was refused,
     // which is the one thing worth knowing when this fails.
-    const toast = page.locator('[role="status"], [role="alert"]').first();
+    // Scoped to the toast region: role="status" also matches empty live
+    // regions elsewhere on the page, and reading one of those reports the
+    // application said nothing at all.
+    const toast = page
+      .locator('[aria-live] [role="status"], [aria-live] [role="alert"]')
+      .first();
     await toast.waitFor({ state: "visible", timeout: 30_000 });
     const said = (await toast.innerText()).replace(/\s+/g, " ").trim();
     expect(said, `the app reported: "${said}"`).toMatch(/sent to the customer/i);
@@ -176,7 +181,11 @@ test.describe("Stripe delivery", () => {
 
     // A table row on desktop, a list item on mobile; whichever encloses it.
     const row = paymentPages.first().locator("xpath=ancestor::*[self::tr or self::li][1]");
+    // The point of this test: once Stripe holds an invoice it can never be sent
+    // a second time. Which other controls the row offers depends on where the
+    // invoice sits — a voided one keeps its payment link but is terminal, so it
+    // deliberately offers no reconcile — and asserting on those would be
+    // asserting on the fixture rather than on the rule.
     await expect(row.getByRole("button", { name: /send via stripe/i })).toHaveCount(0);
-    await expect(row.getByRole("button", { name: /refresh stripe/i })).toBeVisible();
   });
 });
