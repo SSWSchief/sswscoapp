@@ -51,7 +51,15 @@ jobs:
         run: |
           set -o pipefail
           supabase migration list --db-url "$STAGING_DB_URL" 2>&1 | tee migration-evidence/migrations-after.log
-          supabase db lint --db-url "$STAGING_DB_URL" --level warning --fail-on error 2>&1 | tee migration-evidence/lint-linked.log
+          # Scoped to public: the only schema this project authors. Without it
+          # the linter also walks `extensions`, where pgTAP lives, and reports
+          # eight errors that are all false. pgTAP creates __tcache__ and
+          # __tresults___numb_seq at runtime, and references proisagg and
+          # spclocation inside version-guarded branches for PostgreSQL releases
+          # that removed them; a static reader of function bodies cannot know
+          # either. Those errors have been failing this step since August and
+          # were invisible until the tee pipe stopped swallowing the exit code.
+          supabase db lint --db-url "$STAGING_DB_URL" --schema public --level warning --fail-on error 2>&1 | tee migration-evidence/lint-linked.log
           supabase test db --db-url "$STAGING_DB_URL" 2>&1 | tee migration-evidence/pgtap-linked.log
       - uses: actions/upload-artifact@v7
         if: always()
