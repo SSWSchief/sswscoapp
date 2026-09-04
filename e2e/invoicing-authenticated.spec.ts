@@ -154,7 +154,15 @@ test.describe("Stripe delivery", () => {
     test.skip(!(await present(send)), "no unsent draft is available to send");
     await send.first().click();
 
-    await expect(page.getByText(/sent to the customer/i)).toBeVisible({ timeout: 30_000 });
+    // Read whichever toast appears and quote it. A refused send raises an error
+    // toast (role="alert"); asserting only on the success wording reports
+    // "element not found" and throws away the reason the send was refused,
+    // which is the one thing worth knowing when this fails.
+    const toast = page.locator('[role="status"], [role="alert"]').first();
+    await toast.waitFor({ state: "visible", timeout: 30_000 });
+    const said = (await toast.innerText()).replace(/\s+/g, " ").trim();
+    expect(said, `the app reported: "${said}"`).toMatch(/sent to the customer/i);
+
     // Once Stripe has it, the row offers the payment page instead of a send.
     await expect(page.getByRole("link", { name: /payment page/i }).first()).toBeVisible();
   });
