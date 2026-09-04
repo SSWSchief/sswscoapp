@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { acceptanceEnvironmentAvailable } from "./environment";
 
 /**
@@ -39,6 +39,20 @@ async function signInAsAdmin(page: Page) {
 async function openInvoices(page: Page) {
   await page.goto("/dispatcher/invoices");
   await expect(page.getByRole("heading", { level: 1, name: "Invoices" })).toBeVisible();
+}
+
+/**
+ * Whether a control exists, once the invoice list has had time to arrive.
+ *
+ * The heading renders before the rows do, so sampling immediately reports
+ * nothing and every assertion below it skips itself as "no data" when the data
+ * was merely late. Waiting and then counting distinguishes an empty ledger from
+ * an unfinished render; a miss is a real absence, so it settles into a skip
+ * rather than a failure.
+ */
+async function present(locator: Locator) {
+  await locator.first().waitFor({ state: "visible", timeout: 10_000 }).catch(() => {});
+  return (await locator.count()) > 0;
 }
 
 /**
@@ -115,9 +129,9 @@ test.describe("invoice drafting", () => {
     await openInvoices(page);
 
     // The table says "View"; the stacked mobile list says "View invoice".
-    const view = page.getByRole("button", { name: /^View( invoice)?$/ }).first();
-    test.skip(!(await view.count()), "staging holds no finalized invoices yet");
-    await view.click();
+    const view = page.getByRole("button", { name: /^View( invoice)?$/ });
+    test.skip(!(await present(view)), "staging holds no finalized invoices yet");
+    await view.first().click();
 
     await expect(page.getByText(/finalized and read-only/i)).toBeVisible();
     await expect(page.getByRole("button", { name: /save draft/i })).toHaveCount(0);
@@ -136,9 +150,9 @@ test.describe("Stripe delivery", () => {
     await signInAsAdmin(page);
     await openInvoices(page);
 
-    const send = page.getByRole("button", { name: /send via stripe/i }).first();
-    test.skip(!(await send.count()), "no unsent draft is available to send");
-    await send.click();
+    const send = page.getByRole("button", { name: /send via stripe/i });
+    test.skip(!(await present(send)), "no unsent draft is available to send");
+    await send.first().click();
 
     await expect(page.getByText(/sent to the customer/i)).toBeVisible({ timeout: 30_000 });
     // Once Stripe has it, the row offers the payment page instead of a send.
@@ -150,7 +164,7 @@ test.describe("Stripe delivery", () => {
     await openInvoices(page);
 
     const paymentPages = page.getByRole("link", { name: /payment page/i });
-    test.skip(!(await paymentPages.count()), "staging holds no sent invoices yet");
+    test.skip(!(await present(paymentPages)), "staging holds no sent invoices yet");
 
     // A table row on desktop, a list item on mobile; whichever encloses it.
     const row = paymentPages.first().locator("xpath=ancestor::*[self::tr or self::li][1]");
