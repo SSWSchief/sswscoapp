@@ -11,22 +11,29 @@ import { acceptanceEnvironmentAvailable } from "./environment";
  * deployment is, so a run against a deployment with sending disabled reports
  * that rather than failing.
  */
-const hasDispatcher = acceptanceEnvironmentAvailable([
-  "E2E_DISPATCHER_EMAIL",
-  "E2E_DISPATCHER_PASSWORD",
+// Invoicing is administrator-only: `rolePermissions` in src/lib/permissions.ts
+// grants `invoices` to admin and to nobody else, so a dispatcher identity never
+// reaches /dispatcher/invoices despite the route living under that prefix.
+const hasAdmin = acceptanceEnvironmentAvailable([
+  "E2E_ADMIN_EMAIL",
+  "E2E_ADMIN_PASSWORD",
 ]);
 const sendingEnabled = process.env.STRIPE_INVOICING_ENABLED === "true";
 
-async function signInAsDispatcher(page: Page) {
+async function signInAsAdmin(page: Page) {
   await page.goto("/login");
   const submit = page.getByRole("button", { name: /sign in/i });
   await expect(submit).toBeEnabled();
-  await page.getByLabel(/email/i).fill(process.env.E2E_DISPATCHER_EMAIL as string);
+  await page.getByLabel(/email/i).fill(process.env.E2E_ADMIN_EMAIL as string);
   await page
     .getByRole("textbox", { name: "Password", exact: true })
-    .fill(process.env.E2E_DISPATCHER_PASSWORD as string);
+    .fill(process.env.E2E_ADMIN_PASSWORD as string);
   await submit.click();
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  // Wait for the post-login redirect itself, not merely for some heading to
+  // appear. The login page already renders an h1, so a generic heading check
+  // resolves immediately and the next goto races the session being written —
+  // which lands back on /login with no Invoices heading to find.
+  await expect(page).toHaveURL(/\/management/);
 }
 
 async function openInvoices(page: Page) {
@@ -44,10 +51,10 @@ async function selectFirstEligibleJob(page: Page) {
 }
 
 test.describe("invoice drafting", () => {
-  test.skip(!hasDispatcher, "dispatcher acceptance credentials are not configured");
+  test.skip(!hasAdmin, "administrator acceptance credentials are not configured");
 
   test("assembles a draft whose total comes from its line items", async ({ page }) => {
-    await signInAsDispatcher(page);
+    await signInAsAdmin(page);
     await openInvoices(page);
     await page.getByRole("button", { name: "New invoice" }).click();
 
@@ -73,7 +80,7 @@ test.describe("invoice drafting", () => {
   });
 
   test("refuses a draft with no completed work behind it", async ({ page }) => {
-    await signInAsDispatcher(page);
+    await signInAsAdmin(page);
     await openInvoices(page);
     await page.getByRole("button", { name: "New invoice" }).click();
 
@@ -87,7 +94,7 @@ test.describe("invoice drafting", () => {
   });
 
   test("shows a finalized invoice as read-only rather than editable", async ({ page }) => {
-    await signInAsDispatcher(page);
+    await signInAsAdmin(page);
     await openInvoices(page);
 
     // The table says "View"; the stacked mobile list says "View invoice".
@@ -102,14 +109,14 @@ test.describe("invoice drafting", () => {
 });
 
 test.describe("Stripe delivery", () => {
-  test.skip(!hasDispatcher, "dispatcher acceptance credentials are not configured");
+  test.skip(!hasAdmin, "administrator acceptance credentials are not configured");
   test.skip(
     !sendingEnabled,
     "STRIPE_INVOICING_ENABLED is not true for this deployment, so sending is off by design",
   );
 
   test("sends a draft and exposes the hosted payment page", async ({ page }) => {
-    await signInAsDispatcher(page);
+    await signInAsAdmin(page);
     await openInvoices(page);
 
     const send = page.getByRole("button", { name: /send via stripe/i }).first();
@@ -122,7 +129,7 @@ test.describe("Stripe delivery", () => {
   });
 
   test("offers no second send for an invoice Stripe already holds", async ({ page }) => {
-    await signInAsDispatcher(page);
+    await signInAsAdmin(page);
     await openInvoices(page);
 
     const paymentPages = page.getByRole("link", { name: /payment page/i });
