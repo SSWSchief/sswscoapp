@@ -69,7 +69,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          supabase db lint --local --level warning 2>&1 | tee migration-evidence/lint.log
+          supabase db lint --local --schema public --level warning 2>&1 | tee migration-evidence/lint.log
       - name: Run schema and behavioral pgTAP
         shell: bash
         run: |

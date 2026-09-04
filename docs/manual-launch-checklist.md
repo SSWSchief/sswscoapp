@@ -17,7 +17,7 @@ Complete these steps in a staging-first sequence. Record the owner, date, eviden
 
 - Create a separate Supabase staging project in the approved region.
 - Apply every committed migration in order, including the release-hardening migration, from the exact release SHA.
-- Run `supabase db lint --linked --level warning`, every pgTAP suite in `supabase/tests/`, and generated database-contract verification.
+- Run `supabase db lint --linked --schema public --level warning`, every pgTAP suite in `supabase/tests/`, and generated database-contract verification.
 - Retain the `migration-evidence` and `staging-database-evidence` workflow artifacts for the approved commit.
 - Confirm the `job-photos` bucket is private, 10 MB-limited, and restricted to the approved image MIME types.
 - Confirm Realtime publication contains only the intended production tables listed in migration `202608060008`.
