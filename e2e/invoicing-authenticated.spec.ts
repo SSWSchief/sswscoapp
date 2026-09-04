@@ -47,12 +47,13 @@ async function openInvoices(page: Page) {
  * The list arrives from /api/invoices/eligible-jobs after the customer is
  * chosen, so this waits for it rather than sampling once — reading the DOM
  * immediately finds an empty list and looks indistinguishable from a customer
- * with no billable work.
+ * with no billable work. The wait is short so a genuine absence reports itself
+ * rather than eating the test's whole time budget and timing out instead.
  */
 async function selectFirstEligibleJob(page: Page) {
   const jobs = page.getByRole("radio");
   await expect
-    .poll(() => jobs.count(), { timeout: 15_000 })
+    .poll(() => jobs.count(), { timeout: 10_000 })
     .toBeGreaterThan(0);
   const label = await jobs.first().locator("xpath=..").innerText();
   await jobs.first().check();
