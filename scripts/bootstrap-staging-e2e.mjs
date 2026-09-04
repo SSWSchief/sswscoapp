@@ -316,11 +316,16 @@ for (const job of [
   // A completed job, because only completed work can be invoiced. Without one
   // the billing half of the acceptance suite skips itself for want of an
   // eligible job and proves nothing about the money path.
+  //
+  // Deliberately unassigned: the driver isolation check in
+  // rls-authenticated.spec.ts asserts the driver sees exactly one job, and
+  // giving this one a driver breaks that boundary assertion to no purpose —
+  // invoicing selects jobs by customer and completion, never by driver.
   {
     id: "e2e-billable-job",
     reference: "#E2E-BILLABLE",
     customer_id: "e2e-customer",
-    assigned_driver_id: byKey.DRIVER.profileId,
+    assigned_driver_id: null,
     status: "complete",
   },
 ]) {
