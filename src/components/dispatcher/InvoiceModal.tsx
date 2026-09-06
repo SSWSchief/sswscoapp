@@ -190,7 +190,21 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
           <FormField label="Customer" required><Select disabled={!editable || Boolean(invoice)} value={customerId} onChange={(event) => { setCustomerId(event.target.value); setJobIds([]); setItems([blankItem()]); }}><option value="">Select customer</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</Select></FormField>
           <FormField label="Payment terms"><Select disabled={!editable} value={paymentTerms} onChange={(event) => setPaymentTerms(event.target.value as InvoicePaymentTerms)}><option value="due_on_receipt">Due on receipt</option><option value="net_15">Net 15</option><option value="net_30">Net 30</option></Select></FormField>
         </div>
-        {selectedCustomer && <div className="rounded border border-brand-ice p-3 text-sm"><div className="font-semibold">Recipient review</div><div>{selectedCustomer.billingContactName || "Missing contact"} · {selectedCustomer.billingEmail || "Missing email"}</div><div className="text-brand-steel">{[selectedCustomer.billingAddressLine1, selectedCustomer.billingCity, selectedCustomer.billingState, selectedCustomer.billingPostalCode].filter(Boolean).join(", ") || "Billing address incomplete"}</div></div>}
+        {selectedCustomer && (() => {
+          // The same details the send path checks. A customer booked from the
+          // job form has none of them, and finding that out at the moment of
+          // sending — after the draft is written — is too late to be useful.
+          const address = [selectedCustomer.billingAddressLine1, selectedCustomer.billingCity, selectedCustomer.billingState, selectedCustomer.billingPostalCode];
+          const sendable = Boolean(selectedCustomer.billingContactName?.trim()) && /^\S+@\S+\.\S+$/.test(selectedCustomer.billingEmail ?? "") && address.every((part) => part?.trim());
+          return (
+            <div className={`rounded border p-3 text-sm ${sendable ? "border-brand-ice" : "border-amber-300 bg-amber-50 text-amber-900"}`}>
+              <div className="font-semibold">Recipient review</div>
+              <div>{selectedCustomer.billingContactName || "Missing contact"} · {selectedCustomer.billingEmail || "Missing email"}</div>
+              <div className={sendable ? "text-brand-steel" : undefined}>{address.filter(Boolean).join(", ") || "Billing address incomplete"}</div>
+              {!sendable && <div className="mt-2">This draft can be saved, but it cannot be sent until the billing contact, email and full US address are filled in on the customer record under Customers.</div>}
+            </div>
+          );
+        })()}
         {billingMode === "one_off"
           ? <div className="rounded border border-brand-ice bg-brand-mist p-3 text-sm text-brand-steel">
               A one-off charge stands on its own — an extended rental, something going back onto a customer after the job was closed, or a single payment from a customer with no open work. Describe each charge on its own line below.

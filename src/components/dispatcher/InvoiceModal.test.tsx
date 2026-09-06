@@ -21,6 +21,9 @@ const customers = [
     billingState: "NV",
     billingPostalCode: "89101",
   },
+  // Booked from the job form: a name and nothing else, which is exactly what
+  // the one-off customer flow produces.
+  { id: "cust-2", name: "Walk-in Hauling", billingContactName: "", billingEmail: "", billingAddressLine1: "", billingCity: "", billingState: "", billingPostalCode: "" },
 ] as Customer[];
 
 const priceList = [
@@ -143,6 +146,25 @@ describe("InvoiceModal", () => {
         amountCents: 25000,
         category: "fee",
       });
+    });
+  });
+
+  describe("whether this can actually be sent", () => {
+    it("warns when the customer has no billing details to send to", async () => {
+      render(<InvoiceModal open onClose={() => {}} />);
+      const user = userEvent.setup();
+      await user.selectOptions(screen.getByLabelText(/customer/i), "cust-2");
+      expect(
+        await screen.findByText(/cannot be sent until the billing contact/i),
+      ).toBeInTheDocument();
+    });
+
+    it("says nothing when the recipient is complete", async () => {
+      render(<InvoiceModal open onClose={() => {}} />);
+      const user = userEvent.setup();
+      await user.selectOptions(screen.getByLabelText(/customer/i), "cust-1");
+      expect(screen.getByText(/Recipient review/i)).toBeInTheDocument();
+      expect(screen.queryByText(/cannot be sent until/i)).not.toBeInTheDocument();
     });
   });
 

@@ -16,7 +16,7 @@ import type { InvoiceRecord } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function InvoicesPage() {
-  const { invoices, refresh } = useExpandedOperations();
+  const { invoices, refresh, settings } = useExpandedOperations();
   const { customers, canMutate } = useOperations();
   const { toast } = useToast();
   const [open, setOpen] = React.useState(false);
@@ -108,6 +108,21 @@ export default function InvoicesPage() {
         }
       />
       <div className="portal-content portal-stack">
+        {/* Every send is refused without company invoice terms — they print as
+            the footer of the Stripe invoice. Said here, where invoices are
+            raised, rather than only at the moment a send fails. */}
+        {settings && !settings.invoiceTerms.trim() && (
+          <div
+            role="status"
+            className="rounded border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
+          >
+            <span className="font-semibold">
+              Invoices cannot be sent yet.
+            </span>{" "}
+            Company invoice terms are required on every invoice and none are
+            saved. Add them under Settings → Company → Invoice terms, then send.
+          </div>
+        )}
         <div className="portal-action-grid">
           <Metric
             label="Receivables"
