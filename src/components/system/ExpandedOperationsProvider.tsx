@@ -60,6 +60,7 @@ import {
   type UnreadChannel,
 } from "@/lib/operations/unread-messages";
 import { log } from "@/lib/logger";
+import { mutationErrorMessage } from "@/lib/mutation-errors";
 import { requestNotificationDelivery } from "@/lib/push/notify-client";
 
 type State = {
@@ -154,14 +155,14 @@ const initial: State = {
     recordIds: {},
   },
 };
+/**
+ * A rejected write, put into words. Shares the operations provider's
+ * translation so a settings save and a job save fail the same way; see
+ * `mutationErrorMessage`.
+ */
 const fail = (e: unknown): MutationResult<never> => ({
   ok: false,
-  error: {
-    code: (e as { code?: string })?.code ?? "expanded_operation_failed",
-    message:
-      (e as { message?: string })?.message ??
-      "The operation could not be completed.",
-  },
+  error: mutationErrorMessage(e),
 });
 
 export function ExpandedOperationsProvider({

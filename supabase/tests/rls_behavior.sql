@@ -1,5 +1,5 @@
 begin;
-select plan(46);
+select plan(49);
 
 create function pg_temp.capture_sqlstate(command text) returns text language plpgsql as $$
 begin
@@ -15,6 +15,15 @@ $$;
 -- grants the schema does not set. Both satisfy the invariant, so assert the
 -- outcome rather than the mechanism -- pinning the mechanism is what made this
 -- suite pass against the hosted project and abort against a fresh one.
+create function pg_temp.capture_message(command text) returns text language plpgsql as $$
+begin
+  execute command;
+  return null;
+exception when others then
+  return sqlerrm;
+end;
+$$;
+
 create function pg_temp.write_blocked(command text) returns boolean language plpgsql as $$
 declare affected bigint;
 begin
@@ -166,6 +175,21 @@ select results_eq(
 );
 select is(pg_temp.capture_sqlstate($$insert into public.jobs(id,reference,customer_id,address,service_type,dumpster_size,scheduled_for,status) values('rls-forbidden-job','#RLS-FORBIDDEN','rls-customer-a','Denied','Delivery','20 Yard',now(),'pending')$$),'42501','direct job insertion is denied');
 select is(pg_temp.capture_sqlstate($$insert into public.time_entries(user_id,entry_type,occurred_at) values('rls-driver','clock_in',now())$$),'42501','direct time-event insertion is denied');
+
+-- Punching through the function the app uses. The refusal wording reaches the
+-- driver unchanged — the browser passes through what this schema raises on
+-- purpose — so it is asserted here rather than left to read like machinery.
+select lives_ok($$select public.record_time_event('clock_in')$$,'driver clocks in through the recording function');
+select matches(
+  pg_temp.capture_message($$select public.record_time_event('clock_in')$$),
+  'does not follow your last one \(clocked in\)',
+  'a second clock-in is refused in words a driver can act on'
+);
+select doesnt_match(
+  pg_temp.capture_message($$select public.record_time_event('break_end')$$),
+  'Invalid time event',
+  'the refusal never reports itself as an invalid event'
+);
 
 select set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000000006","role":"authenticated","aal":"aal1"}',true);
 select is(public.current_app_user_id(),null::text,'inactive profile cannot resolve an application identity');

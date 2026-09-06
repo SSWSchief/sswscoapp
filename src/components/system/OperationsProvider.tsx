@@ -26,6 +26,7 @@ import {
   pacificDayStart,
 } from "@/lib/time-clock";
 import { attachAvatarUrls } from "@/lib/supabase/avatar-urls";
+import { mutationErrorMessage } from "@/lib/mutation-errors";
 import { loadedJobWindow } from "@/lib/job-dates";
 import type {
   AccessRole,
@@ -300,15 +301,16 @@ interface Value extends State {
   ) => Promise<MutationResult<void>>;
 }
 const Context = React.createContext<Value | null>(null);
+/**
+ * A rejected write, in words the person in front of the screen can act on.
+ *
+ * The translation lives in `mutationErrorMessage`: the messages this schema
+ * raises on purpose are passed through, and Postgres's own — constraint names,
+ * policy names, SQLSTATEs — become sentences. Every mutation below returns
+ * through here, so a toast anywhere in either portal gets the same treatment.
+ */
 function failure(error: unknown): MutationResult<never> {
-  const candidate = error as { code?: string; message?: string };
-  return {
-    ok: false,
-    error: {
-      code: candidate?.code ?? "unexpected_error",
-      message: candidate?.message ?? "The operation could not be completed.",
-    },
-  };
+  return { ok: false, error: mutationErrorMessage(error) };
 }
 
 export function OperationsProvider({
