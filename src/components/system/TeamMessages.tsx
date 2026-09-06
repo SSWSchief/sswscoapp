@@ -221,7 +221,9 @@ export function TeamMessages() {
               <div
                 key={item.id}
                 className={`group flex min-w-0 items-center gap-1 pr-1 ${
-                  active ? "bg-brand-mist" : "hover:bg-brand-mist/60"
+                  active
+                    ? "bg-brand-mist dark:bg-white/10"
+                    : "hover:bg-brand-mist/60 dark:hover:bg-white/5"
                 }`}
               >
                 <button
@@ -233,7 +235,7 @@ export function TeamMessages() {
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-heading text-sm font-semibold ${
                       active
                         ? "bg-brand-blue text-white"
-                        : "bg-brand-navy/10 text-brand-navy"
+                        : "bg-brand-navy/10 text-brand-navy dark:bg-white/10 dark:text-gray-200"
                     }`}
                   >
                     {initials(item.name)}
@@ -242,7 +244,9 @@ export function TeamMessages() {
                     <span className="flex items-center justify-between gap-2">
                       <span
                         className={`truncate text-sm font-semibold ${
-                          active ? "text-brand-blue" : "text-brand-charcoal"
+                          active
+                            ? "text-brand-blue dark:text-brand-skyline"
+                            : "text-brand-charcoal dark:text-gray-100"
                         }`}
                       >
                         {item.name}
@@ -313,7 +317,7 @@ export function TeamMessages() {
                   className={`max-w-[85%] break-words rounded p-3 [overflow-wrap:anywhere] ${
                     message.senderId === currentUser?.id
                       ? "ml-auto bg-brand-blue text-white"
-                      : "bg-brand-mist"
+                      : "bg-brand-mist dark:bg-white/10"
                   }`}
                 >
                   {/* Your own name is not in `users` here — the people domain

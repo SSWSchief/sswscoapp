@@ -62,7 +62,7 @@ export default function Page() {
   return (
     <>
       <MobileHeader title="Electronic Pre-Trip" />
-      <div className="flex-1 overflow-y-auto bg-surface p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto bg-surface p-4 space-y-4 dark:bg-gray-950 dark:text-gray-100">
         {template ? (
           <Card>
             <CardHeader
@@ -73,7 +73,7 @@ export default function Page() {
                   className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
                     checkedCount === template.items.length
                       ? "bg-status-complete/15 text-status-complete"
-                      : "bg-brand-mist text-brand-steel"
+                      : "bg-brand-mist text-brand-steel dark:bg-white/10 dark:text-gray-300"
                   }`}
                 >
                   {checkedCount}/{template.items.length} checked
@@ -102,12 +102,12 @@ export default function Page() {
                   onChange={(e) => setMileage(e.target.value)}
                 />
               </FormField>
-              <div className="divide-y divide-brand-ice rounded border border-brand-ice">
+              <div className="divide-y divide-brand-ice rounded border border-brand-ice dark:divide-white/10 dark:border-white/10">
                 {template.items.map((item) => (
                   <fieldset key={item.id} className="p-3">
                     <legend className="font-medium">{item.label}</legend>
                     <div className="mt-2 grid grid-cols-2 gap-2">
-                      <label className="flex min-h-11 items-center gap-2 rounded border p-2">
+                      <label className="flex min-h-11 items-center gap-2 rounded border border-brand-ice p-2 dark:border-white/15">
                         <input
                           type="radio"
                           name={item.id}
@@ -118,7 +118,7 @@ export default function Page() {
                         />
                         Pass
                       </label>
-                      <label className="flex min-h-11 items-center gap-2 rounded border p-2 text-red-700">
+                      <label className="flex min-h-11 items-center gap-2 rounded border border-brand-ice p-2 text-red-700 dark:border-white/15 dark:text-red-400">
                         <input
                           type="radio"
                           name={item.id}
@@ -150,7 +150,7 @@ export default function Page() {
             </div>
           </Card>
         ) : (
-          <Card className="p-6 text-center text-brand-steel">
+          <Card className="p-6 text-center text-brand-steel dark:text-gray-400">
             No published checklist is available. Contact an administrator.
           </Card>
         )}
