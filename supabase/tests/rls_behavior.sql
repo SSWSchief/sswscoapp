@@ -1,5 +1,5 @@
 begin;
-select plan(41);
+select plan(46);
 
 create function pg_temp.capture_sqlstate(command text) returns text language plpgsql as $$
 begin
@@ -93,6 +93,15 @@ select is((select amount_cents from public.invoices where job_id='rls-invoice-jo
 select matches((select invoice_number from public.invoices where job_id='rls-invoice-job'),'^QA-[0-9]{6}$','invoice number is generated from the transactional prefix counter');
 select is(pg_temp.capture_sqlstate($$update public.invoices set amount_cents=1 where job_id='rls-invoice-job'$$),'42501','even an administrator cannot edit invoices directly from the browser role');
 select is(pg_temp.capture_sqlstate($$select public.create_invoice_draft('{"customerId":"rls-customer-a","billingMode":"per_job","jobIds":["rls-invoice-job"],"paymentTerms":"net_30","poNumber":"","notes":"","items":[{"description":"duplicate","amountCents":1,"jobId":"rls-invoice-job","category":"service","position":0}]}'::jsonb)$$),'23505','one completed job cannot be billed on two active invoices');
+
+-- A charge with no job behind it: an extended rental, or something going back
+-- onto a customer after the work was invoiced and closed. It is the one mode
+-- allowed to name no job, and the other two must keep refusing to.
+select lives_ok($$select public.create_invoice_draft('{"customerId":"rls-customer-a","billingMode":"one_off","jobIds":[],"paymentTerms":"net_30","poNumber":"","notes":"","items":[{"description":"Extended rental - 4 additional days","amountCents":10000,"jobId":null,"category":"rental","position":0}]}'::jsonb)$$,'a one-off charge is billed with no completed job behind it');
+select is((select billing_mode from public.invoices where billing_mode='one_off'),'one_off'::public.invoice_billing_mode,'the one-off charge records the mode it was billed under, rather than looking like a per-job invoice that lost its job');
+select is((select count(*) from public.invoice_jobs ij join public.invoices i on i.id=ij.invoice_id where i.billing_mode='one_off'),0::bigint,'a one-off charge links no job');
+select is(pg_temp.capture_sqlstate($$select public.create_invoice_draft('{"customerId":"rls-customer-a","billingMode":"per_job","jobIds":[],"paymentTerms":"net_30","poNumber":"","notes":"","items":[{"description":"unbacked","amountCents":1000,"jobId":null,"category":"service","position":0}]}'::jsonb)$$),'P0001','a per-job invoice still requires the completed job it bills for');
+select is(pg_temp.capture_sqlstate($$select public.create_invoice_draft('{"customerId":"rls-customer-a","billingMode":"one_off","jobIds":["rls-invoice-job"],"paymentTerms":"net_30","poNumber":"","notes":"","items":[{"description":"mixed","amountCents":1000,"jobId":null,"category":"service","position":0}]}'::jsonb)$$),'P0001','a one-off charge cannot smuggle a job in alongside it');
 select is(pg_temp.write_blocked($$update public.company_settings set company_name='Direct Hack' where id=true$$),true,'direct settings table update is denied even for an administrator session');
 select is((public.publish_sop_document('RLS Safety SOP','Safety','Use wheel chocks before inspection.',true)).version,1,'admin publishes SOP versions through RPC');
 select is((public.publish_pretrip_template('RLS Pretrip',array['Tires','Lights'])).version,1,'admin publishes pre-trip templates through RPC');

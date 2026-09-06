@@ -124,6 +124,56 @@ test.describe("invoice drafting", () => {
     ).toBeVisible();
   });
 
+  test("bills a charge that has no completed job behind it", async ({ page }) => {
+    await signInAsAdmin(page);
+    await openInvoices(page);
+    await page.getByRole("button", { name: "New invoice" }).click();
+
+    const customer = page.getByLabel(/customer/i);
+    await expect
+      .poll(() => customer.locator('option[value="e2e-customer"]').count(), {
+        timeout: 15_000,
+      })
+      .toBe(1);
+    await customer.selectOption("e2e-customer");
+    // An extended rental, or a charge going back onto a customer after the job
+    // was invoiced and closed: the office has no completed job to attach, and
+    // before the one-off mode existed there was no way to bill it at all.
+    await page.getByLabel(/billing mode/i).selectOption("one_off");
+    await expect(page.getByRole("radio")).toHaveCount(0);
+
+    await page.getByLabel("Line 1 description").fill("Extended rental — 4 additional days");
+    await page.getByLabel("Line 1 amount").fill("100.00");
+    await page.getByLabel("Line 1 category").selectOption("rental");
+    await page.getByRole("button", { name: /save draft/i }).click();
+
+    await expect(page.getByText(/Invoice draft saved/i)).toBeVisible();
+  });
+
+  test("makes the office say what a fee is for", async ({ page }) => {
+    await signInAsAdmin(page);
+    await openInvoices(page);
+    await page.getByRole("button", { name: "New invoice" }).click();
+
+    const customer = page.getByLabel(/customer/i);
+    await expect
+      .poll(() => customer.locator('option[value="e2e-customer"]').count(), {
+        timeout: 15_000,
+      })
+      .toBe(1);
+    await customer.selectOption("e2e-customer");
+    await page.getByLabel(/billing mode/i).selectOption("one_off");
+
+    // "Fee $250" tells the customer nothing, so the draft is refused until the
+    // line says what was charged.
+    await page.getByLabel("Line 1 category").selectOption("fee");
+    await page.getByLabel("Line 1 description").fill("Fee");
+    await page.getByLabel("Line 1 amount").fill("250.00");
+    await page.getByRole("button", { name: /save draft/i }).click();
+
+    await expect(page.getByText(/so the customer knows what it is for/i)).toBeVisible();
+  });
+
   test("shows a finalized invoice as read-only rather than editable", async ({ page }) => {
     await signInAsAdmin(page);
     await openInvoices(page);

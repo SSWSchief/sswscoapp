@@ -25,6 +25,19 @@ describe("invoiceDraftSchema", () => {
   it("requires exactly one job for per-job invoices", () => {
     expect(invoiceDraftSchema.safeParse({ ...valid, jobIds: ["job-1", "job-2"] }).success).toBe(false);
   });
+  it("accepts a one-off charge that carries no job", () => {
+    const oneOff = { ...valid, billingMode: "one_off", jobIds: [], items: [{ description: "Extended rental — 4 additional days", amountCents: 10000, jobId: null, category: "rental" }] };
+    expect(invoiceDraftSchema.safeParse(oneOff).success).toBe(true);
+    expect(invoiceDraftSchema.safeParse({ ...oneOff, jobIds: ["job-1"] }).success).toBe(false);
+  });
+  it("still requires completed work behind a per-job invoice or a statement", () => {
+    expect(invoiceDraftSchema.safeParse({ ...valid, jobIds: [], items: [{ ...valid.items[0], jobId: null }] }).success).toBe(false);
+    expect(invoiceDraftSchema.safeParse({ ...valid, billingMode: "statement", jobIds: [], items: [{ ...valid.items[0], jobId: null }] }).success).toBe(false);
+  });
+  it("refuses a fee whose description tells the customer nothing", () => {
+    expect(invoiceDraftSchema.safeParse({ ...valid, items: [{ ...valid.items[0], description: "Fee", category: "fee" }] }).success).toBe(false);
+    expect(invoiceDraftSchema.safeParse({ ...valid, items: [{ ...valid.items[0], description: "Dry run — no service performed", category: "fee" }] }).success).toBe(true);
+  });
   it("requires every line source job to belong to the invoice", () => {
     expect(invoiceDraftSchema.safeParse({ ...valid, items: [{ ...valid.items[0], jobId: "job-other" }] }).success).toBe(false);
   });

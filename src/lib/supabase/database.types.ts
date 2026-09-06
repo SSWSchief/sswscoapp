@@ -224,7 +224,7 @@ export interface InvoiceRow extends Record<string, unknown> {
   job_id: string | null;
   amount_cents: number;
   status: "draft" | "open" | "paid" | "uncollectible" | "void";
-  billing_mode: "per_job" | "statement";
+  billing_mode: "per_job" | "statement" | "one_off";
   payment_terms: "due_on_receipt" | "net_15" | "net_30";
   due_date: string | null;
   notes: string;

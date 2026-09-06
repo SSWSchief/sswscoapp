@@ -74,13 +74,13 @@ const invoiceRow = (overrides: Row = {}): Row => ({
   ...overrides,
 });
 
-const world = (overrides: { invoice?: Row; settings?: Row; job?: Row; lines?: Row[] } = {}) => {
+const world = (overrides: { invoice?: Row; settings?: Row; job?: Row; lines?: Row[]; links?: Row[] } = {}) => {
   const fake = fakeAdminClient({
     invoices: [invoiceRow(overrides.invoice)],
     invoice_line_items: overrides.lines ?? [
       { id: "line-1", invoice_id: "inv-1", description: "20 yard delivery", amount_cents: 40000, position: 0, job_id: "job-1", category: "service" },
     ],
-    invoice_jobs: [{ invoice_id: "inv-1", job_id: "job-1", active: true }],
+    invoice_jobs: overrides.links ?? [{ invoice_id: "inv-1", job_id: "job-1", active: true }],
     jobs: [{ id: "job-1", customer_id: "cust-1", status: "complete", deleted_at: null, ...overrides.job }],
     customers: [{ id: "cust-1", phone: "555-0100", stripe_customer_id: null }],
     company_settings: [{ invoice_terms: "Rental terms apply.", tax_policy_status: "pending", ...overrides.settings }],
@@ -164,12 +164,25 @@ describe("sendInvoice", () => {
       ["an unusable billing email", { invoice: { billing_email: "not-an-email" } }, /billing contact name and email/],
       ["an incomplete billing address", { invoice: { billing_city: "" } }, /complete US billing address/],
       ["a company with no invoice terms", { settings: { invoice_terms: "" } }, /invoice terms are required/],
+      // A per-job invoice whose work has gone is still refused; only the
+      // one-off mode below is allowed to stand without a job.
+      ["a per-job draft with no completed work behind it", { links: [], lines: [{ id: "line-1", invoice_id: "inv-1", description: "Unbacked", amount_cents: 40000, position: 0, job_id: null, category: "service" }] }, /must still be complete/],
     ];
     it.each(cases)("%s", async (_label, overrides, expected) => {
       const { client } = world(overrides);
       await expect(sendInvoice("inv-1", client)).rejects.toThrow(expected);
       expect(createStripeInvoiceDraft).not.toHaveBeenCalled();
     });
+  });
+
+  it("sends a one-off charge that has no job behind it", async () => {
+    const { client } = world({
+      invoice: { billing_mode: "one_off" },
+      links: [],
+      lines: [{ id: "line-1", invoice_id: "inv-1", description: "Extended rental — 4 additional days", amount_cents: 40000, position: 0, job_id: null, category: "rental" }],
+    });
+    await expect(sendInvoice("inv-1", client)).resolves.toBeTruthy();
+    expect(createStripeInvoiceDraft).toHaveBeenCalledOnce();
   });
 
   it("blocks live sending until the tax policy is approved, and allows it once it is", async () => {

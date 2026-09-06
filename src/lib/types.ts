@@ -299,7 +299,12 @@ export type InvoiceDisplayStatus =
   | "processing"
   | "payment_failed"
   | "partially_paid";
-export type InvoiceBillingMode = "per_job" | "statement";
+/**
+ * How an invoice is put together. `one_off` carries no job at all — an
+ * extended rental, a charge going back onto work already invoiced, or a
+ * customer who is billed once and never seen again.
+ */
+export type InvoiceBillingMode = "per_job" | "statement" | "one_off";
 export type InvoicePaymentTerms = "due_on_receipt" | "net_15" | "net_30";
 export type InvoiceSyncState =
   | "not_started"

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { lineDescriptionProblem } from "./line-catalog";
 
 const lineItem = z.object({
   description: z.string().trim().min(1).max(500),
@@ -17,8 +18,10 @@ const lineItem = z.object({
 export const invoiceDraftSchema = z
   .object({
     customerId: z.string().trim().min(1),
-    billingMode: z.enum(["per_job", "statement"]),
-    jobIds: z.array(z.string().trim().min(1)).min(1).max(100),
+    billingMode: z.enum(["per_job", "statement", "one_off"]),
+    // A one-off charge has no job behind it, so the floor is zero and the
+    // per-mode rules below decide what each mode actually requires.
+    jobIds: z.array(z.string().trim().min(1)).max(100),
     paymentTerms: z.enum(["due_on_receipt", "net_15", "net_30"]),
     poNumber: z.string().trim().max(140),
     notes: z.string().trim().max(500),
@@ -31,6 +34,18 @@ export const invoiceDraftSchema = z
         path: ["jobIds"],
         message: "Per-job invoices require exactly one completed job.",
       });
+    if (value.billingMode === "statement" && !value.jobIds.length)
+      context.addIssue({
+        code: "custom",
+        path: ["jobIds"],
+        message: "A statement needs at least one completed job.",
+      });
+    if (value.billingMode === "one_off" && value.jobIds.length)
+      context.addIssue({
+        code: "custom",
+        path: ["jobIds"],
+        message: "A one-off charge carries no job. Bill it per job or on a statement instead.",
+      });
     if (new Set(value.jobIds).size !== value.jobIds.length)
       context.addIssue({
         code: "custom",
@@ -39,6 +54,16 @@ export const invoiceDraftSchema = z
       });
     const jobs = new Set(value.jobIds);
     value.items.forEach((item, index) => {
+      // A fee or an adjustment is a number the customer cannot check against
+      // anything, so it has to say what it is for. Enforced here as well as in
+      // the editor: the API is reachable without it.
+      const problem = lineDescriptionProblem(item.category, item.description);
+      if (problem)
+        context.addIssue({
+          code: "custom",
+          path: ["items", index, "description"],
+          message: problem,
+        });
       if (item.jobId && !jobs.has(item.jobId))
         context.addIssue({
           code: "custom",
