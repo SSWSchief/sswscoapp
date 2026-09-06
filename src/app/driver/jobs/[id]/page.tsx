@@ -10,6 +10,7 @@ import { useConfirm } from "@/components/system/ConfirmProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import type { JobStatus } from "@/lib/types";
 import { PlatformMapLink } from "@/components/ui/PlatformMapLink";
+import { PhoneLink, hasContact } from "@/components/ui/ContactLink";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import {
   DisposalTicketDialog,
@@ -228,13 +229,22 @@ export default function DriverJobDetailsPage({
               <Icon name="pin" width={18} height={18} />
               Navigate
             </PlatformMapLink>
-            <a
-              href={`tel:${job.phone.replace(/[^\d+]/g, "")}`}
-              className="flex min-h-12 items-center justify-center gap-2 rounded border border-brand-blue/40 px-2 text-center font-heading text-sm font-semibold uppercase tracking-wide text-brand-blue"
-            >
-              <Icon name="customers" width={18} height={18} />
-              Call Customer
-            </a>
+            {/* A customer booked from the job form may have no number yet;
+                a tel: link with nothing in it looks live and does nothing. */}
+            {hasContact(job.phone) ? (
+              <PhoneLink
+                phone={job.phone}
+                className="flex min-h-12 items-center justify-center gap-2 rounded border border-brand-blue/40 px-2 text-center font-heading text-sm font-semibold uppercase tracking-wide text-brand-blue"
+              >
+                <Icon name="customers" width={18} height={18} />
+                Call Customer
+              </PhoneLink>
+            ) : (
+              <div className="flex min-h-12 items-center justify-center gap-2 rounded border border-brand-ice px-2 text-center font-heading text-sm font-semibold uppercase tracking-wide text-brand-silver dark:border-white/10">
+                <Icon name="customers" width={18} height={18} />
+                No phone on file
+              </div>
+            )}
           </div>
           <JobProgress status={status} hasPhotos={photoCount > 0} />
         </div>
