@@ -358,6 +358,21 @@ export function summarizeTime(
  * made, and says so, because approving that is a different act from nudging
  * an existing one.
  */
+/**
+ * The colour a request's own outcome should be read in.
+ *
+ * A denied request used to render amber, the same as one still waiting, so the
+ * only difference between "nobody has looked at this yet" and "the answer is
+ * no" was the word inside the pill. Someone scanning the list for a decision
+ * could not see one had been made.
+ */
+export function timeRequestTone(
+  status: TimeRequest["status"],
+): "green" | "amber" | "red" {
+  if (status === "approved") return "green";
+  return status === "denied" ? "red" : "amber";
+}
+
 export function describeTimeRequest(request: TimeRequest): string {
   if (request.kind === "pto") return `PTO · ${formatHoursDuration(request.hours)}`;
   const punch = (request.requestedEntryType ?? "clock_in").replace("_", " ");

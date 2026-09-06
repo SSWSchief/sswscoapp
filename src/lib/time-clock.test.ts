@@ -16,6 +16,7 @@ import {
   summarizeDay,
   summarizeRange,
   summarizeTime,
+  timeRequestTone,
 } from "./time-clock";
 import type { TimeEntry, TimeEntryCorrection, User } from "./types";
 const entry = (id: string, type: TimeEntry["type"], at: string): TimeEntry => ({
@@ -368,5 +369,15 @@ describe("Pacific clock conversions", () => {
   it("refuses input it cannot read rather than inventing a time", () => {
     expect(pacificInstant("not-a-day", "09:00")).toBeNull();
     expect(pacificInstant("2026-09-01", "9am")).toBeNull();
+  });
+});
+
+describe("timeRequestTone", () => {
+  it("separates a decision from a request still waiting for one", () => {
+    // Denied used to share amber with pending, so the only thing telling an
+    // answered request from an unanswered one was the word inside the pill.
+    expect(timeRequestTone("approved")).toBe("green");
+    expect(timeRequestTone("denied")).toBe("red");
+    expect(timeRequestTone("pending")).toBe("amber");
   });
 });

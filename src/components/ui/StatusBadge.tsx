@@ -14,12 +14,13 @@ import { Icon, type IconName } from "./Icon";
  * scanning where several states share a hue. Tones use 100/700 pairings that
  * clear WCAG AA contrast.
  */
-type Tone = "blue" | "amber" | "green" | "gray" | "slate";
+type Tone = "blue" | "amber" | "green" | "red" | "gray" | "slate";
 
 const toneClasses: Record<Tone, string> = {
   blue: "bg-brand-blue/12 text-brand-blue",
   amber: "bg-amber-100 text-amber-800",
   green: "bg-emerald-100 text-emerald-800",
+  red: "bg-red-100 text-red-800",
   gray: "bg-brand-mist text-brand-steel",
   slate: "bg-brand-ice/40 text-brand-navy",
 };
