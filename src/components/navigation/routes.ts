@@ -110,6 +110,14 @@ export const staffNavSections: AppNavSection[] = [
         permission: "absence",
         keywords: "calendar pto leave",
       },
+      {
+        href: "/dispatcher/pre-trip",
+        label: "Pre-Trip Review",
+        shortLabel: "Pre-Trip",
+        icon: "clipboard",
+        permission: "pretrip_review",
+        keywords: "inspection dvir defects sign off supervisor",
+      },
     ],
   },
   {

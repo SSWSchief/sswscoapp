@@ -412,6 +412,7 @@ export const mapPretripSubmission = (
   defectsFound: row.defects_found ?? "",
   repairsRequired: row.repairs_required ?? "",
   supervisorSignature: row.supervisor_signature ?? "",
+  supervisorSignedAt: row.supervisor_signed_at ?? null,
   vinSnapshot: row.vin_snapshot ?? "",
   routeNote: row.route_note ?? "",
 });

@@ -18,6 +18,7 @@ export const permissionLabels: Record<PermissionKey, string> = {
   settings: "Settings",
   driver_jobs: "Driver My Jobs",
   pre_trip: "Electronic pre-trip",
+  pretrip_review: "Pre-trip review & sign-off",
   sops: "Driver SOPs",
   profile: "Driver profile",
 };
@@ -42,7 +43,7 @@ export const permissionGroups: { label: string; keys: PermissionKey[] }[] = [
     label: "Customers & Fleet",
     keys: ["customers", "trucks", "dumpsters", "vendors"],
   },
-  { label: "Team", keys: ["employees", "time_clock", "absence"] },
+  { label: "Team", keys: ["employees", "time_clock", "absence", "pretrip_review"] },
   { label: "Finance & Reporting", keys: ["invoices", "reports"] },
   { label: "Driver", keys: ["driver_jobs", "pre_trip", "sops", "profile"] },
   { label: "Admin", keys: ["management", "settings"] },
@@ -70,6 +71,7 @@ const rolePermissions: Record<
     "messages",
     "map",
     "reports",
+    "pretrip_review",
   ),
   driver: enabled(
     "driver_jobs",

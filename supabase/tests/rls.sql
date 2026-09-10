@@ -22,6 +22,7 @@ select has_function('public','update_invoice_draft',array['text','jsonb'],'draft
 select has_function('public','claim_stripe_webhook_event',array['text','text','text','boolean','bigint'],'atomic webhook inbox claim exists');
 select has_function('public','publish_sop_document',array['text','text','text','boolean'],'audited SOP publication RPC exists');
 select has_function('public','publish_pretrip_template',array['text','text[]','text[]'],'audited pre-trip template publication RPC carries sections');
+select enum_has_labels('public','invoice_billing_mode',array['per_job','statement','one_off'],'one-off billing mode is available to the invoice ledger');
 select has_function('public','list_message_recipients',array[]::text[],'safe message directory RPC exists');
 select has_function('public','list_message_channels',array[]::text[],'scoped message channel RPC exists');
 select has_function('public','create_direct_message_channel',array['text'],'direct-message creation RPC exists');

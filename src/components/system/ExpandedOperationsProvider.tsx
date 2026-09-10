@@ -106,6 +106,10 @@ type Value = State & {
     repairsRequired: string;
     routeNote: string;
   }) => Promise<MutationResult<void>>;
+  countersignPretrip: (input: {
+    submissionId: string;
+    signature: string;
+  }) => Promise<MutationResult<void>>;
   acknowledgeSop: (sopId: string) => Promise<MutationResult<void>>;
   saveSettings: (value: CompanySettings) => Promise<MutationResult<void>>;
   publishSop: (input: {
@@ -538,6 +542,15 @@ export function ExpandedOperationsProvider({
         if (result.ok) requestNotificationDelivery();
         return result;
       },
+      countersignPretrip: (input) =>
+        run(
+          () =>
+            createClient().rpc("countersign_pretrip_submission", {
+              submission_id: input.submissionId,
+              signature: input.signature,
+            }),
+          "compliance",
+        ),
       acknowledgeSop: (sopId) =>
         run(
           () =>
