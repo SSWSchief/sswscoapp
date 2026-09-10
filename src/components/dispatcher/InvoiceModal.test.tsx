@@ -17,7 +17,11 @@ const jobs = [
 // Object identity matters here: InvoiceModal's setup effect depends on
 // `settings`, so a mock that returns a fresh object every render would send
 // it into an infinite re-render loop instead of running once per open.
-const operationsValue = { customers, jobs, canMutate: true };
+const savedCustomers: unknown[] = [];
+const operationsValue = {
+  customers, jobs, canMutate: true,
+  saveCustomer: async (input: unknown) => { savedCustomers.push(input); return { ok: true }; },
+};
 vi.mock("@/components/system/OperationsProvider", () => ({
   useOperations: () => operationsValue,
 }));
@@ -52,6 +56,7 @@ describe("InvoiceModal — multi-job statement", () => {
   afterEach(() => {
     cleanup();
     saved.length = 0;
+    savedCustomers.length = 0;
     confirmCalls.length = 0;
     confirmAnswer = true;
   });
@@ -59,7 +64,7 @@ describe("InvoiceModal — multi-job statement", () => {
   const openStatementWithBothJobs = async () => {
     render(<InvoiceModal open onClose={() => {}} />);
     const user = userEvent.setup();
-    await user.selectOptions(screen.getByLabelText(/Customer/i), "cust-1");
+    await user.type(screen.getByLabelText(/Customer/i), "Vegas GC");
     await user.selectOptions(screen.getByLabelText(/Billing mode/i), "statement");
     const checkboxes = await screen.findAllByRole("checkbox", { name: /J-1|J-2/i });
     await user.click(checkboxes[0]);
@@ -140,5 +145,34 @@ describe("InvoiceModal — multi-job statement", () => {
     for (const text of ["Customer", "Completed job"]) {
       expect(screen.getByText(text, { selector: "label" }).textContent).not.toContain("*");
     }
+  });
+
+  it("offers to create a customer whose name matches nothing, and prefills it", async () => {
+    render(<InvoiceModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    const field = screen.getByLabelText(/Customer/i);
+    await user.type(field, "Henderson Framing");
+    await user.tab();
+
+    // The unmatched name is read as an intent to create, not as a typo.
+    expect(confirmCalls).toHaveLength(1);
+    expect(confirmCalls[0].title).toMatch(/Henderson Framing/);
+
+    // The full billing form takes over, carrying the typed name — invoicing
+    // needs the billing contact and address it collects.
+    expect(await screen.findByRole("dialog", { name: /Add Customer/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Name/i)).toHaveValue("Henderson Framing");
+    expect(screen.getByLabelText(/Billing contact name/i)).toHaveValue("Henderson Framing");
+  });
+
+  it("leaves the name alone when the create offer is declined", async () => {
+    confirmAnswer = false;
+    render(<InvoiceModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/Customer/i), "Henderson Framing");
+    await user.tab();
+
+    expect(screen.queryByRole("dialog", { name: /Add Customer/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Customer/i)).toHaveValue("Henderson Framing");
   });
 });

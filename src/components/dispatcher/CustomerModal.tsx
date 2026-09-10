@@ -10,10 +10,20 @@ export function CustomerModal({
   open,
   onClose,
   customer,
+  initialName,
+  onSaved,
 }: {
   open: boolean;
   onClose: () => void;
   customer?: Customer;
+  /** Prefills the name for a customer being created from another workflow. */
+  initialName?: string;
+  /**
+   * Fires only on a successful save, with the trimmed name. `saveCustomer`
+   * resolves to no payload, so a caller that needs the new record matches it
+   * by name once the operations cache has refreshed.
+   */
+  onSaved?: (name: string) => void;
 }) {
   const { saveCustomer, canMutate } = useOperations();
   const { toast } = useToast();
@@ -36,11 +46,11 @@ export function CustomerModal({
   React.useEffect(() => {
     if (open)
       setForm({
-        name: customer?.name ?? "",
+        name: customer?.name ?? initialName ?? "",
         phone: customer?.phone ?? "",
         email: customer?.email ?? "",
         address: customer?.address ?? "",
-        billingContactName: customer?.billingContactName ?? customer?.name ?? "",
+        billingContactName: customer?.billingContactName ?? customer?.name ?? initialName ?? "",
         billingEmail: customer?.billingEmail ?? customer?.email ?? "",
         billingAddressLine1: customer?.billingAddressLine1 ?? customer?.address ?? "",
         billingAddressLine2: customer?.billingAddressLine2 ?? "",
@@ -50,7 +60,7 @@ export function CustomerModal({
         billingCountry: "US",
         group: customer?.group ?? "Commercial",
       });
-  }, [open, customer]);
+  }, [open, customer, initialName]);
   const save = async () => {
     if (!form.name.trim() || !form.address.trim()) {
       toast("Customer name and address are required.", { tone: "error" });
@@ -62,7 +72,10 @@ export function CustomerModal({
     toast(r.ok ? "Customer saved" : r.error.message, {
       tone: r.ok ? "success" : "error",
     });
-    if (r.ok) onClose();
+    if (r.ok) {
+      onSaved?.(form.name.trim());
+      onClose();
+    }
   };
   return (
     <Modal

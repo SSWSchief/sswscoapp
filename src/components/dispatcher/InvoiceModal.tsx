@@ -4,6 +4,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
+import { CustomerModal } from "./CustomerModal";
 import { useConfirm } from "@/components/system/ConfirmProvider";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
@@ -26,6 +27,11 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   const confirm = useConfirm();
   const [busy, setBusy] = React.useState(false);
   const [customerId, setCustomerId] = React.useState("");
+  const [customerName, setCustomerName] = React.useState("");
+  // The name being created in CustomerModal, and the name awaiting resolution
+  // back to an id once the operations cache has caught up.
+  const [creatingCustomer, setCreatingCustomer] = React.useState<string | null>(null);
+  const [pendingCustomer, setPendingCustomer] = React.useState<string | null>(null);
   const [billingMode, setBillingMode] = React.useState<InvoiceBillingMode>("per_job");
   const [jobIds, setJobIds] = React.useState<string[]>([]);
   const [paymentTerms, setPaymentTerms] = React.useState<InvoicePaymentTerms>("net_30");
@@ -39,6 +45,8 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   React.useEffect(() => {
     if (!open) return;
     setCustomerId(invoice?.customerId ?? "");
+    setCreatingCustomer(null);
+    setPendingCustomer(null);
     setBillingMode(invoice?.billingMode ?? "per_job");
     setJobIds(invoice?.jobIds ?? []);
     setPaymentTerms(invoice?.paymentTerms ?? settings?.defaultPaymentTerms ?? "net_30");
@@ -65,6 +73,55 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   }, [open, customerId, invoice?.id]);
 
   const selectedCustomer = customers.find((customer) => customer.id === customerId);
+  // Derived rather than stored, so an existing invoice shows its customer
+  // without the setup effect having to read the customer list.
+  const customerFieldValue = selectedCustomer?.name ?? customerName;
+
+  const matchCustomer = (name: string) =>
+    customers.find((candidate) => candidate.name.trim().toLowerCase() === name.trim().toLowerCase());
+
+  const changeCustomerName = (name: string) => {
+    setCustomerName(name);
+    const match = matchCustomer(name);
+    const nextId = match?.id ?? "";
+    if (nextId === customerId) return;
+    setCustomerId(nextId);
+    setJobIds([]);
+    setItems([blankItem()]);
+  };
+
+  /**
+   * A name that matches nothing is an intent to create, not a typo to reject.
+   * Confirm it, hand the full billing form the name, and come back with the
+   * new customer selected — invoicing needs the billing contact and address
+   * that form collects, so there is no lighter version of this step.
+   */
+  const offerToCreateCustomer = async () => {
+    const name = customerName.trim();
+    if (!name || matchCustomer(name)) return;
+    const agreed = await confirm({
+      title: `Create “${name}” as a new customer?`,
+      message: "Invoices carry a reviewed billing contact and address, so the customer record has to exist before this invoice can be drafted.",
+      confirmLabel: "Create customer",
+      cancelLabel: "Keep editing",
+    });
+    if (agreed) setCreatingCustomer(name);
+  };
+
+  // The save resolves to no payload, so the new record is picked up by name as
+  // soon as the refreshed list contains it.
+  React.useEffect(() => {
+    if (!pendingCustomer) return;
+    const match = customers.find(
+      (candidate) => candidate.name.trim().toLowerCase() === pendingCustomer.trim().toLowerCase(),
+    );
+    if (!match) return;
+    setCustomerId(match.id);
+    setCustomerName(match.name);
+    setJobIds([]);
+    setItems([blankItem()]);
+    setPendingCustomer(null);
+  }, [pendingCustomer, customers]);
   const unavailableJobs = new Set(invoices.filter((candidate) => candidate.id !== invoice?.id && candidate.status !== "void").flatMap((candidate) => candidate.jobIds));
   const localEligibleJobs = jobs.filter((job) => job.customerId === customerId && job.status === "complete" && !unavailableJobs.has(job.id));
   const eligibleJobs = remoteJobs ?? localEligibleJobs;
@@ -109,6 +166,13 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   };
 
   const save = async () => {
+    // A typed-but-unmatched name at save time means the create step was
+    // dismissed or skipped. Re-offer it instead of failing with a generic
+    // "select completed work" message that says nothing about the real cause.
+    if (!customerId && customerName.trim()) {
+      await offerToCreateCustomer();
+      return;
+    }
     const normalized = items.map((item) => ({
       description: item.description.trim(),
       amountCents: Math.round(Number(item.amount) * 100),
@@ -144,7 +208,8 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={invoice ? `${editable ? "Edit" : "View"} ${invoice.invoiceNumber}` : "New invoice draft"} footer={<><Button variant="secondary" onClick={onClose}>{editable ? "Cancel" : "Close"}</Button>{editable && <Button disabled={busy || !canMutate} onClick={() => void save()}>{busy ? "Saving…" : "Save draft"}</Button>}</>}>
+    <>
+    <Modal open={open && !creatingCustomer} onClose={onClose} title={invoice ? `${editable ? "Edit" : "View"} ${invoice.invoiceNumber}` : "New invoice draft"} footer={<><Button variant="secondary" onClick={onClose}>{editable ? "Cancel" : "Close"}</Button>{editable && <Button disabled={busy || !canMutate} onClick={() => void save()}>{busy ? "Saving…" : "Save draft"}</Button>}</>}>
       <div className="space-y-5">
         {!editable && <div className="rounded border border-brand-ice bg-brand-mist p-3 text-sm text-brand-steel">This invoice is finalized and read-only. Use a revision for corrections.</div>}
         <div className="grid gap-4 sm:grid-cols-2">
@@ -154,7 +219,22 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
               <option value="per_job">Per job</option><option value="statement">Multi-job statement</option>
             </Select>
           </FormField>
-          <FormField label="Customer" required hideRequiredMark><Select disabled={!editable || Boolean(invoice)} value={customerId} onChange={(event) => { setCustomerId(event.target.value); setJobIds([]); setItems([blankItem()]); }}><option value="">Select customer</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</Select></FormField>
+          <FormField label="Customer" required hideRequiredMark hint={editable && !invoice ? "Pick an existing customer or type a new name." : undefined}>
+            <Input
+              list="invoice-customers"
+              disabled={!editable || Boolean(invoice)}
+              placeholder="Customer name"
+              value={customerFieldValue}
+              onChange={(event) => changeCustomerName(event.target.value)}
+              onBlur={() => void offerToCreateCustomer()}
+            />
+          </FormField>
+          {/* Outside the field: FormField clones its single child to carry the
+              id the label points at, so wrapping the input would hang the
+              label off a div instead of the control. */}
+          <datalist id="invoice-customers">
+            {customers.map((customer) => <option key={customer.id} value={customer.name} />)}
+          </datalist>
           <FormField label="Payment terms"><Select disabled={!editable} value={paymentTerms} onChange={(event) => setPaymentTerms(event.target.value as InvoicePaymentTerms)}><option value="due_on_receipt">Due on receipt</option><option value="net_15">Net 15</option><option value="net_30">Net 30</option></Select></FormField>
         </div>
         {selectedCustomer && <div className="rounded border border-brand-ice p-3 text-sm"><div className="font-semibold">Recipient review</div><div>{selectedCustomer.billingContactName || "Missing contact"} · {selectedCustomer.billingEmail || "Missing email"}</div><div className="text-brand-steel">{[selectedCustomer.billingAddressLine1, selectedCustomer.billingCity, selectedCustomer.billingState, selectedCustomer.billingPostalCode].filter(Boolean).join(", ") || "Billing address incomplete"}</div></div>}
@@ -208,5 +288,16 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
         {!editable && <div className="grid gap-2 text-sm sm:grid-cols-2"><div>Canonical status: <strong>{invoice?.status}</strong></div><div>Display status: <strong>{invoice?.displayStatus.replaceAll("_", " ")}</strong></div><div>Paid: <strong>{formatCurrency(invoice?.amountPaidCents ?? 0)}</strong></div><div>Remaining: <strong>{formatCurrency(invoice?.amountRemainingCents ?? 0)}</strong></div></div>}
       </div>
     </Modal>
+    {/* Swapped in rather than stacked on top: both dialogs use the same z-index
+        and share a window-level Escape handler, so one Escape would close both
+        and the two focus traps would fight. The invoice editor stays mounted,
+        so every line already entered is still there on the way back. */}
+    <CustomerModal
+      open={Boolean(creatingCustomer)}
+      initialName={creatingCustomer ?? undefined}
+      onClose={() => setCreatingCustomer(null)}
+      onSaved={(name) => setPendingCustomer(name)}
+    />
+    </>
   );
 }
