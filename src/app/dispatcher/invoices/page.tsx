@@ -3,6 +3,7 @@
 import * as React from "react";
 import { InvoiceModal } from "@/components/dispatcher/InvoiceModal";
 import { Topbar } from "@/components/dispatcher/Topbar";
+import { useConfirm } from "@/components/system/ConfirmProvider";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useToast } from "@/components/system/ToastProvider";
@@ -19,6 +20,7 @@ export default function InvoicesPage() {
   const { invoices, refresh } = useExpandedOperations();
   const { customers, canMutate } = useOperations();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<InvoiceRecord>();
   const [exporting, setExporting] = React.useState(false);
@@ -62,7 +64,22 @@ export default function InvoicesPage() {
   };
 
   const lifecycleAction = async (invoice: InvoiceRecord, action: "resend" | "revise" | "void" | "uncollectible" | "reconcile") => {
-    if ((action === "void" || action === "uncollectible") && !window.confirm(`${action === "void" ? "Void" : "Write off"} ${invoice.invoiceNumber}?`)) return;
+    // Void and write-off are the two irreversible money actions in this
+    // ledger, so they get the same styled confirmation as every other
+    // destructive action — a bare browser dialog reads as a page defect in
+    // Home Screen mode, and said nothing about what the action costs.
+    if (action === "void" || action === "uncollectible") {
+      const voiding = action === "void";
+      const agreed = await confirm({
+        title: `${voiding ? "Void" : "Write off"} ${invoice.invoiceNumber}?`,
+        message: voiding
+          ? `This retires ${formatCurrency(invoice.amountRemainingCents)} in Stripe and here. The invoice cannot be reopened — issue a revision instead if the customer still owes it.`
+          : `This marks ${formatCurrency(invoice.amountRemainingCents)} uncollectible. The debt stays on the ledger as written off rather than disappearing.`,
+        confirmLabel: voiding ? "Void invoice" : "Write off",
+        tone: "danger",
+      });
+      if (!agreed) return;
+    }
     setSending(invoice.id);
     try {
       const response = await fetch(`/api/invoices/${invoice.id}/${action}`, { method: "POST" });

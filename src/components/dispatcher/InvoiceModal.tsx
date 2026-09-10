@@ -3,6 +3,8 @@ import * as React from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Field";
+import { Icon } from "@/components/ui/Icon";
+import { useConfirm } from "@/components/system/ConfirmProvider";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useToast } from "@/components/system/ToastProvider";
@@ -10,7 +12,10 @@ import type { InvoiceBillingMode, InvoiceDraftItem, InvoiceLineCategory, Invoice
 import { formatCurrency } from "@/lib/utils";
 
 const categories: InvoiceLineCategory[] = ["service", "rental", "tonnage", "fee", "surcharge", "adjustment"];
-type EditorItem = InvoiceDraftItem & { amount: string; key: string };
+// `needsRate` is editor-only state: it drives the unpriced warning below and is
+// deliberately absent from the payload `save()` builds, so it can never reach
+// the ledger or Stripe.
+type EditorItem = InvoiceDraftItem & { amount: string; key: string; needsRate?: boolean };
 type EligibleJob = { id: string; reference: string; serviceType: string; dumpsterSize: string; scheduledFor: string };
 const blankItem = (): EditorItem => ({ description: "", amount: "", amountCents: 0, category: "service", jobId: null, key: crypto.randomUUID() });
 
@@ -18,6 +23,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   const { saveInvoice, settings, priceList, invoices } = useExpandedOperations();
   const { customers, jobs, canMutate } = useOperations();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [busy, setBusy] = React.useState(false);
   const [customerId, setCustomerId] = React.useState("");
   const [billingMode, setBillingMode] = React.useState<InvoiceBillingMode>("per_job");
@@ -73,11 +79,20 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
       return;
     }
     const job = eligibleJobs.find((candidate) => candidate.id === jobId);
-    const rate = job && priceList.find((candidate) => candidate.serviceType === job.serviceType && candidate.dumpsterSize === job.dumpsterSize);
-    if (!job || !rate) return;
+    if (!job) return;
+    const rate = priceList.find((candidate) => candidate.serviceType === job.serviceType && candidate.dumpsterSize === job.dumpsterSize);
     setItems((current) => {
       const firstBlank = current.findIndex((item) => !item.description.trim() && !item.amount.trim());
-      const suggested = { description: `${job.serviceType} · ${job.dumpsterSize} · ${job.reference}`, amount: (rate.priceCents / 100).toFixed(2), amountCents: rate.priceCents, category: "service" as const, jobId, key: crypto.randomUUID() };
+      // A job with no matching price-list rate still gets its own line — with
+      // the amount left for the office to fill in — rather than silently
+      // disappearing while the job is marked invoiced. The description stays
+      // identical either way: it is copied verbatim onto the Stripe line item
+      // the customer reads, so the "needs a price" signal belongs in the
+      // editor's own chrome, never in the billed text.
+      const description = `${job.serviceType} · ${job.dumpsterSize} · ${job.reference}`;
+      const suggested = rate
+        ? { description, amount: (rate.priceCents / 100).toFixed(2), amountCents: rate.priceCents, category: "service" as const, jobId, key: crypto.randomUUID() }
+        : { description, amount: "", amountCents: 0, category: "service" as const, jobId, key: crypto.randomUUID(), needsRate: true };
       return firstBlank >= 0 ? current.map((item, index) => index === firstBlank ? suggested : item) : [...current, suggested];
     });
   };
@@ -104,6 +119,23 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
     if (!customerId || !jobIds.length || total <= 0 || !Number.isSafeInteger(total) || normalized.some((item) => !item.description || !Number.isSafeInteger(item.amountCents) || item.amountCents === 0)) {
       toast("Select completed work, use non-zero line amounts, and keep the invoice total positive.", { tone: "error" }); return;
     }
+    // Every attached job is retired from the eligible list once this saves,
+    // whether or not anything billed it. A statement whose single line covers
+    // several pulls is legitimate, so this warns rather than refuses — but it
+    // never lets a job go silently uninvoiced-yet-unavailable.
+    const billedJobs = new Set(normalized.map((item) => item.jobId).filter(Boolean));
+    const unbilled = jobIds.filter((jobId) => !billedJobs.has(jobId));
+    if (unbilled.length) {
+      const names = unbilled.map((jobId) => eligibleJobs.find((job) => job.id === jobId)?.reference ?? jobId);
+      const agreed = await confirm({
+        title: unbilled.length === 1 ? `${names[0]} has no line of its own` : `${unbilled.length} jobs have no line of their own`,
+        message: `${names.join(", ")} will be marked invoiced and will not be offered on another invoice. Continue only if a line above already covers the work.`,
+        confirmLabel: "Save anyway",
+        cancelLabel: "Go back",
+        tone: "danger",
+      });
+      if (!agreed) return;
+    }
     setBusy(true);
     const result = await saveInvoice({ customerId, billingMode, jobIds, paymentTerms, poNumber, notes, items: normalized }, invoice?.id);
     setBusy(false);
@@ -122,26 +154,54 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
               <option value="per_job">Per job</option><option value="statement">Multi-job statement</option>
             </Select>
           </FormField>
-          <FormField label="Customer" required><Select disabled={!editable || Boolean(invoice)} value={customerId} onChange={(event) => { setCustomerId(event.target.value); setJobIds([]); setItems([blankItem()]); }}><option value="">Select customer</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</Select></FormField>
+          <FormField label="Customer" required hideRequiredMark><Select disabled={!editable || Boolean(invoice)} value={customerId} onChange={(event) => { setCustomerId(event.target.value); setJobIds([]); setItems([blankItem()]); }}><option value="">Select customer</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</Select></FormField>
           <FormField label="Payment terms"><Select disabled={!editable} value={paymentTerms} onChange={(event) => setPaymentTerms(event.target.value as InvoicePaymentTerms)}><option value="due_on_receipt">Due on receipt</option><option value="net_15">Net 15</option><option value="net_30">Net 30</option></Select></FormField>
         </div>
         {selectedCustomer && <div className="rounded border border-brand-ice p-3 text-sm"><div className="font-semibold">Recipient review</div><div>{selectedCustomer.billingContactName || "Missing contact"} · {selectedCustomer.billingEmail || "Missing email"}</div><div className="text-brand-steel">{[selectedCustomer.billingAddressLine1, selectedCustomer.billingCity, selectedCustomer.billingState, selectedCustomer.billingPostalCode].filter(Boolean).join(", ") || "Billing address incomplete"}</div></div>}
-        <FormField label={billingMode === "statement" ? "Completed jobs" : "Completed job"} required>
+        {/* Austin asked for no asterisks anywhere in invoicing. Both fields stay
+            required for validation and assistive technology. */}
+        <FormField label={billingMode === "statement" ? "Completed jobs" : "Completed job"} required hideRequiredMark>
           <div className="max-h-40 space-y-2 overflow-auto rounded border border-brand-ice p-3">
             {eligibleJobs.map((job) => <label key={job.id} className="flex min-h-8 items-center gap-2"><input disabled={!jobSelectionEditable} type={billingMode === "per_job" ? "radio" : "checkbox"} name="invoice-job" checked={jobIds.includes(job.id)} onChange={(event) => selectJob(job.id, event.target.checked)} /><span>{job.reference} · {job.serviceType} · {job.dumpsterSize}</span></label>)}
             {!eligibleJobs.length && <span className="text-sm text-brand-steel">No uninvoiced completed jobs for this customer.</span>}
           </div>
         </FormField>
         <div>
-          <div className="mb-2 flex items-center justify-between"><h3 className="font-heading font-semibold">Line items</h3>{editable && <Button variant="secondary" onClick={() => setItems((current) => [...current, blankItem()])}>Add line</Button>}</div>
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="font-heading font-semibold">Line items</h3>
+            <span className="text-xs text-brand-steel">{items.length} {items.length === 1 ? "line" : "lines"}</span>
+          </div>
           <div className="space-y-3">{items.map((item, index) => <div key={item.key} className="grid gap-2 rounded border border-brand-ice p-3 sm:grid-cols-[1fr_9rem_9rem_9rem_auto]">
             <Input aria-label={`Line ${index + 1} description`} disabled={!editable} placeholder="Description" value={item.description} onChange={(event) => updateItem(index, { description: event.target.value })} />
-            <Input aria-label={`Line ${index + 1} amount`} disabled={!editable} type="number" step="0.01" placeholder="Amount" value={item.amount} onChange={(event) => updateItem(index, { amount: event.target.value })} />
+            <div>
+              <Input aria-label={`Line ${index + 1} amount`} disabled={!editable} type="number" step="0.01" placeholder="Amount" aria-describedby={item.needsRate && !item.amount.trim() ? `${item.key}-rate` : undefined} value={item.amount} onChange={(event) => updateItem(index, { amount: event.target.value })} />
+              {item.needsRate && !item.amount.trim() && (
+                <p id={`${item.key}-rate`} className="mt-1 text-xs text-red-600">No rate on file — enter an amount.</p>
+              )}
+            </div>
             <Select aria-label={`Line ${index + 1} category`} disabled={!editable} value={item.category} onChange={(event) => updateItem(index, { category: event.target.value as InvoiceLineCategory })}>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</Select>
             <Select aria-label={`Line ${index + 1} source job`} disabled={!editable} value={item.jobId ?? ""} onChange={(event) => updateItem(index, { jobId: event.target.value || null })}><option value="">General</option>{jobIds.map((jobId) => <option key={jobId} value={jobId}>{eligibleJobs.find((job) => job.id === jobId)?.reference ?? jobId}</option>)}</Select>
             {editable && <button className="min-h-11 px-2 text-red-700 disabled:opacity-40" disabled={items.length === 1} onClick={() => setItems((current) => current.filter((_, position) => position !== index))}>Remove</button>}
           </div>)}</div>
-          <div className="mt-2 text-right font-semibold">Total: {formatCurrency(items.reduce((sum, item) => sum + (Math.round(Number(item.amount) * 100) || 0), 0))}</div>
+          {/* The add control sits under the last line rather than up in the
+              header: that is where the eye and the cursor already are after
+              filling one in, and on a long statement the header scrolls away
+              entirely. Dashed and full-width so it reads as "there is room for
+              another one here" instead of as a second toolbar button. */}
+          {editable && (
+            <button
+              type="button"
+              onClick={() => setItems((current) => [...current, blankItem()])}
+              className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded border-2 border-dashed border-brand-blue/40 bg-brand-mist/40 px-4 font-heading text-sm font-semibold uppercase tracking-wide text-brand-blue transition-colors hover:border-brand-blue hover:bg-brand-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue focus-visible:ring-offset-1"
+            >
+              <Icon name="plus" width={16} height={16} />
+              Add line
+            </button>
+          )}
+          <div className="mt-3 flex items-center justify-between border-t border-brand-ice pt-3">
+            <span className="text-sm text-brand-steel">Invoice total</span>
+            <span className="font-heading text-lg font-semibold">{formatCurrency(items.reduce((sum, item) => sum + (Math.round(Number(item.amount) * 100) || 0), 0))}</span>
+          </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2"><FormField label="PO number"><Input disabled={!editable} maxLength={140} value={poNumber} onChange={(event) => setPoNumber(event.target.value)} /></FormField><div /></div>
         <FormField label="Notes"><Textarea disabled={!editable} maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} /></FormField>
