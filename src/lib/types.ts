@@ -30,6 +30,7 @@ export type PermissionKey =
   | "settings"
   | "driver_jobs"
   | "pre_trip"
+  | "pretrip_review"
   | "sops"
   | "profile";
 
@@ -299,7 +300,7 @@ export type InvoiceDisplayStatus =
   | "processing"
   | "payment_failed"
   | "partially_paid";
-export type InvoiceBillingMode = "per_job" | "statement";
+export type InvoiceBillingMode = "per_job" | "statement" | "one_off";
 export type InvoicePaymentTerms = "due_on_receipt" | "net_15" | "net_30";
 export type InvoiceSyncState =
   | "not_started"
@@ -489,6 +490,7 @@ export interface PretripSubmission {
   defectsFound: string;
   repairsRequired: string;
   supervisorSignature: string;
+  supervisorSignedAt: string | null;
   vinSnapshot: string;
   routeNote: string;
 }

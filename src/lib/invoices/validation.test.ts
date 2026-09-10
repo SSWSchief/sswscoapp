@@ -25,6 +25,17 @@ describe("invoiceDraftSchema", () => {
   it("requires exactly one job for per-job invoices", () => {
     expect(invoiceDraftSchema.safeParse({ ...valid, jobIds: ["job-1", "job-2"] }).success).toBe(false);
   });
+  it("accepts a one-off invoice with no job behind it", () => {
+    const oneOff = { ...valid, billingMode: "one_off", jobIds: [], items: [{ description: "Container damage recovery", amountCents: 25000, jobId: null, category: "fee" }] };
+    expect(invoiceDraftSchema.safeParse(oneOff).success).toBe(true);
+  });
+  it("refuses a one-off that carries jobs, and a statement that carries none", () => {
+    // The mode is the only thing that relaxes the job requirement, so a
+    // statement cannot become jobless just by having its selections dropped.
+    expect(invoiceDraftSchema.safeParse({ ...valid, billingMode: "one_off" }).success).toBe(false);
+    expect(invoiceDraftSchema.safeParse({ ...valid, billingMode: "statement", jobIds: [], items: [{ ...valid.items[0], jobId: null }] }).success).toBe(false);
+    expect(invoiceDraftSchema.safeParse({ ...valid, jobIds: [], items: [{ ...valid.items[0], jobId: null }] }).success).toBe(false);
+  });
   it("requires every line source job to belong to the invoice", () => {
     expect(invoiceDraftSchema.safeParse({ ...valid, items: [{ ...valid.items[0], jobId: "job-other" }] }).success).toBe(false);
   });

@@ -159,6 +159,13 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
 
   const changeBillingMode = (mode: InvoiceBillingMode) => {
     setBillingMode(mode);
+    if (mode === "one_off") {
+      // A one-off must carry no jobs at all, so switching to it drops both the
+      // selections and the job attribution on any line already entered.
+      setJobIds([]);
+      setItems((lines) => lines.map((line) => line.jobId ? { ...line, jobId: null } : line));
+      return;
+    }
     if (mode !== "per_job") return;
     const kept = jobIds.slice(0, 1);
     setJobIds(kept);
@@ -180,15 +187,17 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
       category: item.category,
     }));
     const total = normalized.reduce((sum, item) => sum + item.amountCents, 0);
-    if (!customerId || !jobIds.length || total <= 0 || !Number.isSafeInteger(total) || normalized.some((item) => !item.description || !Number.isSafeInteger(item.amountCents) || item.amountCents === 0)) {
-      toast("Select completed work, use non-zero line amounts, and keep the invoice total positive.", { tone: "error" }); return;
+    if (!customerId || (billingMode !== "one_off" && !jobIds.length) || total <= 0 || !Number.isSafeInteger(total) || normalized.some((item) => !item.description || !Number.isSafeInteger(item.amountCents) || item.amountCents === 0)) {
+      toast(billingMode === "one_off"
+      ? "Describe each line, use non-zero amounts, and keep the invoice total positive."
+      : "Select completed work, use non-zero line amounts, and keep the invoice total positive.", { tone: "error" }); return;
     }
     // Every attached job is retired from the eligible list once this saves,
     // whether or not anything billed it. A statement whose single line covers
     // several pulls is legitimate, so this warns rather than refuses — but it
     // never lets a job go silently uninvoiced-yet-unavailable.
     const billedJobs = new Set(normalized.map((item) => item.jobId).filter(Boolean));
-    const unbilled = jobIds.filter((jobId) => !billedJobs.has(jobId));
+    const unbilled = billingMode === "one_off" ? [] : jobIds.filter((jobId) => !billedJobs.has(jobId));
     if (unbilled.length) {
       const names = unbilled.map((jobId) => eligibleJobs.find((job) => job.id === jobId)?.reference ?? jobId);
       const agreed = await confirm({
@@ -216,7 +225,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
           <FormField label="Invoice number" hint="Assigned automatically and never reused."><Input readOnly value={invoice?.invoiceNumber ?? "Assigned when saved"} /></FormField>
           <FormField label="Billing mode">
             <Select disabled={!jobSelectionEditable} value={billingMode} onChange={(event) => changeBillingMode(event.target.value as InvoiceBillingMode)}>
-              <option value="per_job">Per job</option><option value="statement">Multi-job statement</option>
+              <option value="per_job">Per job</option><option value="statement">Multi-job statement</option><option value="one_off">One-off (no job)</option>
             </Select>
           </FormField>
           <FormField label="Customer" required hideRequiredMark hint={editable && !invoice ? "Pick an existing customer or type a new name." : undefined}>
@@ -240,12 +249,18 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
         {selectedCustomer && <div className="rounded border border-brand-ice p-3 text-sm"><div className="font-semibold">Recipient review</div><div>{selectedCustomer.billingContactName || "Missing contact"} · {selectedCustomer.billingEmail || "Missing email"}</div><div className="text-brand-steel">{[selectedCustomer.billingAddressLine1, selectedCustomer.billingCity, selectedCustomer.billingState, selectedCustomer.billingPostalCode].filter(Boolean).join(", ") || "Billing address incomplete"}</div></div>}
         {/* Austin asked for no asterisks anywhere in invoicing. Both fields stay
             required for validation and assistive technology. */}
+        {billingMode === "one_off" ? (
+          <div className="rounded border border-brand-ice bg-brand-mist p-3 text-sm text-brand-steel">
+            A one-off invoice bills its line items directly, with no completed job behind it. Use it for a charge that never was a job, or for a customer with no job history yet.
+          </div>
+        ) : (
         <FormField label={billingMode === "statement" ? "Completed jobs" : "Completed job"} required hideRequiredMark>
           <div className="max-h-40 space-y-2 overflow-auto rounded border border-brand-ice p-3">
             {eligibleJobs.map((job) => <label key={job.id} className="flex min-h-8 items-center gap-2"><input disabled={!jobSelectionEditable} type={billingMode === "per_job" ? "radio" : "checkbox"} name="invoice-job" checked={jobIds.includes(job.id)} onChange={(event) => selectJob(job.id, event.target.checked)} /><span>{job.reference} · {job.serviceType} · {job.dumpsterSize}</span></label>)}
-            {!eligibleJobs.length && <span className="text-sm text-brand-steel">No uninvoiced completed jobs for this customer.</span>}
+            {!eligibleJobs.length && <span className="text-sm text-brand-steel">No uninvoiced completed jobs for this customer. Switch to a one-off invoice to bill without one.</span>}
           </div>
         </FormField>
+        )}
         <div>
           <div className="mb-2 flex items-center justify-between">
             <h3 className="font-heading font-semibold">Line items</h3>

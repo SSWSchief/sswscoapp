@@ -224,7 +224,7 @@ export interface InvoiceRow extends Record<string, unknown> {
   job_id: string | null;
   amount_cents: number;
   status: "draft" | "open" | "paid" | "uncollectible" | "void";
-  billing_mode: "per_job" | "statement";
+  billing_mode: "per_job" | "statement" | "one_off";
   payment_terms: "due_on_receipt" | "net_15" | "net_30";
   due_date: string | null;
   notes: string;
@@ -348,6 +348,7 @@ export interface PretripSubmissionRow extends Record<string, unknown> {
   defects_found?: string;
   repairs_required?: string;
   supervisor_signature?: string;
+  supervisor_signed_at?: string | null;
   vin_snapshot?: string;
   route_note?: string;
 }
@@ -729,8 +730,16 @@ export interface Database {
         Returns: SopDocumentRow;
       };
       publish_pretrip_template: {
-        Args: { template_title: string; item_labels: string[] };
+        Args: {
+          template_title: string;
+          item_labels: string[];
+          item_sections?: string[];
+        };
         Returns: PretripTemplateRow;
+      };
+      countersign_pretrip_submission: {
+        Args: { submission_id: string; signature: string };
+        Returns: PretripSubmissionRow;
       };
       list_message_recipients: {
         Args: Record<PropertyKey, never>;

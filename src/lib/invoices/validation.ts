@@ -17,8 +17,9 @@ const lineItem = z.object({
 export const invoiceDraftSchema = z
   .object({
     customerId: z.string().trim().min(1),
-    billingMode: z.enum(["per_job", "statement"]),
-    jobIds: z.array(z.string().trim().min(1)).min(1).max(100),
+    billingMode: z.enum(["per_job", "statement", "one_off"]),
+    // Emptiness is decided per billing mode below, not here.
+    jobIds: z.array(z.string().trim().min(1)).max(100),
     paymentTerms: z.enum(["due_on_receipt", "net_15", "net_30"]),
     poNumber: z.string().trim().max(140),
     notes: z.string().trim().max(500),
@@ -30,6 +31,20 @@ export const invoiceDraftSchema = z
         code: "custom",
         path: ["jobIds"],
         message: "Per-job invoices require exactly one completed job.",
+      });
+    if (value.billingMode === "statement" && value.jobIds.length < 1)
+      context.addIssue({
+        code: "custom",
+        path: ["jobIds"],
+        message: "A statement requires at least one completed job.",
+      });
+    // A one-off must carry none, so a statement cannot become jobless simply by
+    // having its selections dropped.
+    if (value.billingMode === "one_off" && value.jobIds.length !== 0)
+      context.addIssue({
+        code: "custom",
+        path: ["jobIds"],
+        message: "A one-off invoice carries no jobs.",
       });
     if (new Set(value.jobIds).size !== value.jobIds.length)
       context.addIssue({

@@ -44,7 +44,10 @@ function validateForSend(invoice: InvoiceRow, lines: InvoiceLineItemRow[], jobs:
   if (!lines.length || invoice.amount_cents <= 0) throw new Error("Add at least one positive line item.");
   const lineTotal = lines.reduce((sum, line) => sum + Number(line.amount_cents), 0);
   if (lineTotal !== Number(invoice.amount_cents)) throw new Error("Invoice line total is out of sync.");
-  if (!jobs.length || jobs.some((job) => job.customer_id !== invoice.customer_id || job.status !== "complete" || job.deleted_at))
+  // A one-off has no job behind it by definition; every other mode still must.
+  if (invoice.billing_mode === "one_off") {
+    if (jobs.length) throw new Error("A one-off invoice carries no jobs.");
+  } else if (!jobs.length || jobs.some((job) => job.customer_id !== invoice.customer_id || job.status !== "complete" || job.deleted_at))
     throw new Error("Every invoiced job must still be complete and belong to the customer.");
   if (!invoice.billing_contact_name.trim() || !/^\S+@\S+\.\S+$/.test(invoice.billing_email))
     throw new Error("Review the billing contact name and email before sending.");
