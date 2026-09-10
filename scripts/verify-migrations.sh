@@ -63,6 +63,35 @@ for migration in "$ROOT"/supabase/migrations/*.sql; do
   fi
 done
 
+# A function body is not parsed until it runs, so the chain applying proves
+# nothing about what is inside one. `countersign_pretrip_submission` shipped
+# with a parameter named after a column it updated, and the ambiguity was
+# invisible here until staging's linter read the body statically.
+#
+# Best effort only. `supabase db lint` is a wrapper around the plpgsql_check
+# extension, which a plain local server does not carry -- build it alongside
+# pgTAP to make this step real. Staging's lint remains the authoritative one,
+# so an unavailable linter is reported and skipped rather than failing a run
+# that is otherwise green.
+step "Linting function bodies"
+if ! command -v supabase >/dev/null 2>&1; then
+  printf '  \033[33mskipped\033[0m supabase CLI not installed\n'
+else
+  # sslmode=disable because the throwaway server has no certificate; the CLI
+  # otherwise refuses the connection outright rather than falling back.
+  LINT_URL="postgresql://${PGUSER}@${PGHOST}:${PGPORT}/${DB}?sslmode=disable"
+  lint_output="$(supabase db lint --db-url "$LINT_URL" --schema public --level warning --fail-on error 2>&1)" && lint_status=0 || lint_status=$?
+  if [ "$lint_status" -eq 0 ]; then
+    printf '  ok  no function-body errors\n'
+  elif printf '%s' "$lint_output" | grep -qiE 'plpgsql_check|failed to connect|tls error'; then
+    printf '  \033[33mskipped\033[0m linter unavailable locally (plpgsql_check); staging lint is authoritative\n'
+  else
+    printf '  \033[31mFAILED\033[0m db lint\n'
+    printf '%s\n' "$lint_output" | head -30
+    exit 1
+  fi
+fi
+
 step "Running the pgTAP suites"
 psql -q -d "$DB" -c 'create extension if not exists pgtap;' >/dev/null
 for suite in "$ROOT"/supabase/tests/rls.sql "$ROOT"/supabase/tests/rls_behavior.sql; do

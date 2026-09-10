@@ -738,7 +738,7 @@ export interface Database {
         Returns: PretripTemplateRow;
       };
       countersign_pretrip_submission: {
-        Args: { submission_id: string; signature: string };
+        Args: { submission_id: string; supervisor_name: string };
         Returns: PretripSubmissionRow;
       };
       list_message_recipients: {

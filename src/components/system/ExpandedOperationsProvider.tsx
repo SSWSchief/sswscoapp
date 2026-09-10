@@ -547,7 +547,7 @@ export function ExpandedOperationsProvider({
           () =>
             createClient().rpc("countersign_pretrip_submission", {
               submission_id: input.submissionId,
-              signature: input.signature,
+              supervisor_name: input.signature,
             }),
           "compliance",
         ),
