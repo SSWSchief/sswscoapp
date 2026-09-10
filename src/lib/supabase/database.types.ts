@@ -341,6 +341,15 @@ export interface PretripSubmissionRow extends Record<string, unknown> {
   results: Json;
   has_failures: boolean;
   submitted_at: string;
+  // Optional because a deployment can briefly run ahead of its migration, and
+  // a select against the older table returns rows without these columns. The
+  // mapper defaults them rather than surfacing undefined to the UI.
+  safe_to_operate?: boolean | null;
+  defects_found?: string;
+  repairs_required?: string;
+  supervisor_signature?: string;
+  vin_snapshot?: string;
+  route_note?: string;
 }
 export interface SopDocumentRow extends Record<string, unknown> {
   id: string;

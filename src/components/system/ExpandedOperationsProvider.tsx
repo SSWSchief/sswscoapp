@@ -22,6 +22,7 @@ import type {
   InvoiceRecord,
   InvoiceDraftInput,
   MessageChannel,
+  PretripResult,
   PretripSubmission,
   PretripTemplate,
   PriceListItem,
@@ -97,7 +98,13 @@ type Value = State & {
     truckId: string;
     mileage: number;
     signature: string;
-    results: Record<string, "pass" | "fail">;
+    results: Record<string, PretripResult>;
+    safeToOperate: boolean;
+    /** Copied from the selected truck by the caller, which holds the fleet. */
+    vinSnapshot: string;
+    defectsFound: string;
+    repairsRequired: string;
+    routeNote: string;
   }) => Promise<MutationResult<void>>;
   acknowledgeSop: (sopId: string) => Promise<MutationResult<void>>;
   saveSettings: (value: CompanySettings) => Promise<MutationResult<void>>;
@@ -504,7 +511,11 @@ export function ExpandedOperationsProvider({
       submitPretrip: async (input) => {
         const result = await run(async () => {
           if (!currentUser) return { error: { message: "Sign in required" } };
-          const hasFailures = Object.values(input.results).includes("fail");
+          // N/A is an answer, not a defect: only an outright fail raises the
+          // alert. A driver calling the truck unsafe raises it too, even with
+          // every line passed, because that judgement is the point of the form.
+          const hasFailures =
+            Object.values(input.results).includes("fail") || !input.safeToOperate;
           const r = await createClient().from("pretrip_submissions").insert({
             template_id: input.templateId,
             driver_id: currentUser.id,
@@ -513,6 +524,11 @@ export function ExpandedOperationsProvider({
             signature: input.signature.trim(),
             results: input.results,
             has_failures: hasFailures,
+            safe_to_operate: input.safeToOperate,
+            defects_found: input.defectsFound.trim(),
+            repairs_required: input.repairsRequired.trim(),
+            vin_snapshot: input.vinSnapshot.trim(),
+            route_note: input.routeNote.trim(),
           });
           return r;
         }, "compliance");

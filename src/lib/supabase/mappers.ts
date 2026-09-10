@@ -408,6 +408,12 @@ export const mapPretripSubmission = (
   results: row.results as PretripSubmission["results"],
   hasFailures: row.has_failures,
   submittedAt: row.submitted_at,
+  safeToOperate: row.safe_to_operate ?? null,
+  defectsFound: row.defects_found ?? "",
+  repairsRequired: row.repairs_required ?? "",
+  supervisorSignature: row.supervisor_signature ?? "",
+  vinSnapshot: row.vin_snapshot ?? "",
+  routeNote: row.route_note ?? "",
 });
 export const mapSopDocument = (
   row: SopDocumentRow,

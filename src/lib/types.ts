@@ -461,6 +461,8 @@ export interface PretripTemplateItem {
   id: string;
   label: string;
   description?: string;
+  /** Heading this item sits under on the paper form. Absent on older flat templates. */
+  section?: string;
 }
 export interface PretripTemplate {
   id: string;
@@ -469,6 +471,9 @@ export interface PretripTemplate {
   isPublished: boolean;
   items: PretripTemplateItem[];
 }
+/** The paper form answers each item PASS, FAIL, or N/A. */
+export type PretripResult = "pass" | "fail" | "na";
+
 export interface PretripSubmission {
   id: string;
   templateId: string;
@@ -476,9 +481,16 @@ export interface PretripSubmission {
   truckId: string;
   mileage: number;
   signature: string;
-  results: Record<string, "pass" | "fail">;
+  results: Record<string, PretripResult>;
   hasFailures: boolean;
   submittedAt: string;
+  /** Null on submissions recorded before the form carried the question. */
+  safeToOperate: boolean | null;
+  defectsFound: string;
+  repairsRequired: string;
+  supervisorSignature: string;
+  vinSnapshot: string;
+  routeNote: string;
 }
 
 export interface SopDocument {
