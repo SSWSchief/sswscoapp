@@ -97,9 +97,12 @@ psql -q -d "$DB" -c 'create extension if not exists pgtap;' >/dev/null
 for suite in "$ROOT"/supabase/tests/rls.sql "$ROOT"/supabase/tests/rls_behavior.sql; do
   name="$(basename "$suite")"
   results="$(psql -d "$DB" -tA -f "$suite" 2>&1)"
-  if printf '%s' "$results" | grep -qE '^not ok|ERROR'; then
+  # "Bad plan" is a failure pgTAP reports without ever printing "not ok", so
+  # counting ok lines alone calls a suite green when an assertion was added
+  # and plan() was not. Staging caught exactly that.
+  if printf '%s' "$results" | grep -qE '^not ok|ERROR|planned [0-9]+ tests but ran'; then
     printf '  \033[31mFAILED\033[0m %s\n' "$name"
-    printf '%s\n' "$results" | grep -E '^not ok|ERROR' | head -10
+    printf '%s\n' "$results" | grep -E '^not ok|ERROR|planned [0-9]+ tests but ran' | head -10
     exit 1
   fi
   printf '  ok  %s (%s assertions)\n' "$name" "$(printf '%s' "$results" | grep -cE '^ok ')"

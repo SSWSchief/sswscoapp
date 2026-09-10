@@ -1,5 +1,5 @@
 begin;
-select plan(44);
+select plan(45);
 select has_table('public','audit_log','immutable audit log exists');
 select has_table('public','invoices','invoice records exist');
 select has_table('public','invoice_line_items','durable invoice lines exist');
