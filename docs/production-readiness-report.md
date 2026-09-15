@@ -1,5 +1,40 @@
 # Production-Readiness Report
 
+## Stripe production cutover — September 15, 2026
+
+The invoice release candidate is committed as
+`3da775df5eb9ce75af806af16cccfd0eeb198e9d` on
+`codex/stripe-production-cutover` and is under review in pull request 30. All
+required application, migration, public-E2E, and Vercel preview checks are
+green. Lint, strict TypeScript, dead-code analysis, eight script contract
+tests, 53 Vitest files / 362 tests, coverage thresholds, and the Next.js
+15.5.25 production build also pass locally.
+
+Before changing Stripe mode, production Supabase project
+`doofdntdobpixqmcqfnm` was backed up to a protected location outside the
+repository and iCloud checkout. The schema, data, and roles dump SHA-256
+checksums were recorded in the private cutover log. Migration
+`202609130001_invoice_draft_deletion_and_customer_types.sql` was then applied;
+local and remote migration histories match and the post-apply database lint is
+clean.
+
+The pre-cutover ledger audit found no non-null application
+`stripe_customer_id` values and no non-null application `stripe_invoice_id`
+values. Consequently, there is no linked Claude invoice to void and no exact
+customer record that requires Stripe-ID clearing. The Stripe webhook inbox
+contains only ignored test-mode events with no application-ledger links; these
+are retained as documented test artifacts. The stop condition for paid test
+ledger entries or unexplained nonterminal application invoices was not
+triggered.
+
+The cutover is not complete. Production still reports Stripe test mode with
+invoicing disabled. The CPA-approved non-taxable decision still requires its
+named approver, approval date, and advice to be recorded through the audited
+tax-policy script. Stripe live-account review, restricted-key and live-webhook
+creation, the disabled live-mode deployment, the supervised legitimate pilot
+invoice, reconciliation, payout confirmation, and final handoff evidence are
+also pending. No live customer or invoice IDs exist in the application yet.
+
 ## Austin invoice release candidate — September 13, 2026
 
 Austin's reported invoice and customer defects are fixed in the working tree:
@@ -20,14 +55,11 @@ and iPhone profiles, and its health endpoint reports a reachable database,
 configured email and push delivery, and Stripe connected in test mode with
 invoice sending deliberately disabled.
 
-This release candidate is ready for staging, not yet live. Migration
-`202609130001_invoice_draft_deletion_and_customer_types.sql` must be rehearsed
-and applied before the application deploy. This checkout has neither a running
-local PostgreSQL/Docker service nor a linked Supabase project, so migration,
-pgTAP, and authenticated invoice-browser acceptance are not claimed. General
-Stripe sending must remain off until the account, tax, webhook, test invoice,
-backup/restore, physical-device/accessibility, and named-approval gates below
-are complete.
+This section records the state on September 13 and is superseded by the
+September 15 cutover record above where they conflict. The migration is now
+applied to the linked production project and a protected logical backup exists.
+General Stripe sending must remain off until the remaining account, tax,
+webhook, live-pilot, reconciliation, and named-approval gates are complete.
 
 ## Stripe invoicing readiness update — September 2, 2026
 
@@ -40,9 +72,9 @@ webhook inbox, lost-link recovery, on-demand/daily reconciliation, and updated
 health/deployment gates. Automatic rates, rental-day/tonnage/surcharge/tax
 calculation, reminders, credit notes, and refunds remain deferred.
 
-Production billing remains deliberately disabled. The three unmatched Stripe
-test invoices are recorded as stale test artifacts and are not application
-ledger data. The mislabeled local environment was confirmed to reference
+Production billing remains deliberately disabled. The unmatched Stripe test
+events are recorded as stale test artifacts and are not application ledger
+data. The mislabeled local environment was confirmed to reference
 production and was quarantined outside the iCloud checkout; it must be replaced
 with genuine staging credentials. The production Supabase server secret that
 was present there must be rotated by the account owner. Migration execution,
