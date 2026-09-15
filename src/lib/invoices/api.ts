@@ -45,7 +45,7 @@ export function invoiceWriteError(error: unknown) {
     "billing contact", "billing address", "invoice line total", "invoice number exceeds",
     "tax policy is approved", "stripe invoicing is disabled", "cannot make that stripe transition", "company invoice terms",
     "every invoiced job",
-    "original stripe invoice", "existing draft cannot change customers",
+    "original stripe invoice", "existing draft cannot change customers", "training data can only be removed",
   ].some((fragment) => lower.includes(fragment));
   if (safeBusinessMessage)
     return { code: "invalid_invoice_state", message, status: 409 };

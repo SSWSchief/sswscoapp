@@ -120,16 +120,16 @@ export function CustomerModal({
             onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
         </FormField>
-        <FormField label="Group">
+        <FormField label="Customer type">
           <Select
             value={form.group}
             onChange={(e) =>
               setForm({ ...form, group: e.target.value as typeof form.group })
             }
           >
-            <option>Big GC</option>
             <option>Commercial</option>
             <option>Residential</option>
+            <option>One-off</option>
           </Select>
         </FormField>
         <div className="border-t border-brand-ice pt-4">

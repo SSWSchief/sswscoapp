@@ -218,7 +218,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
 
   return (
     <>
-    <Modal open={open && !creatingCustomer} onClose={onClose} title={invoice ? `${editable ? "Edit" : "View"} ${invoice.invoiceNumber}` : "New invoice draft"} footer={<><Button variant="secondary" onClick={onClose}>{editable ? "Cancel" : "Close"}</Button>{editable && <Button disabled={busy || !canMutate} onClick={() => void save()}>{busy ? "Saving…" : "Save draft"}</Button>}</>}>
+    <Modal open={open && !creatingCustomer} onClose={onClose} title={invoice ? `${editable ? "Edit" : "View"} ${invoice.invoiceNumber}` : "New invoice draft"} widthClass="max-w-5xl" footer={<><Button variant="secondary" onClick={onClose}>{editable ? "Cancel" : "Close"}</Button>{editable && <Button disabled={busy || !canMutate} onClick={() => void save()}>{busy ? "Saving…" : "Save draft"}</Button>}</>}>
       <div className="space-y-5">
         {!editable && <div className="rounded border border-brand-ice bg-brand-mist p-3 text-sm text-brand-steel">This invoice is finalized and read-only. Use a revision for corrections.</div>}
         <div className="grid gap-4 sm:grid-cols-2">
@@ -266,7 +266,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
             <h3 className="font-heading font-semibold">Line items</h3>
             <span className="text-xs text-brand-steel">{items.length} {items.length === 1 ? "line" : "lines"}</span>
           </div>
-          <div className="space-y-3">{items.map((item, index) => <div key={item.key} className="grid gap-2 rounded border border-brand-ice p-3 sm:grid-cols-[1fr_9rem_9rem_9rem_auto]">
+          <div className="space-y-3">{items.map((item, index) => <div key={item.key} className="grid gap-2 rounded border border-brand-ice p-3 lg:grid-cols-[minmax(12rem,1fr)_9rem_9rem_9rem_auto]">
             <Input aria-label={`Line ${index + 1} description`} disabled={!editable} placeholder="Description" value={item.description} onChange={(event) => updateItem(index, { description: event.target.value })} />
             <div>
               <Input aria-label={`Line ${index + 1} amount`} disabled={!editable} type="number" step="0.01" placeholder="Amount" aria-describedby={item.needsRate && !item.amount.trim() ? `${item.key}-rate` : undefined} value={item.amount} onChange={(event) => updateItem(index, { amount: event.target.value })} />

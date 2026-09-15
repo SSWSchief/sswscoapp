@@ -1,5 +1,5 @@
 begin;
-select plan(41);
+select plan(45);
 
 create function pg_temp.capture_sqlstate(command text) returns text language plpgsql as $$
 begin
@@ -93,6 +93,9 @@ select is((select amount_cents from public.invoices where job_id='rls-invoice-jo
 select matches((select invoice_number from public.invoices where job_id='rls-invoice-job'),'^QA-[0-9]{6}$','invoice number is generated from the transactional prefix counter');
 select is(pg_temp.capture_sqlstate($$update public.invoices set amount_cents=1 where job_id='rls-invoice-job'$$),'42501','even an administrator cannot edit invoices directly from the browser role');
 select is(pg_temp.capture_sqlstate($$select public.create_invoice_draft('{"customerId":"rls-customer-a","billingMode":"per_job","jobIds":["rls-invoice-job"],"paymentTerms":"net_30","poNumber":"","notes":"","items":[{"description":"duplicate","amountCents":1,"jobId":"rls-invoice-job","category":"service","position":0}]}'::jsonb)$$),'23505','one completed job cannot be billed on two active invoices');
+select lives_ok($$select public.delete_invoice_draft((select id from public.invoices where job_id='rls-invoice-job'))$$,'permitted staff deletes an unsent draft through the guarded RPC');
+select is((select count(*) from public.invoices where job_id='rls-invoice-job'),0::bigint,'draft deletion removes the invoice and its owned details');
+select lives_ok($$select public.create_invoice_draft('{"customerId":"rls-customer-a","billingMode":"per_job","jobIds":["rls-invoice-job"],"paymentTerms":"net_30","poNumber":"","notes":"reused after deleted draft","items":[{"description":"20 yard delivery","amountCents":40000,"jobId":"rls-invoice-job","category":"service","position":0}]}'::jsonb)$$,'draft deletion releases completed work for another invoice');
 select is(pg_temp.write_blocked($$update public.company_settings set company_name='Direct Hack' where id=true$$),true,'direct settings table update is denied even for an administrator session');
 select is((public.publish_sop_document('RLS Safety SOP','Safety','Use wheel chocks before inspection.',true)).version,1,'admin publishes SOP versions through RPC');
 select is((public.publish_pretrip_template('RLS Pretrip',array['Tires','Lights'])).version,1,'admin publishes pre-trip templates through RPC');
@@ -111,6 +114,7 @@ select is((select count(*) from (
 ) records),5::bigint,'training provisioning creates exactly the five registered records');
 select is((select assigned_driver_id is null and assigned_truck_id='training-v1-truck' and assigned_dumpster_id='training-v1-dumpster' from public.jobs where id='training-v1-job'),true,'training job is linked to assets without a fake driver');
 select is((public.provision_training_dataset()->>'idempotent')::boolean,true,'training provisioning is idempotent');
+select throws_ok($$select public.delete_invoice_draft('training-v1-invoice')$$,'P0001','Training data can only be removed from Settings','training invoice cannot be removed outside the controlled dataset action');
 select is(public.remove_training_dataset('training-v1')->>'status','removed','administrator removes the controlled training dataset');
 select is((select count(*) from (
   select id from public.customers where id='training-v1-customer'

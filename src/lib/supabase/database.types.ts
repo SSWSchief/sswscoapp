@@ -60,7 +60,7 @@ export interface CustomerRow extends Record<string, unknown> {
   billing_postal_code: string;
   billing_country: "US";
   stripe_customer_id: string | null;
-  customer_group: "Big GC" | "Commercial" | "Residential" | null;
+  customer_group: "Commercial" | "Residential" | "One-off" | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -719,6 +719,10 @@ export interface Database {
       update_invoice_draft: {
         Args: { target_invoice_id: string; payload: Json };
         Returns: InvoiceRow;
+      };
+      delete_invoice_draft: {
+        Args: { target_invoice_id: string };
+        Returns: string;
       };
       publish_sop_document: {
         Args: {

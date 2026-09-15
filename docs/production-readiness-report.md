@@ -1,5 +1,34 @@
 # Production-Readiness Report
 
+## Austin invoice release candidate — September 13, 2026
+
+Austin's reported invoice and customer defects are fixed in the working tree:
+invoice line controls remain usable instead of compressing at desktop widths,
+authorized staff can permanently delete only local unsent drafts, deleting a
+draft releases its completed jobs for rebilling, the controlled training
+dataset cannot be partially deleted, and customer types are now Commercial,
+Residential, and One-off. Legacy `Big GC` values migrate to Commercial. The
+invoice page also reports Stripe readiness and disables delivery when the
+production billing gate is off, while preserving draft creation and deletion.
+
+Local release evidence is green: the clean install and dependency audit report
+zero known vulnerabilities; lint, strict TypeScript, dead-code analysis, eight
+script contract tests, 53 Vitest files / 362 tests, coverage thresholds, and the
+Next.js 15.5.25 production build all pass. The current production deployment's
+public authentication flow passes 12 Playwright checks across Chromium, iPad,
+and iPhone profiles, and its health endpoint reports a reachable database,
+configured email and push delivery, and Stripe connected in test mode with
+invoice sending deliberately disabled.
+
+This release candidate is ready for staging, not yet live. Migration
+`202609130001_invoice_draft_deletion_and_customer_types.sql` must be rehearsed
+and applied before the application deploy. This checkout has neither a running
+local PostgreSQL/Docker service nor a linked Supabase project, so migration,
+pgTAP, and authenticated invoice-browser acceptance are not claimed. General
+Stripe sending must remain off until the account, tax, webhook, test invoice,
+backup/restore, physical-device/accessibility, and named-approval gates below
+are complete.
+
 ## Stripe invoicing readiness update — September 2, 2026
 
 The repository now contains the itemized, office-reviewed Stripe invoicing

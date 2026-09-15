@@ -16,8 +16,8 @@ jobs:
       - name: Verify production health endpoint
         env:
           HEALTH_URL: https://sswscoapp.vercel.app/api/health
-          EXPECTED_STRIPE_MODE: test
-          EXPECTED_INVOICING_ENABLED: "false"
+          EXPECTED_STRIPE_MODE: live
+          EXPECTED_INVOICING_ENABLED: "true"
         run: |
           response="$(curl --fail-with-body --silent --show-error \
             --connect-timeout 10 --max-time 30 \

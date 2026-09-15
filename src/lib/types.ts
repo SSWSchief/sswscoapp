@@ -102,7 +102,7 @@ export interface Customer {
   billingPostalCode: string;
   billingCountry: "US";
   activeJobs: number;
-  group?: "Big GC" | "Commercial" | "Residential";
+  group?: "Commercial" | "Residential" | "One-off";
 }
 
 export interface Vendor {

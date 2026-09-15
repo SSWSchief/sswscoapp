@@ -163,6 +163,11 @@ describe("InvoiceModal — multi-job statement", () => {
     expect(await screen.findByRole("dialog", { name: /Add Customer/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/^Name/i)).toHaveValue("Henderson Framing");
     expect(screen.getByLabelText(/Billing contact name/i)).toHaveValue("Henderson Framing");
+    const customerType = screen.getByLabelText(/Customer type/i);
+    expect(customerType).toHaveTextContent("Commercial");
+    expect(customerType).toHaveTextContent("Residential");
+    expect(customerType).toHaveTextContent("One-off");
+    expect(customerType).not.toHaveTextContent("Big GC");
   });
 
   it("leaves the name alone when the create offer is declined", async () => {

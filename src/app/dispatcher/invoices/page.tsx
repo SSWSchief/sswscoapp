@@ -16,6 +16,12 @@ import { apiErrorMessage } from "@/lib/client-api";
 import type { InvoiceRecord } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
+type StripeReadiness = {
+  configured: boolean;
+  invoicingEnabled: boolean;
+  mode: "test" | "live" | "unset";
+};
+
 export default function InvoicesPage() {
   const { invoices, refresh } = useExpandedOperations();
   const { customers, canMutate } = useOperations();
@@ -25,6 +31,26 @@ export default function InvoicesPage() {
   const [editing, setEditing] = React.useState<InvoiceRecord>();
   const [exporting, setExporting] = React.useState(false);
   const [sending, setSending] = React.useState<string | null>(null);
+  const [stripeReadiness, setStripeReadiness] =
+    React.useState<StripeReadiness | null>(null);
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/health", { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = (await response.json()) as {
+          data?: { stripe?: StripeReadiness };
+        };
+        if (body.data?.stripe) setStripeReadiness(body.data.stripe);
+      })
+      .catch(() => {
+        // The send endpoint remains the authoritative fail-closed gate. A
+        // health-read failure should not replace its actionable error with a
+        // permanently disabled button and no recovery path.
+      });
+    return () => controller.abort();
+  }, []);
   const receivables = invoices
     .filter((invoice) => !["paid", "void"].includes(invoice.status))
     .reduce((total, invoice) => total + invoice.amountRemainingCents, 0);
@@ -58,6 +84,34 @@ export default function InvoicesPage() {
       await refresh();
     } catch {
       toast("The invoice could not be sent.", { tone: "error" });
+    } finally {
+      setSending(null);
+    }
+  };
+
+  const deleteDraft = async (invoice: InvoiceRecord) => {
+    const agreed = await confirm({
+      title: `Delete ${invoice.invoiceNumber}?`,
+      message: "This permanently removes the unsent draft and releases its completed jobs for another invoice. The invoice number will not be reused.",
+      confirmLabel: "Delete draft",
+      tone: "danger",
+    });
+    if (!agreed) return;
+    setSending(invoice.id);
+    try {
+      const response = await fetch(`/api/invoices/${invoice.id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        toast(await apiErrorMessage(response, "The draft could not be deleted."), {
+          tone: "error",
+        });
+        return;
+      }
+      toast(`${invoice.invoiceNumber} deleted.`, { tone: "success" });
+      await refresh();
+    } catch {
+      toast("The draft could not be deleted.", { tone: "error" });
     } finally {
       setSending(null);
     }
@@ -140,6 +194,19 @@ export default function InvoicesPage() {
           />
         </div>
 
+        {stripeReadiness && !stripeReadiness.invoicingEnabled && (
+          <div
+            role="status"
+            className="rounded border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+          >
+            <strong>Stripe sending is off.</strong>{" "}
+            {stripeReadiness.configured
+              ? `Stripe is connected in ${stripeReadiness.mode} mode, but invoice delivery has not been activated.`
+              : "Stripe account or webhook configuration is incomplete."}{" "}
+            You can create and delete drafts safely; activate approved billing before sending one to a customer.
+          </div>
+        )}
+
         <Card>
           <div className="flex justify-end border-b border-brand-ice p-4">
             <Button
@@ -186,9 +253,18 @@ export default function InvoicesPage() {
                       <StripeAction
                         invoice={invoice}
                         busy={sending === invoice.id}
-                        disabled={!canMutate}
+                        disabled={!canMutate || stripeReadiness?.invoicingEnabled === false}
                         onSend={() => void sendViaStripe(invoice)}
                       />
+                      {invoice.status === "draft" && !invoice.stripeInvoiceId && invoice.id !== "training-v1-invoice" && (
+                        <button
+                          className="min-h-11 text-red-700 disabled:opacity-40"
+                          disabled={!canMutate || sending === invoice.id}
+                          onClick={() => void deleteDraft(invoice)}
+                        >
+                          Delete
+                        </button>
+                      )}
                       <LifecycleActions invoice={invoice} busy={sending === invoice.id} onAction={(action) => void lifecycleAction(invoice, action)} />
                     </div>
                   </TD>
@@ -233,10 +309,19 @@ export default function InvoicesPage() {
                   <StripeAction
                     invoice={invoice}
                     busy={sending === invoice.id}
-                    disabled={!canMutate}
+                    disabled={!canMutate || stripeReadiness?.invoicingEnabled === false}
                     onSend={() => void sendViaStripe(invoice)}
                     full
                   />
+                  {invoice.status === "draft" && !invoice.stripeInvoiceId && invoice.id !== "training-v1-invoice" && (
+                    <Button
+                      variant="danger"
+                      disabled={!canMutate || sending === invoice.id}
+                      onClick={() => void deleteDraft(invoice)}
+                    >
+                      Delete draft
+                    </Button>
+                  )}
                   <LifecycleActions invoice={invoice} busy={sending === invoice.id} onAction={(action) => void lifecycleAction(invoice, action)} full />
                 </div>
               </li>

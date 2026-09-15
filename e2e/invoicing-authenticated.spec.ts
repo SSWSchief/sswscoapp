@@ -84,30 +84,86 @@ test.describe("invoice drafting", () => {
 
     const customer = page.getByLabel(/customer/i);
     await expect(customer).toBeVisible();
-    // Pick the seeded acceptance customer by id rather than by position: it is
-    // the one the bootstrap gives a complete billing address and a completed
-    // job, and dropdown order depends on whatever else the project holds.
-    // Poll for it — the customer list streams in from the operations provider
-    // after the select itself renders, so one immediate read sees a dropdown
-    // holding nothing but the placeholder.
+    // Pick the seeded acceptance customer by its exact name. The field is a
+    // type-ahead input backed by a datalist, not a select; staging acceptance
+    // must exercise the control dispatch actually uses.
     await expect
-      .poll(() => customer.locator('option[value="e2e-customer"]').count(), {
+      .poll(() => page.locator('#invoice-customers option[value="E2E Customer"]').count(), {
         timeout: 15_000,
       })
       .toBe(1);
-    await customer.selectOption("e2e-customer");
+    await customer.fill("E2E Customer");
 
     await selectFirstEligibleJob(page);
 
-    await page.getByLabel("Line 1 description").fill("Acceptance haul");
-    await page.getByLabel("Line 1 amount").fill("425.50");
-    await expect(page.getByText(/Total:\s*\$425\.50/)).toBeVisible();
+    const description = page.getByLabel("Line 1 description");
+    const amount = page.getByLabel("Line 1 amount");
+    await description.fill("Acceptance haul");
+    await amount.fill("425.50");
+    await expect(page.getByText("$425.50", { exact: true })).toBeVisible();
+
+    // Austin's screenshot showed the five controls squeezing the description
+    // and amount into unusable slivers. At every acceptance viewport the
+    // responsive layout now leaves both controls wide enough to edit.
+    expect((await description.boundingBox())?.width ?? 0).toBeGreaterThan(140);
+    expect((await amount.boundingBox())?.width ?? 0).toBeGreaterThan(140);
 
     // A draft has no number until the transactional counter assigns one.
     await expect(page.getByLabel(/invoice number/i)).toHaveValue(/Assigned when saved/i);
 
     await page.getByRole("button", { name: /save draft/i }).click();
     await expect(page.getByText(/Invoice draft saved/i)).toBeVisible();
+  });
+
+  test("deletes only the exact unsent draft it created", async ({ page }) => {
+    await signInAsAdmin(page);
+    await openInvoices(page);
+    await page.getByRole("button", { name: "New invoice" }).click();
+
+    const customer = page.getByLabel(/customer/i);
+    await expect
+      .poll(() => page.locator('#invoice-customers option[value="E2E Customer"]').count(), {
+        timeout: 15_000,
+      })
+      .toBe(1);
+    await customer.fill("E2E Customer");
+    await page.getByLabel(/billing mode/i).selectOption("one_off");
+    await page.getByLabel("Line 1 description").fill("Disposable acceptance draft");
+    await page.getByLabel("Line 1 amount").fill("1.00");
+
+    const created = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/invoices") &&
+        response.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: /save draft/i }).click();
+    const createResponse = await created;
+    expect(createResponse.ok()).toBe(true);
+    const createBody = (await createResponse.json()) as {
+      data: { id: string; invoice_number: string };
+    };
+    const invoiceNumber = createBody.data.invoice_number;
+
+    // Remove the exact draft this test created. This proves the browser action,
+    // authenticated DELETE route, transactional database function, and list
+    // refresh together while leaving no acceptance debris behind.
+    const draft = page
+      .locator("tr:visible, li:visible")
+      .filter({ hasText: invoiceNumber });
+    await expect(draft).toHaveCount(1);
+    await draft.getByRole("button", { name: /^Delete( draft)?$/ }).click();
+    await expect(
+      page.getByText(/releases its completed jobs for another invoice/i),
+    ).toBeVisible();
+    const deleted = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/invoices/${createBody.data.id}`) &&
+        response.request().method() === "DELETE",
+    );
+    await page.getByRole("button", { name: "Delete draft", exact: true }).click();
+    const deleteResponse = await deleted;
+    expect(deleteResponse.ok()).toBe(true);
+    await expect(draft).toHaveCount(0);
   });
 
   test("refuses a draft with no completed work behind it", async ({ page }) => {
@@ -152,6 +208,7 @@ test.describe("Stripe delivery", () => {
 
     const send = page.getByRole("button", { name: /send via stripe/i });
     test.skip(!(await present(send)), "no unsent draft is available to send");
+    await expect(send.first()).toBeEnabled();
     await send.first().click();
 
     // Read whichever toast appears and quote it. A refused send raises an error

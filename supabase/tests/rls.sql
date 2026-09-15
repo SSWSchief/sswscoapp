@@ -1,5 +1,5 @@
 begin;
-select plan(45);
+select plan(46);
 select has_table('public','audit_log','immutable audit log exists');
 select has_table('public','invoices','invoice records exist');
 select has_table('public','invoice_line_items','durable invoice lines exist');
@@ -19,6 +19,7 @@ select has_function('public','apply_operations_import',array['jsonb','text','tex
 select has_function('public','save_company_settings',array['text','text','text','text','text','text','integer','text','text','text'],'audited settings RPC exists');
 select has_function('public','create_invoice_draft',array['jsonb'],'transactional invoice draft RPC exists');
 select has_function('public','update_invoice_draft',array['text','jsonb'],'draft-only invoice update RPC exists');
+select has_function('public','delete_invoice_draft',array['text'],'unsent draft deletion RPC exists');
 select has_function('public','claim_stripe_webhook_event',array['text','text','text','boolean','bigint'],'atomic webhook inbox claim exists');
 select has_function('public','publish_sop_document',array['text','text','text','boolean'],'audited SOP publication RPC exists');
 select has_function('public','publish_pretrip_template',array['text','text[]','text[]'],'audited pre-trip template publication RPC carries sections');

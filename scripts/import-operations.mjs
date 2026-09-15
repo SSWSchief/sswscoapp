@@ -47,7 +47,7 @@ const customerSchema = z
     phone: z.string().max(40).optional(),
     email: z.union([z.literal(""), z.string().email().max(254)]).optional(),
     address: z.string().trim().min(3).max(500),
-    group: z.enum(["Big GC", "Commercial", "Residential"]).optional(),
+    group: z.enum(["Commercial", "Residential", "One-off"]).optional(),
   })
   .strict();
 const truckSchema = z

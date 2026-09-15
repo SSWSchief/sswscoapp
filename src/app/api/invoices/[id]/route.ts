@@ -17,3 +17,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (result.error) { const failure = invoiceWriteError(result.error); return api.fail(failure.code, failure.message, failure.status); }
   return api.success(result.data);
 }
+
+/** Permanently remove a local draft that has never been handed to Stripe. */
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const api = await authorizedInvoiceApi(request, "/api/invoices/[id]", "DELETE");
+  if (api.denied) return api.denied;
+  const { id } = await params;
+  const result = await api.access.db.rpc("delete_invoice_draft", {
+    target_invoice_id: id,
+  });
+  if (result.error) {
+    const failure = invoiceWriteError(result.error);
+    return api.fail(failure.code, failure.message, failure.status);
+  }
+  return api.success({ id: result.data });
+}
