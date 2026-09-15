@@ -17,7 +17,9 @@ jobs:
         env:
           HEALTH_URL: https://sswscoapp.vercel.app/api/health
           EXPECTED_STRIPE_MODE: live
-          EXPECTED_INVOICING_ENABLED: "true"
+          # Keep false through the tax-review hold and disabled-first live
+          # deployment. Change to true only after the paid pilot succeeds.
+          EXPECTED_INVOICING_ENABLED: "false"
         run: |
           response="$(curl --fail-with-body --silent --show-error \
             --connect-timeout 10 --max-time 30 \

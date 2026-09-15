@@ -27,13 +27,25 @@ are retained as documented test artifacts. The stop condition for paid test
 ledger entries or unexplained nonterminal application invoices was not
 triggered.
 
-The cutover is not complete. Production still reports Stripe test mode with
-invoicing disabled. The CPA-approved non-taxable decision still requires its
-named approver, approval date, and advice to be recorded through the audited
-tax-policy script. Stripe live-account review, restricted-key and live-webhook
-creation, the disabled live-mode deployment, the supervised legitimate pilot
-invoice, reconciliation, payout confirmation, and final handoff evidence are
-also pending. No live customer or invoice IDs exist in the application yet.
+Production release `2ae86398faca8e5eefc52c994325e9ba0a555674` now reports
+Stripe configured with actual mode `live`, expected mode `live`, and invoicing
+disabled. Live webhook endpoint `we_1UFxTGFbaWQW9d57J9PF7UNq` is enabled for
+the eleven invoice and PaymentIntent events handled by the application, and
+its distinct signing secret is stored as a sensitive Production variable.
+The dedicated restricted key and matching live account ID are also stored as
+Production-only variables. The temporary Webhook Endpoints write permission
+used for setup was removed from the application key.
+
+The cutover is not complete. On September 15 the client representative
+confirmed that no CPA or Nevada sales-tax adviser had reviewed invoice
+taxability and relied on Nevada's lack of individual income tax. That fact does
+not decide sales/use-tax treatment, particularly where dumpster possession or
+rental may be part of the transaction. Production therefore records
+`tax_policy_status=follow_up_required` through the audited tax-policy script,
+with no approval timestamp. Stripe account-profile review, a qualified written
+tax determination, the supervised legitimate pilot invoice, reconciliation,
+payout confirmation, and final handoff evidence remain pending. No live
+customer or invoice IDs exist in the application yet.
 
 ## Austin invoice release candidate — September 13, 2026
 
