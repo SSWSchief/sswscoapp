@@ -13,7 +13,7 @@ function pngDimensions(path) {
 test("Stripe branding assets use the supplied logo and meet upload limits", () => {
   const logo = "public/brand/sswsco-stripe-logo.png";
   const icon = "public/icons/icon-512.png";
-  const source = "image_references/sswsco logo/IMG_4983.PNG";
+  const source = "IMG_4983.PNG";
 
   assert.ok(statSync(source).size > 0, "the client-supplied source logo is missing");
   for (const path of [logo, icon]) {
@@ -30,4 +30,3 @@ test("Stripe branding assets use the supplied logo and meet upload limits", () =
   assert.notEqual(logoSize.width, logoSize.height, "Stripe logo must be non-square");
   assert.equal(iconSize.width, iconSize.height, "Stripe icon must be square");
 });
-
