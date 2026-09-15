@@ -3,9 +3,12 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CreateJobModal } from "./CreateJobModal";
-import type { Customer, User } from "@/lib/types";
+import type { Customer, Truck, User } from "@/lib/types";
 
-const state = { created: [] as Record<string, unknown>[] };
+const state = {
+  created: [] as Record<string, unknown>[],
+  customers: [] as Customer[],
+};
 
 const customers = [
   { id: "cust-1", name: "Vegas GC", phone: "702-555-0100", address: "1 A St" },
@@ -14,19 +17,32 @@ const users = [
   { id: "rep-1", fullName: "Annie Montoya", status: "active", accessRole: "dispatcher" },
   { id: "drv-1", fullName: "Matthew Hicks", status: "active", accessRole: "driver" },
 ] as User[];
+const trucks = [
+  {
+    id: "truck-1",
+    number: "T-01",
+    type: "Roll-off Truck",
+    status: "in_use",
+    licensePlate: "NV-123",
+    assignedDriverId: null,
+    currentJobId: null,
+    notes: "",
+  },
+] as Truck[];
 
 vi.mock("@/components/system/OperationsProvider", () => ({
   useOperations: () => ({
-    customers,
+    customers: state.customers,
     users,
     dumpsters: [],
-    trucks: [],
+    trucks,
     canMutate: true,
     createJob: async (input: Record<string, unknown>) => {
       state.created.push(input);
       return { ok: true, data: {} };
     },
     updateJob: async () => ({ ok: true, data: undefined }),
+    saveTruck: async () => ({ ok: true, data: undefined }),
   }),
 }));
 vi.mock("@/components/system/ToastProvider", () => ({
@@ -44,6 +60,7 @@ describe("CreateJobModal — booking a customer who is not on the list", () => {
   afterEach(cleanup);
   beforeEach(() => {
     state.created = [];
+    state.customers = customers;
   });
 
   it("sends a typed name for the server to resolve or create", async () => {
@@ -108,5 +125,36 @@ describe("CreateJobModal — booking a customer who is not on the list", () => {
       await screen.findByText(/Pick a customer or type a new name/i),
     ).toBeInTheDocument();
     expect(state.created).toHaveLength(0);
+  });
+
+  it("edits the selected truck without discarding the work order", async () => {
+    const view = render(<CreateJobModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/^Customer/i), "Vegas GC");
+    await user.type(screen.getByPlaceholderText(/Enter address/i), "500 Sahara Ave");
+    await user.selectOptions(screen.getByLabelText(/Assign Truck/i), "truck-1");
+
+    await user.click(screen.getByRole("button", { name: "Edit T-01" }));
+    expect(screen.getByRole("dialog", { name: "Edit Truck" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Truck Number/i)).toHaveValue("T-01");
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(
+      screen.getByRole("dialog", { name: "Create New Job" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Customer/i)).toHaveValue("Vegas GC");
+    expect(screen.getByPlaceholderText(/Enter address/i)).toHaveValue(
+      "500 Sahara Ave",
+    );
+    expect(screen.getByLabelText(/Assign Truck/i)).toHaveValue("truck-1");
+
+    // A successful truck save refreshes every work-order domain. New array
+    // identities must not be mistaken for a request to initialize the form.
+    state.customers = [...customers];
+    view.rerender(<CreateJobModal open onClose={() => {}} />);
+    expect(screen.getByLabelText(/^Customer/i)).toHaveValue("Vegas GC");
+    expect(screen.getByPlaceholderText(/Enter address/i)).toHaveValue(
+      "500 Sahara Ave",
+    );
   });
 });

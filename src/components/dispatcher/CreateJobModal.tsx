@@ -7,6 +7,7 @@ import { FormField, Input, Select, Textarea } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/system/ToastProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { AddTruckModal } from "@/components/dispatcher/AssetModals";
 import { truckStatusLabel } from "@/lib/utils";
 import type { DumpsterSize, Job, ServiceType } from "@/lib/types";
 
@@ -70,36 +71,51 @@ export function CreateJobModal({
     Partial<Record<keyof Form, string>>
   >({});
   const [saving, setSaving] = React.useState(false);
+  const [truckEditorOpen, setTruckEditorOpen] = React.useState(false);
+  const initializedFor = React.useRef<string | null>(null);
+
+  const selectedTruck = trucks.find((truck) => truck.id === form.truck);
 
   React.useEffect(() => {
-    if (open) {
-      setForm(
-        job
-          ? {
-              customer:
-                customers.find((item) => item.id === job.customerId)?.name ??
-                "",
-              salesRep: job.salesRepId ?? "",
-              address: job.address,
-              serviceType: job.serviceType,
-              dumpsterSize: job.dumpsterSize,
-              driver: job.assignedDriverId ?? "",
-              truck: job.assignedTruckId ?? "",
-              dumpster: job.assignedDumpsterId ?? "",
-              scheduledFor: new Date(
-                new Date(job.scheduledFor).getTime() -
-                  new Date(job.scheduledFor).getTimezoneOffset() * 60000,
-              )
-                .toISOString()
-                .slice(0, 16),
-              trafficInstructions: job.trafficInstructions ?? "",
-              notes: job.notes,
-            }
-          : empty,
-      );
-      setErrors({});
+    if (!open) {
+      initializedFor.current = null;
+      return;
     }
+    const target = job?.id ?? "new";
+    // Realtime updates replace the customers/trucks arrays while this dialog
+    // is open. Initializing again on that data refresh used to erase a work
+    // order in progress — including immediately after editing its truck.
+    if (initializedFor.current === target) return;
+    initializedFor.current = target;
+    setForm(
+      job
+        ? {
+            customer:
+              customers.find((item) => item.id === job.customerId)?.name ?? "",
+            salesRep: job.salesRepId ?? "",
+            address: job.address,
+            serviceType: job.serviceType,
+            dumpsterSize: job.dumpsterSize,
+            driver: job.assignedDriverId ?? "",
+            truck: job.assignedTruckId ?? "",
+            dumpster: job.assignedDumpsterId ?? "",
+            scheduledFor: new Date(
+              new Date(job.scheduledFor).getTime() -
+                new Date(job.scheduledFor).getTimezoneOffset() * 60000,
+            )
+              .toISOString()
+              .slice(0, 16),
+            trafficInstructions: job.trafficInstructions ?? "",
+            notes: job.notes,
+          }
+        : empty,
+    );
+    setErrors({});
   }, [customers, job, open]);
+
+  React.useEffect(() => {
+    if (!open) setTruckEditorOpen(false);
+  }, [open]);
 
   const set =
     (k: keyof Form) =>
@@ -169,8 +185,9 @@ export function CreateJobModal({
   };
 
   return (
-    <Modal
-      open={open}
+    <>
+      <Modal
+      open={open && !truckEditorOpen}
       onClose={onClose}
       title={job ? `Edit ${job.reference}` : "Create New Job"}
       footer={
@@ -328,7 +345,11 @@ export function CreateJobModal({
             </FormField>
             <FormField
               label="Assign Truck"
-              hint="Trucks in the shop can't be assigned."
+              hint={
+                selectedTruck
+                  ? "Edit the selected truck without losing this work order."
+                  : "Trucks in the shop can't be assigned."
+              }
             >
               <Select value={form.truck} onChange={set("truck")}>
                 <option value="">No truck</option>
@@ -351,6 +372,19 @@ export function CreateJobModal({
                 ))}
               </Select>
             </FormField>
+            {selectedTruck && (
+              <div className="-mt-3 sm:col-start-1">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full sm:w-auto"
+                  onClick={() => setTruckEditorOpen(true)}
+                >
+                  <Icon name="edit" width={16} height={16} />
+                  Edit {selectedTruck.number}
+                </Button>
+              </div>
+            )}
             <FormField label="Assign Dumpster">
               <Select value={form.dumpster} onChange={set("dumpster")}>
                 <option value="">No dumpster</option>
@@ -391,7 +425,13 @@ export function CreateJobModal({
           </FormField>
         </Section>
       </div>
-    </Modal>
+      </Modal>
+      <AddTruckModal
+        open={open && truckEditorOpen}
+        onClose={() => setTruckEditorOpen(false)}
+        truck={selectedTruck}
+      />
+    </>
   );
 }
 
