@@ -81,6 +81,11 @@ import {
 import { log } from "@/lib/logger";
 import { requestNotificationDelivery } from "@/lib/push/notify-client";
 import { apiErrorMessage } from "@/lib/client-api";
+import {
+  canAttemptOperation,
+  operationErrorContext,
+  type OperationsConnectionState,
+} from "@/lib/operations/connection-policy";
 
 /**
  * Row caps for the two shapes of list the app loads. Both are far above what
@@ -91,8 +96,6 @@ import { apiErrorMessage } from "@/lib/client-api";
 const JOB_WINDOW_LIMIT = 1000;
 const DIRECTORY_LIMIT = 500;
 
-type ConnectionState =
-  "loading" | "ready" | "stale" | "offline" | "unauthorized" | "error";
 export type MutationResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: { code: string; message: string } };
@@ -216,7 +219,7 @@ interface TimeRequestInput {
 interface Value extends State {
   hydrated: boolean;
   connected: boolean;
-  connectionState: ConnectionState;
+  connectionState: OperationsConnectionState;
   connectionMessage: string | null;
   canMutate: boolean;
   currentUser: User | null;
@@ -332,7 +335,7 @@ export function OperationsProvider({
   );
   const [state, setState] = React.useState<State>(emptyState);
   const [connectionState, setConnectionState] =
-    React.useState<ConnectionState>("loading");
+    React.useState<OperationsConnectionState>("loading");
   const [connectionMessage, setConnectionMessage] = React.useState<
     string | null
   >(null);
@@ -687,14 +690,14 @@ export function OperationsProvider({
         });
       } catch (error) {
         log("error", "operations_refresh_failed", {
-          message: error instanceof Error ? error.message : "unknown",
+          ...operationErrorContext(error),
           domains: [...domains],
           durationMs: Date.now() - started,
         });
         setConnectionState(loaded.current ? "stale" : "error");
         setConnectionMessage(
           loaded.current
-            ? "Live data is temporarily unavailable. Showing the last loaded records in read-only mode."
+            ? "Some live data is temporarily unavailable. Showing the last loaded records; changes will still be confirmed by the server."
             : "Operations data could not be loaded.",
         );
       }
@@ -751,7 +754,7 @@ export function OperationsProvider({
       void db.removeChannel(channel);
     };
   }, [activeDomains, pathname, refresh]);
-  const canMutate = connectionState === "ready";
+  const canMutate = canAttemptOperation(connectionState);
   const guard = React.useCallback(
     () =>
       canMutate
