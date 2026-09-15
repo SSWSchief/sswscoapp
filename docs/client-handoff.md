@@ -9,6 +9,57 @@ training dataset. Automated E2E identities never enter production.
 
 Read this section first; it is what is true on the day the system changes hands.
 
+### Stripe production cutover hold — September 15, 2026
+
+The production application is connected to Stripe live mode, but invoice
+sending is deliberately disabled. The functional cutover release is
+`2ae86398faca8e5eefc52c994325e9ba0a555674`; later September 15 commits record
+the tax hold and operational evidence without changing invoice behavior.
+
+Completed technical controls and evidence:
+
+- The restricted live application key and matching account ID are stored only
+  in Vercel Production. Its temporary Webhook Endpoints write permission was
+  removed after setup.
+- Live webhook `we_1UFxTGFbaWQW9d57J9PF7UNq` is enabled for the eleven invoice
+  and PaymentIntent events handled by the application. Its distinct signing
+  secret is a sensitive Vercel Production variable.
+- Production health reports a reachable database, Stripe configured, actual
+  mode `live`, expected mode `live`, and invoicing disabled. Manual Production
+  Health Smoke run `34984141799` passed, as did the full `main` CI run.
+- The post-deploy scan found no Vercel error-level logs or 5xx responses in the
+  first two hours. An invalid-signature webhook probe returned 400 and created
+  no live webhook-inbox row.
+- Production contains zero Stripe-linked customers, zero Stripe-linked
+  invoices, and zero live webhook rows. One local unsent test draft remains:
+  `INV-000001`, $525.00, one rental line, zero linked jobs, and no Stripe ID.
+  A human should confirm and delete it through the invoice screen; do not
+  delete it directly in the database.
+
+Stripe's API reports charges and payouts enabled, all submitted identity
+requirements clear, card and ACH capabilities active, a daily payout schedule,
+branding configured, and a statement descriptor present. The following remain
+human-owned before activation:
+
+1. Add the missing Stripe support email.
+2. Enable US bank accounts in the active payment-method configuration; the
+   account capability is active, but that configuration currently exposes card
+   only.
+3. Confirm the default payout bank, which Stripe currently reports with status
+   `new`, and confirm account two-factor authentication.
+4. Obtain a written Nevada sales/use-tax determination covering rental,
+   delivery, pickup, hauling, disposal, tonnage, fees, and surcharges.
+   Production truthfully records `tax_policy_status=follow_up_required`; there
+   is no approval timestamp.
+5. Name the rollback owner and have that person remove the unsent test draft.
+
+Do not enable invoicing until the tax determination is recorded. The legitimate
+completed-job pilot, card payment, successful signed delivery, duplicate replay,
+zero-difference reconciliation, receivables/export checks, and first bank
+payout remain pilot-dependent human/technical work. After the pilot succeeds,
+set the scheduled production smoke expectation and Vercel invoicing flag to
+`true`; until then both intentionally expect `false`.
+
 **Working.** Sign-in, all three portals, jobs and dispatch, time clock, pre-trip,
 SOPs, messages, invoices, reports, exports, and audit history. Employees can be
 onboarded with an administrator-issued temporary password or an emailed

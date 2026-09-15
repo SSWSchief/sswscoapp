@@ -47,6 +47,18 @@ tax determination, the supervised legitimate pilot invoice, reconciliation,
 payout confirmation, and final handoff evidence remain pending. No live
 customer or invoice IDs exist in the application yet.
 
+Post-deploy evidence: full `main` CI and manual Production Health Smoke run
+`34984141799` pass. A two-hour Vercel scan found zero error-level logs and zero
+5xx responses. An invalid-signature request to the live webhook returned 400
+and did not create a webhook-inbox row. The live account reports charges and
+payouts enabled with no currently due, past-due, or pending-verification
+requirements; card and ACH capabilities are active. The active payment-method
+configuration nevertheless exposes card only, the business profile lacks a
+support email, and the default payout bank reports status `new`, so those items
+and account 2FA require human confirmation before activation. Local unsent test
+draft `INV-000001` ($525.00, one rental line, zero jobs, no Stripe ID) is also
+held for human-confirmed deletion through the application.
+
 ## Austin invoice release candidate — September 13, 2026
 
 Austin's reported invoice and customer defects are fixed in the working tree:
