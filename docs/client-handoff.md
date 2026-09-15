@@ -21,6 +21,10 @@ Completed technical controls and evidence:
 - The restricted live application key and matching account ID are stored only
   in Vercel Production. Its temporary Webhook Endpoints write permission was
   removed after setup.
+- The client-supplied logo is canonicalized in `docs/branding.md`; the same
+  artwork is used in the application and its Stripe-compliant logo/icon files
+  are the source for Live Branding so invoice PDFs and hosted payment pages do
+  not drift from the app.
 - Live webhook `we_1UFxTGFbaWQW9d57J9PF7UNq` is enabled for the eleven invoice
   and PaymentIntent events handled by the application. Its distinct signing
   secret is a sensitive Vercel Production variable.

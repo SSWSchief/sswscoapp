@@ -4,7 +4,7 @@ const APP_SHELL = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/apple-touch-icon.png",
-  "/brand/sswsco-logo.png",
+  "/brand/sswsco-stripe-logo.png",
 ];
 
 self.addEventListener("install", (event) => {

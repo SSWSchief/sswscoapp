@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { BRAND_LOGO_PATH } from "@/lib/brand";
 
 export function LogoMark({
   className,
@@ -17,7 +18,7 @@ export function LogoMark({
       )}
     >
       <Image
-        src="/brand/sswsco-logo.png"
+        src={BRAND_LOGO_PATH}
         alt=""
         fill
         sizes="160px"
