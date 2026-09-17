@@ -2,6 +2,9 @@ import "server-only";
 import type Stripe from "stripe";
 import type { InvoiceLineCategory, InvoicePaymentTerms } from "@/lib/types";
 
+/** Stripe's verified general-services code for the app's service line items. */
+export const STRIPE_SERVICE_TAX_CODE = "txcd_20030000";
+
 interface PushableCustomer {
   id: string;
   name: string;
@@ -174,6 +177,8 @@ export async function replaceStripeInvoiceItems(
         amount: item.amountCents,
         currency: "usd",
         description: item.description,
+        tax_behavior: "exclusive",
+        tax_code: STRIPE_SERVICE_TAX_CODE,
         metadata: {
           sswsco_line_item_id: item.id,
           sswsco_category: item.category,

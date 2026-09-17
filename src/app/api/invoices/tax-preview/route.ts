@@ -1,5 +1,6 @@
 import { authorizedInvoiceApi } from "@/lib/invoices/api";
 import { requireStripeInvoicing } from "@/lib/stripe/client";
+import { STRIPE_SERVICE_TAX_CODE } from "@/lib/stripe/invoice-push";
 
 type PreviewBody = {
   address: {
@@ -46,6 +47,8 @@ export async function POST(request: Request) {
       line_items: items.map((item) => ({
         amount: item.amountCents,
         reference: item.id,
+        tax_behavior: "exclusive",
+        tax_code: STRIPE_SERVICE_TAX_CODE,
       })),
     });
     return api.success({

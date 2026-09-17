@@ -53,7 +53,7 @@ describe("Stripe invoice drafts", () => {
   it("writes durable line items with stable keys", async () => {
     const { stripe, calls } = fakeStripe();
     await replaceStripeInvoiceItems(stripe, invoice(), "cus_1", "in_1");
-    expect(calls.createItem[0].params).toMatchObject({ amount: 40000, invoice: "in_1", description: "20 yard delivery" });
+    expect(calls.createItem[0].params).toMatchObject({ amount: 40000, invoice: "in_1", description: "20 yard delivery", tax_behavior: "exclusive", tax_code: "txcd_20030000" });
     expect(calls.createItem[0].options?.idempotencyKey).toBe("invoice:inv-1:item:line-1");
   });
   /**
