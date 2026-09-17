@@ -39,6 +39,11 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   const [notes, setNotes] = React.useState("");
   const [items, setItems] = React.useState<EditorItem[]>([blankItem()]);
   const [remoteJobs, setRemoteJobs] = React.useState<EligibleJob[] | null>(null);
+  const [taxPreview, setTaxPreview] = React.useState<{
+    taxCents: number;
+    totalCents: number;
+  } | null>(null);
+  const [taxPreviewState, setTaxPreviewState] = React.useState<"idle" | "loading" | "error">("idle");
   const editable = !invoice || invoice.status === "draft";
   const jobSelectionEditable = editable && !invoice?.revisedFromId;
 
@@ -73,6 +78,59 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   }, [open, customerId, invoice?.id]);
 
   const selectedCustomer = customers.find((customer) => customer.id === customerId);
+
+  React.useEffect(() => {
+    if (!open || !editable || !selectedCustomer) {
+      setTaxPreview(null);
+      setTaxPreviewState("idle");
+      return;
+    }
+    const address = selectedCustomer;
+    const previewItems = items
+      .map((item) => ({ id: item.key, amountCents: Math.round(Number(item.amount) * 100) }))
+      .filter((item) => Number.isSafeInteger(item.amountCents) && item.amountCents > 0);
+    if (!address.billingAddressLine1.trim() || !address.billingCity.trim() || !address.billingState.trim() || !address.billingPostalCode.trim() || !previewItems.length) {
+      setTaxPreview(null);
+      setTaxPreviewState("idle");
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setTaxPreviewState("loading");
+      void fetch("/api/invoices/tax-preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          address: {
+            line1: address.billingAddressLine1,
+            line2: address.billingAddressLine2,
+            city: address.billingCity,
+            state: address.billingState,
+            postalCode: address.billingPostalCode,
+            country: address.billingCountry,
+          },
+          items: previewItems,
+        }),
+      })
+        .then(async (response) => {
+          if (!response.ok) throw new Error("Tax preview unavailable");
+          const body = (await response.json()) as { data: { taxCents: number; totalCents: number } };
+          setTaxPreview(body.data);
+          setTaxPreviewState("idle");
+        })
+        .catch((error) => {
+          if ((error as Error).name !== "AbortError") {
+            setTaxPreview(null);
+            setTaxPreviewState("error");
+          }
+        });
+    }, 350);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [editable, items, open, selectedCustomer]);
   // Derived rather than stored, so an existing invoice shows its customer
   // without the setup effect having to read the customer list.
   const customerFieldValue = selectedCustomer?.name ?? customerName;
@@ -296,6 +354,20 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
             <span className="text-sm text-brand-steel">Invoice total</span>
             <span className="font-heading text-lg font-semibold">{formatCurrency(items.reduce((sum, item) => sum + (Math.round(Number(item.amount) * 100) || 0), 0))}</span>
           </div>
+          {editable && (
+            <div className="mt-2 flex items-center justify-between text-sm">
+              <span className="text-brand-steel">Estimated sales tax</span>
+              <span className="font-medium text-brand-charcoal">
+                {taxPreviewState === "loading"
+                  ? "Calculating…"
+                  : taxPreview
+                    ? `${formatCurrency(taxPreview.taxCents)} · Total ${formatCurrency(taxPreview.totalCents)}`
+                    : taxPreviewState === "error"
+                      ? "Unavailable — Stripe calculates at send"
+                      : "Enter billing details to calculate"}
+              </span>
+            </div>
+          )}
         </div>
         <FormField label="Notes"><Textarea disabled={!editable} maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} /></FormField>
         {!editable && <div className="grid gap-2 text-sm sm:grid-cols-2"><div>Canonical status: <strong>{invoice?.status}</strong></div><div>Display status: <strong>{invoice?.displayStatus.replaceAll("_", " ")}</strong></div><div>Paid: <strong>{formatCurrency(invoice?.amountPaidCents ?? 0)}</strong></div><div>Remaining: <strong>{formatCurrency(invoice?.amountRemainingCents ?? 0)}</strong></div></div>}
