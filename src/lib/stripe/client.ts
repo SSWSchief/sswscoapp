@@ -41,6 +41,10 @@ export function stripeInvoicingEnabled() {
   return process.env.STRIPE_INVOICING_ENABLED === "true";
 }
 
+export function stripeAutomaticTaxEnabled() {
+  return process.env.STRIPE_AUTOMATIC_TAX_ENABLED === "true";
+}
+
 /** Verify the key belongs to the configured account before a money action. */
 async function assertStripeAccount(stripe = createStripeClient()) {
   const expected = process.env.STRIPE_ACCOUNT_ID;

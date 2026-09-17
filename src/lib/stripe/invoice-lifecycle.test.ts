@@ -9,6 +9,7 @@ const stripeSendInvoice = vi.fn();
 const stripeVoid = vi.fn();
 const stripeMarkUncollectible = vi.fn();
 const keyMode = vi.fn(() => "test" as "test" | "live");
+const automaticTaxEnabled = vi.fn(() => false);
 
 vi.mock("./client", () => ({
   requireStripeInvoicing: async () => ({
@@ -20,6 +21,7 @@ vi.mock("./client", () => ({
     },
   }),
   stripeKeyMode: () => keyMode(),
+  stripeAutomaticTaxEnabled: () => automaticTaxEnabled(),
 }));
 
 const syncStripeCustomer = vi.fn(async () => "cus_1");
@@ -91,6 +93,7 @@ const world = (overrides: { invoice?: Row; settings?: Row; job?: Row; lines?: Ro
 beforeEach(() => {
   vi.clearAllMocks();
   keyMode.mockReturnValue("test");
+  automaticTaxEnabled.mockReturnValue(false);
   createStripeInvoiceDraft.mockResolvedValue({ id: "in_created" });
   findStripeInvoiceByLocalMetadata.mockResolvedValue(null);
   finalizeAndSendStripeInvoice.mockResolvedValue({ invoice: { id: "in_created", status: "open" } as unknown as Stripe.Invoice });
@@ -172,12 +175,13 @@ describe("sendInvoice", () => {
     });
   });
 
-  it("blocks live sending until the tax policy is approved, and allows it once it is", async () => {
+  it("blocks live sending until automatic tax is configured and approved", async () => {
     keyMode.mockReturnValue("live");
     const pending = world({ settings: { tax_policy_status: "pending" } });
-    await expect(sendInvoice("inv-1", pending.client)).rejects.toThrow(/tax policy is approved/);
+    await expect(sendInvoice("inv-1", pending.client)).rejects.toThrow(/automatic tax is configured and approved/);
 
-    const approved = world({ settings: { tax_policy_status: "non_taxable_approved" } });
+    const approved = world({ settings: { tax_policy_status: "automatic_tax_approved" } });
+    automaticTaxEnabled.mockReturnValue(true);
     await expect(sendInvoice("inv-1", approved.client)).resolves.toBeTruthy();
   });
 

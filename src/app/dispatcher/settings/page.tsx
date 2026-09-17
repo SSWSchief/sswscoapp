@@ -515,7 +515,7 @@ export default function Page() {
                   </Select>
                 </FormField>
                 <div className="rounded border border-brand-ice p-3 text-sm text-brand-steel">
-                  Live tax gate: <strong className="text-brand-charcoal">{form.taxPolicyStatus.replaceAll("_", " ")}</strong>. This controlled field must be approved during the launch process before live invoices can be sent.
+                  Live tax gate: <strong className="text-brand-charcoal">{form.taxPolicyStatus.replaceAll("_", " ")}</strong>. Stripe automatic tax must be configured and approved before live invoices can be sent.
                 </div>
                 <Button
                   disabled={disabled || !settings}

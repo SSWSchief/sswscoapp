@@ -1,11 +1,21 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { createStripeClient, stripeKeyMode } from "./client";
+import { createStripeClient, stripeAutomaticTaxEnabled, stripeKeyMode } from "./client";
 
-const original = { key: process.env.STRIPE_SECRET_KEY, mode: process.env.STRIPE_EXPECTED_MODE, vercel: process.env.VERCEL_ENV };
+const original = { key: process.env.STRIPE_SECRET_KEY, mode: process.env.STRIPE_EXPECTED_MODE, vercel: process.env.VERCEL_ENV, automaticTax: process.env.STRIPE_AUTOMATIC_TAX_ENABLED };
 afterEach(() => {
   if (original.key === undefined) delete process.env.STRIPE_SECRET_KEY; else process.env.STRIPE_SECRET_KEY = original.key;
   if (original.mode === undefined) delete process.env.STRIPE_EXPECTED_MODE; else process.env.STRIPE_EXPECTED_MODE = original.mode;
   if (original.vercel === undefined) delete process.env.VERCEL_ENV; else process.env.VERCEL_ENV = original.vercel;
+  if (original.automaticTax === undefined) delete process.env.STRIPE_AUTOMATIC_TAX_ENABLED; else process.env.STRIPE_AUTOMATIC_TAX_ENABLED = original.automaticTax;
+});
+
+describe("Stripe automatic tax setting", () => {
+  it("requires the exact opt-in", () => {
+    delete process.env.STRIPE_AUTOMATIC_TAX_ENABLED;
+    expect(stripeAutomaticTaxEnabled()).toBe(false);
+    process.env.STRIPE_AUTOMATIC_TAX_ENABLED = "true";
+    expect(stripeAutomaticTaxEnabled()).toBe(true);
+  });
 });
 
 describe("Stripe environment guard", () => {

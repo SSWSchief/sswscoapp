@@ -44,6 +44,7 @@ describe("Stripe invoice drafts", () => {
     await createStripeInvoiceDraft(stripe, invoice(), "cus_1");
     expect(calls.createInvoice[0].params).toMatchObject({
       number: "INV-000001", footer: "Rental terms", days_until_due: 30,
+      automatic_tax: { enabled: true },
       payment_settings: { payment_method_types: ["card", "us_bank_account"] },
       metadata: { sswsco_invoice_id: "inv-1", sswsco_invoice_number: "INV-000001" },
     });

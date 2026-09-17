@@ -92,6 +92,7 @@ export async function createStripeInvoiceDraft(
     customFields.push({ name: "PO Number", value: invoice.poNumber });
   const common = {
     collection_method: "send_invoice" as const,
+    automatic_tax: { enabled: true },
     days_until_due: termsDays[invoice.paymentTerms],
     description: invoiceMemo(invoice) || undefined,
     footer: invoice.terms || undefined,

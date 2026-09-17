@@ -380,7 +380,7 @@ export interface CompanySettingsRow extends Record<string, unknown> {
   invoice_prefix: string;
   invoice_terms: string;
   default_payment_terms: "due_on_receipt" | "net_15" | "net_30";
-  tax_policy_status: "pending" | "non_taxable_approved" | "follow_up_required";
+  tax_policy_status: "pending" | "automatic_tax_approved" | "non_taxable_approved" | "follow_up_required";
   tax_policy_approved_at: string | null;
   tax_policy_note: string;
   updated_at: string;

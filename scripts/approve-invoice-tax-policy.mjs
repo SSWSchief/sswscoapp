@@ -2,7 +2,7 @@
  * Records the Nevada tax treatment decision that gates live invoicing.
  *
  * `sendInvoice` refuses to send under a live Stripe key until
- * `company_settings.tax_policy_status` reads `non_taxable_approved`, and the
+ * `company_settings.tax_policy_status` reads `automatic_tax_approved`, and the
  * settings RPC deliberately cannot write that column — otherwise a dispatcher
  * could approve the company's own tax position from the settings screen. The
  * decision belongs to the account owner acting on the CPA's advice, so it is
@@ -54,7 +54,7 @@ const secretKey = required("SUPABASE_SECRET_KEY");
 const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
 const apply = options.apply === true;
 
-const allowed = new Set(["pending", "non_taxable_approved", "follow_up_required"]);
+const allowed = new Set(["pending", "automatic_tax_approved", "non_taxable_approved", "follow_up_required"]);
 
 if (apply) {
   if (!allowed.has(options.status))
@@ -101,7 +101,9 @@ const saved = await supabase
     // Only an approval carries a timestamp; the other states are open
     // questions rather than decisions.
     tax_policy_approved_at:
-      status === "non_taxable_approved" ? new Date().toISOString() : null,
+      status === "automatic_tax_approved" || status === "non_taxable_approved"
+        ? new Date().toISOString()
+        : null,
     tax_policy_note: options.note.trim(),
   })
   .eq("id", true)
@@ -114,7 +116,9 @@ console.log(`  status      : ${saved.data.tax_policy_status}`);
 console.log(`  approved at : ${saved.data.tax_policy_approved_at ?? "—"}`);
 console.log(`  note        : ${saved.data.tax_policy_note}`);
 console.log(
-  status === "non_taxable_approved"
-    ? "\nLive invoicing is no longer blocked by the tax gate."
+  status === "automatic_tax_approved"
+    ? "\nLive invoicing can use Stripe automatic tax once STRIPE_AUTOMATIC_TAX_ENABLED=true."
+    : status === "non_taxable_approved"
+      ? "\nLive invoicing is no longer blocked by the tax gate."
     : "\nLive invoicing remains blocked by the tax gate.",
 );

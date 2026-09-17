@@ -518,7 +518,7 @@ export interface CompanySettings {
   /** Rental terms printed on every invoice. See 202609010005. */
   invoiceTerms: string;
   defaultPaymentTerms: InvoicePaymentTerms;
-  taxPolicyStatus: "pending" | "non_taxable_approved" | "follow_up_required";
+  taxPolicyStatus: "pending" | "automatic_tax_approved" | "non_taxable_approved" | "follow_up_required";
   taxPolicyApprovedAt: string | null;
   taxPolicyNote: string;
 }

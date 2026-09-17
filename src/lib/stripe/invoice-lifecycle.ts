@@ -2,7 +2,11 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, InvoiceLineItemRow, InvoiceRow } from "@/lib/supabase/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireStripeInvoicing, stripeKeyMode } from "./client";
+import {
+  requireStripeInvoicing,
+  stripeAutomaticTaxEnabled,
+  stripeKeyMode,
+} from "./client";
 import {
   createStripeInvoiceDraft,
   findStripeInvoiceByLocalMetadata,
@@ -55,8 +59,9 @@ function validateForSend(invoice: InvoiceRow, lines: InvoiceLineItemRow[], jobs:
     throw new Error("Review the complete US billing address before sending.");
   if (invoice.invoice_number.length > 26) throw new Error("Invoice number exceeds Stripe's 26-character limit.");
   if (!terms.trim()) throw new Error("Company invoice terms are required before sending.");
-  if (stripeKeyMode() === "live" && taxPolicy !== "non_taxable_approved")
-    throw new Error("Live sending is blocked until the invoice tax policy is approved.");
+  if (stripeKeyMode() === "live" &&
+      (taxPolicy !== "automatic_tax_approved" || !stripeAutomaticTaxEnabled()))
+    throw new Error("Live sending is blocked until Stripe automatic tax is configured and approved.");
 }
 
 export async function sendInvoice(id: string, db: Db = createAdminClient()) {
