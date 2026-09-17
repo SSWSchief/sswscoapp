@@ -266,7 +266,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
             <h3 className="font-heading font-semibold">Line items</h3>
             <span className="text-xs text-brand-steel">{items.length} {items.length === 1 ? "line" : "lines"}</span>
           </div>
-          <div className="space-y-3">{items.map((item, index) => <div key={item.key} className="grid gap-2 rounded border border-brand-ice p-3 lg:grid-cols-[minmax(12rem,1fr)_9rem_9rem_9rem_auto]">
+          <div className="space-y-3">{items.map((item, index) => <div key={item.key} className="grid gap-2 rounded border border-brand-ice p-3 lg:grid-cols-[minmax(12rem,1fr)_9rem_9rem_auto]">
             <Input aria-label={`Line ${index + 1} description`} disabled={!editable} placeholder="Description" value={item.description} onChange={(event) => updateItem(index, { description: event.target.value })} />
             <div>
               <Input aria-label={`Line ${index + 1} amount`} disabled={!editable} type="number" step="0.01" placeholder="Amount" aria-describedby={item.needsRate && !item.amount.trim() ? `${item.key}-rate` : undefined} value={item.amount} onChange={(event) => updateItem(index, { amount: event.target.value })} />
@@ -275,7 +275,6 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
               )}
             </div>
             <Select aria-label={`Line ${index + 1} category`} disabled={!editable} value={item.category} onChange={(event) => updateItem(index, { category: event.target.value as InvoiceLineCategory })}>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</Select>
-            <Select aria-label={`Line ${index + 1} source job`} disabled={!editable} value={item.jobId ?? ""} onChange={(event) => updateItem(index, { jobId: event.target.value || null })}><option value="">General</option>{jobIds.map((jobId) => <option key={jobId} value={jobId}>{eligibleJobs.find((job) => job.id === jobId)?.reference ?? jobId}</option>)}</Select>
             {editable && <button className="min-h-11 px-2 text-red-700 disabled:opacity-40" disabled={items.length === 1} onClick={() => setItems((current) => current.filter((_, position) => position !== index))}>Remove</button>}
           </div>)}</div>
           {/* The add control sits under the last line rather than up in the
@@ -298,7 +297,6 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
             <span className="font-heading text-lg font-semibold">{formatCurrency(items.reduce((sum, item) => sum + (Math.round(Number(item.amount) * 100) || 0), 0))}</span>
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2"><FormField label="PO number"><Input disabled={!editable} maxLength={140} value={poNumber} onChange={(event) => setPoNumber(event.target.value)} /></FormField><div /></div>
         <FormField label="Notes"><Textarea disabled={!editable} maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} /></FormField>
         {!editable && <div className="grid gap-2 text-sm sm:grid-cols-2"><div>Canonical status: <strong>{invoice?.status}</strong></div><div>Display status: <strong>{invoice?.displayStatus.replaceAll("_", " ")}</strong></div><div>Paid: <strong>{formatCurrency(invoice?.amountPaidCents ?? 0)}</strong></div><div>Remaining: <strong>{formatCurrency(invoice?.amountRemainingCents ?? 0)}</strong></div></div>}
       </div>
