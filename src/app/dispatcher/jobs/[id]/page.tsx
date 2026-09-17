@@ -250,6 +250,10 @@ export default function JobDetailsPage({
                   "—"
                 }
               />
+              <Row
+                label="Traffic Instructions"
+                value={job.trafficInstructions || "—"}
+              />
               <Row label="Notes" value={job.notes || "—"} />
             </dl>
           </Card>

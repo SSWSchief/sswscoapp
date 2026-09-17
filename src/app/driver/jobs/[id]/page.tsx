@@ -251,6 +251,10 @@ export default function DriverJobDetailsPage({
           <dl className="space-y-3 text-sm">
             <Info label="Dumpster Size" value={job.dumpsterSize} />
             <Info label="Service Type" value={job.serviceType} />
+            <Info
+              label="Traffic Instructions"
+              value={job.trafficInstructions || "—"}
+            />
             <Info label="Notes" value={job.notes || "—"} />
           </dl>
         </Panel>
