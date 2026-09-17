@@ -118,13 +118,20 @@ export default function DriverJobDetailsPage({
 
   const addPhotos = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (busy || !canMutate) return;
+    const input = event.target;
     const selected = Array.from(event.target.files ?? []);
-    const allowed = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+    const allowed = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/heic",
+      "image/heif",
+    ];
     const valid = selected.filter(
       (file) => allowed.includes(file.type) && file.size <= 10 * 1024 * 1024,
     );
     if (valid.length !== selected.length) {
-      toast("Use JPEG, PNG, WebP, or HEIC images no larger than 10 MB.", {
+      toast("Use JPEG, PNG, WebP, HEIC, or HEIF images no larger than 10 MB.", {
         tone: "error",
       });
     }
@@ -147,7 +154,8 @@ export default function DriverJobDetailsPage({
       }
       setBusy(false);
     }
-    event.target.value = "";
+    // Clear before the next picker interaction so the same image can be retried.
+    input.value = "";
   };
 
   const saveNote = async () => {

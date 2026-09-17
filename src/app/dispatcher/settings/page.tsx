@@ -346,7 +346,9 @@ export default function Page() {
             />
           </div>
 
-          {connectionState !== "ready" && connectionMessage && (
+          {connectionState !== "ready" &&
+            connectionState !== "stale" &&
+            connectionMessage && (
             <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900">
               {connectionMessage}
             </div>

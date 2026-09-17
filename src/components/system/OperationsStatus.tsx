@@ -3,7 +3,15 @@ import { useOperations } from "./OperationsProvider";
 
 export function OperationsStatus() {
   const { connectionState, connectionMessage, refresh } = useOperations();
-  if (connectionState === "ready" || connectionState === "loading") return null;
+  // A stale cache is still usable and mutations remain server-validated. Keep
+  // transient background-read noise out of the operator's workflow; genuine
+  // offline, auth, and first-load failures remain visible below.
+  if (
+    connectionState === "ready" ||
+    connectionState === "loading" ||
+    connectionState === "stale"
+  )
+    return null;
 
   /**
    * "unauthorized" used to render nothing, which made the worst failure the

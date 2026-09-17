@@ -402,8 +402,7 @@ export function OperationsProvider({
               : Promise.resolve({ data: null, error: null }),
             db.rpc("list_protected_administrator_ids"),
           ]);
-          if (result.error || detail.error || protectedAdministrators.error)
-            throw result.error ?? detail.error ?? protectedAdministrators.error;
+          if (result.error) throw result.error;
           const rows = result.data as UserRow[];
           const detailRow = detail.data as UserRow | null;
           if (detailRow && !rows.some((row) => row.id === detailRow.id))
@@ -484,10 +483,10 @@ export function OperationsProvider({
             activitiesQuery,
             ticketsQuery,
           ]);
-          const error = [jr, detail, pr, er, noter, ar, tr].find(
-            (result) => result.error,
-          )?.error;
-          if (error) throw error;
+          // The jobs list is the essential read. Detail panels are advisory:
+          // a missing photo, note, event, or ticket must not make the whole
+          // operations screen stale or block a new server-validated action.
+          if (jr.error) throw jr.error;
           const photos = (pr.data ?? []) as JobPhotoRow[];
           await Promise.all(
             photos.map(async (photo) => {
@@ -498,8 +497,8 @@ export function OperationsProvider({
               if (signed.data?.signedUrl) photo.url = signed.data.signedUrl;
             }),
           );
-          const rows = jr.data as JobRow[];
-          const detailRow = detail.data as JobRow | null;
+          const rows = (jr.data ?? []) as JobRow[];
+          const detailRow = detail.error ? null : (detail.data as JobRow | null);
           if (detailRow && !rows.some((row) => row.id === detailRow.id))
             rows.push(detailRow);
           jobs = rows.map((row) =>
@@ -539,10 +538,9 @@ export function OperationsProvider({
               .limit(DIRECTORY_LIMIT),
             db.rpc("customer_active_job_counts"),
           ]);
-          if (result.error || activeCounts.error)
-            throw result.error ?? activeCounts.error;
+          if (result.error) throw result.error;
           const counts = new Map(
-            activeCounts.data.map((row) => [
+            (activeCounts.data ?? []).map((row) => [
               row.customer_id,
               Number(row.active_jobs),
             ]),
@@ -775,15 +773,23 @@ export function OperationsProvider({
     ): Promise<MutationResult<T>> => {
       const blocked = guard();
       if (blocked) return blocked;
+      let result: { data: T | null; error: unknown };
       try {
-        const result = await work();
+        result = await work();
         if (result.error) throw result.error;
-        await refresh();
-        return { ok: true, data: result.data as T };
       } catch (error) {
-        await refresh();
         return failure(error);
       }
+      // The write has already committed if this point is reached. A refresh
+      // failure must not claim that the mutation failed and encourage a duplicate retry.
+      try {
+        await refresh();
+      } catch (error) {
+        log("error", "operations_post_mutation_refresh_failed", {
+          ...operationErrorContext(error),
+        });
+      }
+      return { ok: true, data: result.data as T };
     },
     [guard, refresh],
   );
@@ -1078,7 +1084,13 @@ export function OperationsProvider({
             if (file.size > 10 * 1024 * 1024)
               throw new Error(`${file.name} exceeds the 10 MB limit.`);
             if (
-              !["image/jpeg", "image/png", "image/webp", "image/heic"].includes(
+              ![
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/heic",
+                "image/heif",
+              ].includes(
                 file.type,
               )
             )
