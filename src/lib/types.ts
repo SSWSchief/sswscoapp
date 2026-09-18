@@ -233,7 +233,10 @@ export interface Job {
   assignedTruckId: string | null;
   assignedDumpsterId: string | null;
   scheduledFor: string; // ISO datetime
+  expectedPickupAt?: string | null;
   status: JobStatus;
+  archivedAt?: string | null;
+  archiveReason?: string;
   notes: string;
   trafficInstructions?: string;
   /** The representative who brought in the work, for tracking and bonuses. */
@@ -414,6 +417,9 @@ export interface ContainerPlacement {
   retrievedJobId: string | null;
   deliveredAt: string;
   retrievedAt: string | null;
+  expectedPickupAt?: string | null;
+  pickupStatus?: "not_scheduled" | "needed" | "scheduled" | "retrieved";
+  pickupJobId?: string | null;
   notes: string;
 }
 
@@ -447,6 +453,9 @@ export interface MessageChannel {
   id: string;
   name: string;
   kind: "channel" | "direct" | "announcement";
+  label?: string;
+  description?: string;
+  archivedAt?: string | null;
   createdAt: string;
 }
 export interface TeamMessage {

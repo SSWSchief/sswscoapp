@@ -189,6 +189,13 @@ export const driverPrimaryNav: AppNavItem[] = [
     keywords: "inspection truck",
   },
   {
+    href: "/driver/post-trip",
+    label: "Post-Trip",
+    icon: "clipboard",
+    permission: "pre_trip",
+    keywords: "inspection truck photos condition",
+  },
+  {
     href: "/driver/messages",
     label: "Messages",
     icon: "messages",

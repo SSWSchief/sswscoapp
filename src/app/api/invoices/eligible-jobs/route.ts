@@ -13,6 +13,7 @@ export async function GET(request: Request) {
     .eq("customer_id", customerId)
     .eq("status", "complete")
     .is("deleted_at", null)
+    .is("archived_at", null)
     .order("scheduled_for", { ascending: false })
     .limit(500);
   if (jobs.error) return api.fail("eligible_jobs_failed", "Eligible jobs could not be loaded.", 500);

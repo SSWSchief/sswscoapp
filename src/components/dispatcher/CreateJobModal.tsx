@@ -24,6 +24,7 @@ type Form = {
   truck: string;
   dumpster: string;
   scheduledFor: string;
+  expectedPickupAt: string;
   trafficInstructions: string;
   notes: string;
 };
@@ -38,6 +39,7 @@ const empty: Form = {
   truck: "",
   dumpster: "",
   scheduledFor: "",
+  expectedPickupAt: "",
   trafficInstructions: "",
   notes: "",
 };
@@ -55,6 +57,7 @@ export function CreateJobModal({
   const {
     createJob,
     updateJob,
+    setJobPickupPlan,
     customers,
     dumpsters,
     trucks,
@@ -105,6 +108,9 @@ export function CreateJobModal({
             )
               .toISOString()
               .slice(0, 16),
+            expectedPickupAt: job.expectedPickupAt
+              ? new Date(new Date(job.expectedPickupAt).getTime() - new Date(job.expectedPickupAt).getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+              : "",
             trafficInstructions: job.trafficInstructions ?? "",
             notes: job.notes,
           }
@@ -157,6 +163,7 @@ export function CreateJobModal({
       assignedTruckId: form.truck || null,
       assignedDumpsterId: form.dumpster || null,
       scheduledFor: form.scheduledFor,
+      expectedPickupAt: form.expectedPickupAt,
       trafficInstructions: form.trafficInstructions.trim(),
       notes: form.notes.trim(),
     };
@@ -167,6 +174,10 @@ export function CreateJobModal({
         toast(result.error.message, { tone: "error" });
         return;
       }
+      if (form.expectedPickupAt !== (job.expectedPickupAt ?? "")) {
+        const pickup = await setJobPickupPlan(job.id, form.expectedPickupAt ? new Date(form.expectedPickupAt).toISOString() : null);
+        if (!pickup.ok) { setSaving(false); toast(pickup.error.message, { tone: "error" }); return; }
+      }
       toast(`${job.reference} updated`, { tone: "success" });
     } else {
       const result = await createJob(input);
@@ -174,6 +185,10 @@ export function CreateJobModal({
         setSaving(false);
         toast(result.error.message, { tone: "error" });
         return;
+      }
+      if (form.expectedPickupAt) {
+        const pickup = await setJobPickupPlan(result.data.id, new Date(form.expectedPickupAt).toISOString());
+        if (!pickup.ok) { setSaving(false); toast(pickup.error.message, { tone: "error" }); return; }
       }
       toast(
         `${result.data.reference} created${form.driver ? " and driver notified" : " in the unassigned queue"}`,
@@ -342,6 +357,17 @@ export function CreateJobModal({
                   </option>
                 ))}
               </Select>
+            </FormField>
+            <FormField
+              label="Expected Pickup Date"
+              hint="Optional; the dumpster remains onsite until a pickup is completed."
+            >
+              <Input
+                type="datetime-local"
+                autoComplete="off"
+                value={form.expectedPickupAt}
+                onChange={set("expectedPickupAt")}
+              />
             </FormField>
             <FormField
               label="Assign Truck"

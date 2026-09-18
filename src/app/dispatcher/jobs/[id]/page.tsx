@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Topbar } from "@/components/dispatcher/Topbar";
 import { Button } from "@/components/ui/Button";
+import { Input, Select } from "@/components/ui/Field";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
@@ -35,16 +36,22 @@ export default function JobDetailsPage({
     users,
     hydrated,
     completeJobAsDispatcher,
+    correctCompletedJob,
     cancelJob,
+    archiveCancelledJob,
     uploadJobPhotos,
     canMutate,
   } = useOperations();
   const [editOpen, setEditOpen] = React.useState(false);
   const [actionsOpen, setActionsOpen] = React.useState(false);
   const [reasonMode, setReasonMode] = React.useState<
-    "cancel" | "complete" | null
+    "cancel" | "complete" | "archive" | null
   >(null);
   const [busy, setBusy] = React.useState(false);
+  const [correctionOpen, setCorrectionOpen] = React.useState(false);
+  const [correctedDumpsterId, setCorrectedDumpsterId] = React.useState("");
+  const [correctionReason, setCorrectionReason] = React.useState("");
+  const [correctedPickupAt, setCorrectedPickupAt] = React.useState("");
   const fileInput = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -95,6 +102,34 @@ export default function JobDetailsPage({
     });
     if (result.ok) setReasonMode(null);
   };
+  const correctAssignment = async () => {
+    if (!correctedDumpsterId || correctionReason.trim().length < 3 || busy) return;
+    setBusy(true);
+    const result = await correctCompletedJob(
+      job.id,
+      correctedDumpsterId,
+      correctionReason,
+      correctedPickupAt ? new Date(correctedPickupAt).toISOString() : null,
+    );
+    setBusy(false);
+    toast(result.ok ? "Completed job corrected" : result.error.message, {
+      tone: result.ok ? "success" : "error",
+    });
+    if (result.ok) {
+      setCorrectionOpen(false);
+      setCorrectionReason("");
+    }
+  };
+  const archive = async (reason: string) => {
+    if (busy) return;
+    setBusy(true);
+    const result = await archiveCancelledJob(job.id, reason);
+    setBusy(false);
+    toast(result.ok ? "Cancelled job archived" : result.error.message, {
+      tone: result.ok ? "success" : "error",
+    });
+    if (result.ok) setReasonMode(null);
+  };
   const addPhotos = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     if (!files.length) return;
@@ -134,6 +169,27 @@ export default function JobDetailsPage({
                   onClick={() => setReasonMode("cancel")}
                 >
                   Cancel
+                </Button>
+              )}
+              {job.status === "complete" && (
+                <Button
+                  disabled={!canMutate || busy}
+                  variant="secondary"
+                  onClick={() => {
+                    setCorrectedDumpsterId(job.assignedDumpsterId ?? "");
+                    setCorrectionOpen((open) => !open);
+                  }}
+                >
+                  Correct Assignment
+                </Button>
+              )}
+              {job.status === "cancelled" && !job.archivedAt && (
+                <Button
+                  disabled={!canMutate || busy}
+                  variant="secondary"
+                  onClick={() => setReasonMode("archive")}
+                >
+                  Archive
                 </Button>
               )}
             </div>
@@ -228,6 +284,29 @@ export default function JobDetailsPage({
           </h2>
           <JobStatusBadge status={job.status} />
         </div>
+        {correctionOpen && job.status === "complete" && (
+          <Card className="border-brand-blue/40">
+            <CardHeader title="Correct completed assignment" />
+            <div className="grid gap-3 p-4 sm:grid-cols-3">
+              <label className="text-sm font-medium">Dumpster
+                <Select value={correctedDumpsterId} onChange={(event) => setCorrectedDumpsterId(event.target.value)}>
+                  <option value="">Select dumpster</option>
+                  {dumpsters.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.size}</option>)}
+                </Select>
+              </label>
+              <label className="text-sm font-medium">Expected pickup
+                <Input type="datetime-local" value={correctedPickupAt} onChange={(event) => setCorrectedPickupAt(event.target.value)} />
+              </label>
+              <label className="text-sm font-medium">Reason
+                <Input value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} placeholder="Wrong dumpster selected" />
+              </label>
+              <div className="sm:col-span-3 flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => setCorrectionOpen(false)}>Cancel</Button>
+                <Button disabled={!correctedDumpsterId || correctionReason.trim().length < 3 || busy} onClick={() => void correctAssignment()}>Save correction</Button>
+              </div>
+            </div>
+          </Card>
+        )}
 
         <div className="grid gap-5 lg:grid-cols-3">
           {/* Job Information */}
@@ -402,6 +481,15 @@ export default function JobDetailsPage({
         title={`Cancel ${job.reference}`}
         label="Cancellation reason"
         confirmLabel="Cancel Job"
+      />
+      <ReasonDialog
+        open={reasonMode === "archive"}
+        onClose={() => setReasonMode(null)}
+        onSubmit={archive}
+        busy={busy}
+        title={`Archive ${job.reference}`}
+        label="Archive reason"
+        confirmLabel="Archive Job"
       />
       <ReasonDialog
         open={reasonMode === "complete"}

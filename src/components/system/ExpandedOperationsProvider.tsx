@@ -75,6 +75,16 @@ type State = {
   trainingDataset: TrainingDataset;
   priceList: PriceListItem[];
 };
+function mutationFailure(error: unknown): MutationResult<never> {
+  const candidate = error as { code?: string; message?: string };
+  return {
+    ok: false,
+    error: {
+      code: candidate?.code ?? "unexpected_error",
+      message: candidate?.message ?? "The operation could not be completed.",
+    },
+  };
+}
 type Value = State & {
   loading: boolean;
   /** Messages across all channels that are unread and not sent by you. */
@@ -91,6 +101,12 @@ type Value = State & {
     body: string,
   ) => Promise<MutationResult<void>>;
   createDirectChannel: (userId: string) => Promise<MutationResult<string>>;
+  createTeamChannel: (input: {
+    name: string;
+    label: string;
+    description: string;
+    memberIds: string[];
+  }) => Promise<MutationResult<string>>;
   deleteChannel: (channelId: string) => Promise<MutationResult<void>>;
   markChannelRead: (channelId: string) => Promise<MutationResult<void>>;
   submitPretrip: (input: {
@@ -106,6 +122,18 @@ type Value = State & {
     repairsRequired: string;
     routeNote: string;
   }) => Promise<MutationResult<void>>;
+  submitVehicleInspection: (input: {
+    inspectionType: "pre_trip" | "post_trip";
+    templateId: string;
+    truckId: string;
+    mileage: number;
+    signature: string;
+    results: Record<string, PretripResult>;
+    safeToOperate: boolean;
+    defectsFound: string;
+    repairsRequired: string;
+  }) => Promise<MutationResult<string>>;
+  uploadInspectionPhotos: (inspectionId: string, files: File[]) => Promise<MutationResult<void>>;
   countersignPretrip: (input: {
     submissionId: string;
     signature: string;
@@ -479,6 +507,22 @@ export function ExpandedOperationsProvider({
           return fail(e);
         }
       },
+      createTeamChannel: async (input) => {
+        if (!canMutate) return fail({ message: "Changes are disabled until the live connection is restored." });
+        try {
+          const r = await createClient().rpc("create_team_message_channel", {
+            channel_name: input.name,
+            channel_label: input.label,
+            channel_description: input.description,
+            member_ids: input.memberIds,
+          });
+          if (r.error) throw r.error;
+          await refresh();
+          return { ok: true, data: r.data.id };
+        } catch (e) {
+          return fail(e);
+        }
+      },
       deleteChannel: async (channelId) => {
         if (!canMutate)
           return fail({
@@ -541,6 +585,51 @@ export function ExpandedOperationsProvider({
         // somebody sees at the end of the day.
         if (result.ok) requestNotificationDelivery();
         return result;
+      },
+      submitVehicleInspection: async (input) => {
+        const result = await runWithData<{ id: string }>(async () => {
+          if (!currentUser) return { data: null, error: { message: "Sign in required" } };
+          const hasFailures = Object.values(input.results).includes("fail") || !input.safeToOperate;
+          const r = await createClient().from("vehicle_inspections").insert({
+            inspection_type: input.inspectionType,
+            template_id: input.templateId,
+            driver_id: currentUser.id,
+            truck_id: input.truckId,
+            mileage: input.mileage,
+            signature: input.signature.trim(),
+            results: input.results,
+            has_failures: hasFailures,
+            safe_to_operate: input.safeToOperate,
+            defects_found: input.defectsFound.trim(),
+            repairs_required: input.repairsRequired.trim(),
+          }).select("id").single();
+          return r;
+        });
+        if (result.ok && result.data?.id) {
+          if (Object.values(input.results).includes("fail") || !input.safeToOperate) requestNotificationDelivery();
+          return { ok: true, data: result.data.id };
+        }
+        return result as MutationResult<string>;
+      },
+      uploadInspectionPhotos: async (inspectionId, files) => {
+        try {
+          for (const file of files) {
+            if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name} exceeds the 10 MB limit.`);
+            if (!["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(file.type))
+              throw new Error(`${file.name} is not a supported image type.`);
+            const path = `inspections/${inspectionId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+            const upload = await createClient().storage.from("vehicle-inspection-photos").upload(path, file, { contentType: file.type });
+            if (upload.error) throw upload.error;
+            const record = await createClient().from("vehicle_inspection_photos").insert({ inspection_id: inspectionId, storage_path: path, uploaded_by_id: currentUser?.id }).select();
+            if (record.error) {
+              await createClient().storage.from("vehicle-inspection-photos").remove([path]);
+              throw record.error;
+            }
+          }
+          return { ok: true, data: undefined };
+        } catch (error) {
+          return mutationFailure(error);
+        }
       },
       countersignPretrip: (input) =>
         run(

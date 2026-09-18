@@ -131,6 +131,7 @@ export interface JobRow extends Record<string, unknown> {
   assigned_truck_id: string | null;
   assigned_dumpster_id: string | null;
   scheduled_for: string;
+  expected_pickup_at?: string | null;
   status: JobStatus;
   notes: string;
   traffic_instructions: string | null;
@@ -140,6 +141,9 @@ export interface JobRow extends Record<string, unknown> {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  archived_at?: string | null;
+  archived_by_id?: string | null;
+  archive_reason?: string;
 }
 export interface JobEventRow extends Record<string, unknown> {
   job_id: string;
@@ -297,6 +301,10 @@ export interface MessageChannelRow extends Record<string, unknown> {
   id: string;
   name: string;
   kind: "channel" | "direct" | "announcement";
+  label?: string;
+  description?: string;
+  archived_at?: string | null;
+  archived_by_id?: string | null;
   created_by_id: string | null;
   created_at: string;
 }
@@ -419,6 +427,9 @@ export interface ContainerPlacementRow extends Record<string, unknown> {
   retrieved_job_id: string | null;
   delivered_at: string;
   retrieved_at: string | null;
+  expected_pickup_at?: string | null;
+  pickup_status?: "not_scheduled" | "needed" | "scheduled" | "retrieved";
+  pickup_job_id?: string | null;
   notes: string;
   created_at: string;
   updated_at: string;
@@ -470,6 +481,32 @@ export interface AuditRow extends Record<string, unknown> {
   old_values: Json | null;
   new_values: Json | null;
   reason: string | null;
+  created_at: string;
+}
+export interface VehicleInspectionRow extends Record<string, unknown> {
+  id: string;
+  inspection_type: "pre_trip" | "post_trip";
+  template_id: string;
+  driver_id: string;
+  truck_id: string;
+  mileage: number;
+  signature: string;
+  results: Json;
+  has_failures: boolean;
+  safe_to_operate: boolean;
+  defects_found: string;
+  repairs_required: string;
+  supervisor_signature: string;
+  supervisor_signed_at: string | null;
+  submitted_at: string;
+  created_at: string;
+}
+export interface VehicleInspectionPhotoRow extends Record<string, unknown> {
+  id: string;
+  inspection_id: string;
+  storage_path: string;
+  url: string | null;
+  uploaded_by_id: string;
   created_at: string;
 }
 
@@ -527,6 +564,8 @@ export interface Database {
       price_list: Table<PriceListRow>;
       disposal_tickets: Table<DisposalTicketRow>;
       container_placements: Table<ContainerPlacementRow>;
+      vehicle_inspections: Table<VehicleInspectionRow>;
+      vehicle_inspection_photos: Table<VehicleInspectionPhotoRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -608,6 +647,22 @@ export interface Database {
       complete_job_as_dispatch: {
         Args: { target_job_id: string; override_reason?: string | null };
         Returns: JobRow;
+      };
+      correct_completed_job: {
+        Args: { target_job_id: string; corrected_dumpster_id: string; correction_reason: string; corrected_pickup_at?: string | null };
+        Returns: JobRow;
+      };
+      archive_cancelled_job: {
+        Args: { target_job_id: string; archive_note: string };
+        Returns: JobRow;
+      };
+      set_job_pickup_plan: {
+        Args: { target_job_id: string; pickup_at?: string | null };
+        Returns: JobRow;
+      };
+      create_team_message_channel: {
+        Args: { channel_name: string; channel_label: string; channel_description: string; member_ids: string[] };
+        Returns: MessageChannelRow;
       };
       log_assigned_job_dry_run: {
         Args: { target_job_id: string; dry_run_reason: string };

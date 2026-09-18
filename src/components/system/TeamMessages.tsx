@@ -68,6 +68,7 @@ export function TeamMessages() {
     messageRecipients,
     sendMessage,
     createDirectChannel,
+    createTeamChannel,
     deleteChannel,
     markChannelRead,
   } = useExpandedOperations();
@@ -80,6 +81,11 @@ export function TeamMessages() {
   const [recipient, setRecipient] = React.useState("");
   const [draft, setDraft] = React.useState("");
   const [busy, setBusy] = React.useState(false);
+  const [groupOpen, setGroupOpen] = React.useState(false);
+  const [groupName, setGroupName] = React.useState("");
+  const [groupLabel, setGroupLabel] = React.useState("");
+  const [groupDescription, setGroupDescription] = React.useState("");
+  const [groupMembers, setGroupMembers] = React.useState<string[]>([]);
 
   // Only deep-links pick a channel automatically. Landing here with no
   // channel selected keeps mobile on the conversation list instead of
@@ -124,6 +130,25 @@ export function TeamMessages() {
     } else {
       toast(result.error.message, { tone: "error" });
     }
+  };
+  const startGroup = async () => {
+    if (!groupName.trim() || busy) return;
+    setBusy(true);
+    const result = await createTeamChannel({
+      name: groupName,
+      label: groupLabel,
+      description: groupDescription,
+      memberIds: groupMembers,
+    });
+    setBusy(false);
+    if (result.ok) {
+      openChannel(result.data);
+      setGroupOpen(false);
+      setGroupName("");
+      setGroupLabel("");
+      setGroupDescription("");
+      setGroupMembers([]);
+    } else toast(result.error.message, { tone: "error" });
   };
 
   const send = async () => {
@@ -205,6 +230,18 @@ export function TeamMessages() {
             >
               Start message
             </Button>
+            <button type="button" className="w-full text-left text-xs font-semibold text-brand-blue" onClick={() => setGroupOpen((open) => !open)}>
+              {groupOpen ? "Close group channel" : "Create group channel"}
+            </button>
+            {groupOpen && <div className="space-y-2 border-t border-brand-ice pt-2">
+              <input aria-label="Group channel name" value={groupName} onChange={(event) => setGroupName(event.target.value)} placeholder="Channel name" className="min-h-9 w-full rounded border border-brand-ice px-2 text-sm" />
+              <input aria-label="Group channel label" value={groupLabel} onChange={(event) => setGroupLabel(event.target.value)} placeholder="Label, e.g. Dispatch" className="min-h-9 w-full rounded border border-brand-ice px-2 text-sm" />
+              <Textarea aria-label="Group channel description" value={groupDescription} onChange={(event) => setGroupDescription(event.target.value)} placeholder="Purpose" />
+              <select aria-label="Group channel members" multiple value={groupMembers} onChange={(event) => setGroupMembers(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-20 w-full rounded border border-brand-ice px-2 text-sm">
+                {messageRecipients.map((item) => <option key={item.id} value={item.id}>{item.fullName}</option>)}
+              </select>
+              <Button className="w-full" size="sm" disabled={!groupName.trim() || busy || !canMutate} onClick={() => void startGroup()}>{busy ? "Creating…" : "Create channel"}</Button>
+            </div>}
           </div>
         )}
         <div className="min-h-0 flex-1 divide-y divide-brand-ice overflow-y-auto">

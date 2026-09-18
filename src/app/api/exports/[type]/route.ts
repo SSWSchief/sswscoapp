@@ -77,6 +77,7 @@ export async function GET(
         .from("jobs")
         .select("*")
         .is("deleted_at", null)
+        .is("archived_at", null)
         .order("scheduled_for")
         .limit(maximumRows + 1);
       if (result.error) throw result.error;

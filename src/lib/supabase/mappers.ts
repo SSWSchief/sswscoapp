@@ -161,7 +161,10 @@ export function mapJob(
     assignedTruckId: row.assigned_truck_id,
     assignedDumpsterId: row.assigned_dumpster_id,
     scheduledFor: row.scheduled_for,
+    expectedPickupAt: row.expected_pickup_at,
     status: row.status,
+    archivedAt: row.archived_at ?? null,
+    archiveReason: row.archive_reason ?? "",
     notes: row.notes,
     trafficInstructions: row.traffic_instructions ?? undefined,
     salesRepId: row.sales_rep_id ?? null,
@@ -351,6 +354,9 @@ export const mapContainerPlacement = (
   retrievedJobId: row.retrieved_job_id,
   deliveredAt: row.delivered_at,
   retrievedAt: row.retrieved_at,
+  expectedPickupAt: row.expected_pickup_at,
+  pickupStatus: row.pickup_status,
+  pickupJobId: row.pickup_job_id,
   notes: row.notes,
 });
 export const mapPriceListItem = (row: PriceListRow): PriceListItem => ({
@@ -377,6 +383,9 @@ export const mapMessageChannel = (row: MessageChannelRow): MessageChannel => ({
   id: row.id,
   name: row.name,
   kind: row.kind,
+  label: row.label ?? "",
+  description: row.description ?? "",
+  archivedAt: row.archived_at ?? null,
   createdAt: row.created_at,
 });
 export const mapTeamMessage = (row: MessageRow, read = false): TeamMessage => ({

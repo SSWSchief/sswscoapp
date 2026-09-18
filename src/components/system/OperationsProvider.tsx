@@ -164,6 +164,7 @@ interface CreateJobInput {
   assignedTruckId: string | null;
   assignedDumpsterId: string | null;
   scheduledFor: string;
+  expectedPickupAt: string;
   notes: string;
   trafficInstructions: string;
 }
@@ -237,7 +238,15 @@ interface Value extends State {
     id: string,
     reason?: string,
   ) => Promise<MutationResult<Job>>;
+  correctCompletedJob: (
+    id: string,
+    dumpsterId: string,
+    reason: string,
+    pickupAt?: string | null,
+  ) => Promise<MutationResult<Job>>;
   cancelJob: (id: string, reason: string) => Promise<MutationResult<Job>>;
+  archiveCancelledJob: (id: string, reason: string) => Promise<MutationResult<Job>>;
+  setJobPickupPlan: (id: string, pickupAt: string | null) => Promise<MutationResult<Job>>;
   logDryRun: (id: string, reason: string) => Promise<MutationResult<void>>;
   recordDisposalTicket: (
     jobId: string,
@@ -427,6 +436,7 @@ export function OperationsProvider({
             .from("jobs")
             .select("*", { count: "exact" })
             .is("deleted_at", null)
+            .is("archived_at", null)
             .gte("scheduled_for", jobWindow.start)
             .lt("scheduled_for", jobWindow.end)
             .order("scheduled_for")
@@ -876,11 +886,37 @@ export function OperationsProvider({
           });
           return { data: r.data ? mapJob(r.data) : null, error: r.error };
         })),
+      correctCompletedJob: (id, dumpsterId, reason, pickupAt) =>
+        notifying(run(async () => {
+          const r = await createClient().rpc("correct_completed_job", {
+            target_job_id: id,
+            corrected_dumpster_id: dumpsterId,
+            correction_reason: reason,
+            corrected_pickup_at: pickupAt ?? null,
+          });
+          return { data: r.data ? mapJob(r.data) : null, error: r.error };
+        })),
       cancelJob: (id, reason) =>
         notifying(run(async () => {
           const r = await createClient().rpc("cancel_job", {
             target_job_id: id,
             cancel_reason: reason,
+          });
+          return { data: r.data ? mapJob(r.data) : null, error: r.error };
+        })),
+      archiveCancelledJob: (id, reason) =>
+        notifying(run(async () => {
+          const r = await createClient().rpc("archive_cancelled_job", {
+            target_job_id: id,
+            archive_note: reason,
+          });
+          return { data: r.data ? mapJob(r.data) : null, error: r.error };
+        })),
+      setJobPickupPlan: (id, pickupAt) =>
+        notifying(run(async () => {
+          const r = await createClient().rpc("set_job_pickup_plan", {
+            target_job_id: id,
+            pickup_at: pickupAt,
           });
           return { data: r.data ? mapJob(r.data) : null, error: r.error };
         })),
