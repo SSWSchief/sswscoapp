@@ -44,6 +44,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
     totalCents: number;
     rate?: number | null;
     ratePercent?: number | null;
+    taxabilityReason?: string;
   } | null>(null);
   const [taxPreviewState, setTaxPreviewState] = React.useState<"idle" | "loading" | "error">("idle");
   const editable = !invoice || invoice.status === "draft";
@@ -118,7 +119,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
         .then(async (response) => {
           if (!response.ok) throw new Error("Tax preview unavailable");
           const body = (await response.json()) as {
-            data: { taxCents: number; totalCents: number; rate?: number | null; ratePercent?: number | null };
+            data: { taxCents: number; totalCents: number; rate?: number | null; ratePercent?: number | null; taxabilityReason?: string };
           };
           setTaxPreview(body.data);
           setTaxPreviewState("idle");
@@ -142,6 +143,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   const taxRateLabel = taxRateLabelValue === null || taxRateLabelValue === undefined
     ? null
     : `${Number(taxRateLabelValue).toFixed(2).replace(/\.00$/, "")}%`;
+  const taxabilityReasonLabel = taxPreview?.taxabilityReason?.replaceAll("_", " ");
 
   const matchCustomer = (name: string) =>
     customers.find((candidate) => candidate.name.trim().toLowerCase() === name.trim().toLowerCase());
@@ -369,7 +371,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
                 {taxPreviewState === "loading"
                   ? "Calculating…"
                   : taxPreview
-                    ? `${taxRateLabel ?? "Tax"} · ${formatCurrency(taxPreview.taxCents)} · Total ${formatCurrency(taxPreview.totalCents)}`
+                    ? `${taxRateLabel ?? "Tax"} · ${formatCurrency(taxPreview.taxCents)} · Total ${formatCurrency(taxPreview.totalCents)}${taxabilityReasonLabel ? ` · ${taxabilityReasonLabel}` : ""}`
                     : taxPreviewState === "error"
                       ? "Unavailable — Stripe calculates at send"
                       : "Enter billing details to calculate"}
