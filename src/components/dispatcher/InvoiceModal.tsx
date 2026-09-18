@@ -42,6 +42,8 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   const [taxPreview, setTaxPreview] = React.useState<{
     taxCents: number;
     totalCents: number;
+    rate?: number | null;
+    ratePercent?: number | null;
   } | null>(null);
   const [taxPreviewState, setTaxPreviewState] = React.useState<"idle" | "loading" | "error">("idle");
   const editable = !invoice || invoice.status === "draft";
@@ -115,7 +117,9 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
       })
         .then(async (response) => {
           if (!response.ok) throw new Error("Tax preview unavailable");
-          const body = (await response.json()) as { data: { taxCents: number; totalCents: number } };
+          const body = (await response.json()) as {
+            data: { taxCents: number; totalCents: number; rate?: number | null; ratePercent?: number | null };
+          };
           setTaxPreview(body.data);
           setTaxPreviewState("idle");
         })
@@ -134,6 +138,9 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   // Derived rather than stored, so an existing invoice shows its customer
   // without the setup effect having to read the customer list.
   const customerFieldValue = selectedCustomer?.name ?? customerName;
+  const taxRateLabel = taxPreview && (taxPreview.ratePercent ?? taxPreview.rate)
+    ? `${((taxPreview.ratePercent ?? Number(taxPreview.rate) * 100)).toFixed(2).replace(/\.00$/, "")}%`
+    : null;
 
   const matchCustomer = (name: string) =>
     customers.find((candidate) => candidate.name.trim().toLowerCase() === name.trim().toLowerCase());
@@ -361,7 +368,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
                 {taxPreviewState === "loading"
                   ? "Calculating…"
                   : taxPreview
-                    ? `${formatCurrency(taxPreview.taxCents)} · Total ${formatCurrency(taxPreview.totalCents)}`
+                    ? `${taxRateLabel ?? "Tax"} · ${formatCurrency(taxPreview.taxCents)} · Total ${formatCurrency(taxPreview.totalCents)}`
                     : taxPreviewState === "error"
                       ? "Unavailable — Stripe calculates at send"
                       : "Enter billing details to calculate"}

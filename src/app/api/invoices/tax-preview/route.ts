@@ -51,10 +51,16 @@ export async function POST(request: Request) {
         tax_code: STRIPE_SERVICE_TAX_CODE,
       })),
     });
+    const firstBreakdown = calculation.tax_breakdown?.[0];
+    const rawRate = firstBreakdown?.tax_rate_details?.percentage_decimal;
+    const rate = rawRate == null ? null : Number(rawRate);
     return api.success({
       subtotalCents: calculation.amount_total - calculation.tax_amount_exclusive,
       taxCents: calculation.tax_amount_exclusive,
       totalCents: calculation.amount_total,
+      taxabilityReason: firstBreakdown?.taxability_reason ?? "unknown",
+      rate,
+      ratePercent: rate === null ? null : Number((rate * 100).toFixed(2)),
     });
   } catch {
     return api.fail("tax_preview_unavailable", "Stripe tax could not be calculated yet.", 502);
