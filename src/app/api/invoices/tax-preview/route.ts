@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     });
     const firstBreakdown = calculation.tax_breakdown?.[0];
     const rawRate = firstBreakdown?.tax_rate_details?.percentage_decimal;
-    const rate = rawRate == null ? null : Number(rawRate);
+    const rate = rawRate == null || !Number.isFinite(Number(rawRate)) ? null : Number(rawRate);
     return api.success({
       subtotalCents: calculation.amount_total - calculation.tax_amount_exclusive,
       taxCents: calculation.tax_amount_exclusive,

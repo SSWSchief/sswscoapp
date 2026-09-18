@@ -138,9 +138,10 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   // Derived rather than stored, so an existing invoice shows its customer
   // without the setup effect having to read the customer list.
   const customerFieldValue = selectedCustomer?.name ?? customerName;
-  const taxRateLabel = taxPreview && (taxPreview.ratePercent ?? taxPreview.rate)
-    ? `${((taxPreview.ratePercent ?? Number(taxPreview.rate) * 100)).toFixed(2).replace(/\.00$/, "")}%`
-    : null;
+  const taxRateLabelValue = taxPreview == null ? null : (taxPreview.ratePercent ?? taxPreview.rate ?? null);
+  const taxRateLabel = taxRateLabelValue === null || taxRateLabelValue === undefined
+    ? null
+    : `${Number(taxRateLabelValue).toFixed(2).replace(/\.00$/, "")}%`;
 
   const matchCustomer = (name: string) =>
     customers.find((candidate) => candidate.name.trim().toLowerCase() === name.trim().toLowerCase());
