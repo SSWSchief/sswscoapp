@@ -108,7 +108,9 @@ export async function GET(
         "Invoice",
         "Customer ID",
         "Billing Mode",
-        "Amount",
+        "Subtotal",
+        "Tax",
+        "Total",
         "Paid",
         "Remaining",
         "Status",
@@ -121,6 +123,8 @@ export async function GET(
         invoice.customer_id,
         invoice.billing_mode,
         (Number(invoice.amount_cents) / 100).toFixed(2),
+        (Number(invoice.tax_cents ?? 0) / 100).toFixed(2),
+        ((Number(invoice.amount_cents) + Number(invoice.tax_cents ?? 0)) / 100).toFixed(2),
         (Number(invoice.amount_paid_cents) / 100).toFixed(2),
         (Number(invoice.amount_remaining_cents) / 100).toFixed(2),
         invoice.status,
@@ -223,6 +227,12 @@ export async function GET(
     startedAt,
     status: 200,
   });
+  if (url.searchParams.get("print") === "1") {
+    const escape = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] as string);
+    const table = `<table><thead><tr>${headers.map((header) => `<th>${escape(header)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((value) => `<td>${escape(value)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    const html = `<!doctype html><html><head><title>${escape(type)} report ${escape(from)}–${escape(to)}</title><style>body{font-family:Arial,sans-serif;color:#17212b;margin:32px}h1{font-size:20px}p{color:#52616b}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #cbd5df;padding:7px;text-align:left;vertical-align:top}th{background:#edf3f7}@media print{body{margin:12mm}}</style></head><body><h1>SSWSCO ${escape(type)} report</h1><p>${escape(from)} through ${escape(to)}</p>${table}<script>addEventListener('load',()=>print())</script></body></html>`;
+    return new NextResponse(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-request-id": requestIdValue } });
+  }
   return new NextResponse(csv, {
     headers: {
       "content-type": "text/csv; charset=utf-8",

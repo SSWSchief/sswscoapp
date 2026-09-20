@@ -75,10 +75,17 @@ export async function applyStripeInvoiceSnapshot(
   const canonical = invoiceStatusFromStripe(
     (remote.status ?? "draft") as StripeInvoiceStatus,
   );
+  // Stripe is authoritative for tax. Do not infer it from a rate: exemptions
+  // and jurisdictional rounding can change the result.
+  const taxCents = (remote.total_taxes ?? []).reduce(
+    (total, tax) => total + Number(tax.amount ?? 0),
+    0,
+  );
   const patch: Database["public"]["Tables"]["invoices"]["Update"] = {
     status: canonical,
     amount_paid_cents: remote.amount_paid ?? 0,
     amount_remaining_cents: remote.amount_remaining ?? remote.amount_due ?? 0,
+    tax_cents: taxCents,
     hosted_invoice_url: remote.hosted_invoice_url ?? null,
     invoice_pdf_url: remote.invoice_pdf ?? null,
     due_date: isoDate(remote.due_date),

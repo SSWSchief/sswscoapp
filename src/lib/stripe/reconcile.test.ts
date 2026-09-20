@@ -21,6 +21,7 @@ function localInvoice(overrides: Row = {}): Row {
     customer_id: "cust-1",
     status: "open",
     amount_cents: 40000,
+    tax_cents: 0,
     amount_paid_cents: 0,
     amount_remaining_cents: 40000,
     stripe_invoice_id: "in_1",
@@ -81,6 +82,19 @@ describe("applyStripeInvoiceSnapshot", () => {
     expect(stored.invoice_pdf_url).toBe("https://pay.stripe.test/in_1.pdf");
     expect(stored.stripe_sync_state).toBe("synced");
     expect(stored.stripe_sync_error).toBeNull();
+  });
+
+  it("stores automatic tax separately from the immutable line subtotal", async () => {
+    const { fake, client } = db({ invoices: [localInvoice()] });
+    await applyStripeInvoiceSnapshot(client, remoteInvoice({
+      amount_due: 43200,
+      amount_remaining: 43200,
+      total_taxes: [{ amount: 3200 }] as Stripe.Invoice.TotalTax[],
+    }));
+    const stored = fake.tables.invoices[0];
+    expect(stored.amount_cents).toBe(40000);
+    expect(stored.tax_cents).toBe(3200);
+    expect(stored.amount_remaining_cents).toBe(43200);
   });
 
   it("stamps payment and clears the in-flight payment markers when paid", async () => {

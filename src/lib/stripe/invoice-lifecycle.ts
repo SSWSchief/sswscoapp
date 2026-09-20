@@ -60,7 +60,7 @@ function validateForSend(invoice: InvoiceRow, lines: InvoiceLineItemRow[], jobs:
   if (invoice.invoice_number.length > 26) throw new Error("Invoice number exceeds Stripe's 26-character limit.");
   if (!terms.trim()) throw new Error("Company invoice terms are required before sending.");
   if (stripeKeyMode() === "live" &&
-      (taxPolicy !== "automatic_tax_approved" || !stripeAutomaticTaxEnabled()))
+      (!["automatic_tax_approved", "non_taxable_approved"].includes(taxPolicy) || !stripeAutomaticTaxEnabled()))
     throw new Error("Live sending is blocked until Stripe automatic tax is configured and approved.");
 }
 

@@ -13,10 +13,11 @@ import type { InvoiceBillingMode, InvoiceDraftItem, InvoiceLineCategory, Invoice
 import { formatCurrency } from "@/lib/utils";
 
 const categories: InvoiceLineCategory[] = ["service", "rental", "tonnage", "fee", "surcharge", "adjustment"];
+const fuelEligibleServices = new Set(["Delivery", "Pick-Up", "Dump & Return", "Swap / Exchange", "Relocation", "Dry Run"]);
 // `needsRate` is editor-only state: it drives the unpriced warning below and is
 // deliberately absent from the payload `save()` builds, so it can never reach
 // the ledger or Stripe.
-type EditorItem = InvoiceDraftItem & { amount: string; key: string; needsRate?: boolean };
+type EditorItem = InvoiceDraftItem & { amount: string; key: string; needsRate?: boolean; fuelSurchargeEligible?: boolean };
 type EligibleJob = { id: string; reference: string; serviceType: string; dumpsterSize: string; scheduledFor: string };
 const blankItem = (): EditorItem => ({ description: "", amount: "", amountCents: 0, category: "service", jobId: null, key: crypto.randomUUID() });
 
@@ -38,6 +39,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   const [poNumber, setPoNumber] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [items, setItems] = React.useState<EditorItem[]>([blankItem()]);
+  const [catalogItemId, setCatalogItemId] = React.useState("");
   const [remoteJobs, setRemoteJobs] = React.useState<EligibleJob[] | null>(null);
   const [taxPreview, setTaxPreview] = React.useState<{
     taxCents: number;
@@ -216,7 +218,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
       // editor's own chrome, never in the billed text.
       const description = `${job.serviceType} · ${job.dumpsterSize} · ${job.reference}`;
       const suggested = rate
-        ? { description, amount: (rate.priceCents / 100).toFixed(2), amountCents: rate.priceCents, category: "service" as const, jobId, key: crypto.randomUUID() }
+        ? { description, amount: (rate.priceCents / 100).toFixed(2), amountCents: rate.priceCents, category: "service" as const, jobId, key: crypto.randomUUID(), fuelSurchargeEligible: fuelEligibleServices.has(rate.serviceType) }
         : { description, amount: "", amountCents: 0, category: "service" as const, jobId, key: crypto.randomUUID(), needsRate: true };
       return firstBlank >= 0 ? current.map((item, index) => index === firstBlank ? suggested : item) : [...current, suggested];
     });
@@ -224,6 +226,48 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
 
   const updateItem = (index: number, patch: Partial<EditorItem>) =>
     setItems((current) => current.map((item, position) => position === index ? { ...item, ...patch } : item));
+
+  const addCatalogLine = (id: string) => {
+    setCatalogItemId("");
+    const rate = priceList.find((item) => item.id === id);
+    if (!rate) return;
+    const firstBlank = items.findIndex((item) => !item.description.trim() && !item.amount.trim());
+    const line: EditorItem = {
+      description: `${rate.dumpsterSize} ${rate.serviceType}`,
+      amountCents: rate.priceCents,
+      amount: (rate.priceCents / 100).toFixed(2),
+      category: "service",
+      jobId: null,
+      key: crypto.randomUUID(),
+      // These price-list entries are the rental and transport services in the
+      // approved surcharge policy; disposal/tonnage/fee lines are excluded.
+      fuelSurchargeEligible: fuelEligibleServices.has(rate.serviceType),
+    };
+    setItems((current) => firstBlank >= 0
+      ? current.map((item, index) => index === firstBlank ? line : item)
+      : [...current, line]);
+  };
+
+  const addFuelSurcharge = () => {
+    const eligible = items.filter((item) => item.fuelSurchargeEligible);
+    const basisCents = eligible.reduce((sum, item) => sum + (Math.round(Number(item.amount) * 100) || 0), 0);
+    if (basisCents <= 0) {
+      toast("Add a rental or transport catalog line before calculating the fuel recovery fee.", { tone: "error" });
+      return;
+    }
+    const surcharge: EditorItem = {
+      description: `Fuel & Environmental Recovery Fee (5% of ${formatCurrency(basisCents)})`,
+      amountCents: Math.round(basisCents * 0.05),
+      amount: (Math.round(basisCents * 0.05) / 100).toFixed(2),
+      category: "surcharge",
+      jobId: null,
+      key: crypto.randomUUID(),
+    };
+    setItems((current) => [
+      ...current.filter((item) => !item.description.startsWith("Fuel & Environmental Recovery Fee (5% of ")),
+      surcharge,
+    ]);
+  };
 
   const changeBillingMode = (mode: InvoiceBillingMode) => {
     setBillingMode(mode);
@@ -360,8 +404,17 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
               Add line
             </button>
           )}
+          {editable && priceList.length > 0 && (
+            <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+              <Select aria-label="Add priced catalog line" value={catalogItemId} onChange={(event) => addCatalogLine(event.target.value)}>
+                <option value="">Add priced rental or transport line…</option>
+                {priceList.map((item) => <option key={item.id} value={item.id}>{item.dumpsterSize} {item.serviceType} · {formatCurrency(item.priceCents)}</option>)}
+              </Select>
+              <Button type="button" variant="secondary" onClick={addFuelSurcharge}>Add 5% fuel fee</Button>
+            </div>
+          )}
           <div className="mt-3 flex items-center justify-between border-t border-brand-ice pt-3">
-            <span className="text-sm text-brand-steel">Invoice total</span>
+            <span className="text-sm text-brand-steel">Subtotal before tax</span>
             <span className="font-heading text-lg font-semibold">{formatCurrency(items.reduce((sum, item) => sum + (Math.round(Number(item.amount) * 100) || 0), 0))}</span>
           </div>
           {editable && (
@@ -380,7 +433,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
           )}
         </div>
         <FormField label="Notes"><Textarea disabled={!editable} maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} /></FormField>
-        {!editable && <div className="grid gap-2 text-sm sm:grid-cols-2"><div>Canonical status: <strong>{invoice?.status}</strong></div><div>Display status: <strong>{invoice?.displayStatus.replaceAll("_", " ")}</strong></div><div>Paid: <strong>{formatCurrency(invoice?.amountPaidCents ?? 0)}</strong></div><div>Remaining: <strong>{formatCurrency(invoice?.amountRemainingCents ?? 0)}</strong></div></div>}
+        {!editable && <div className="grid gap-2 text-sm sm:grid-cols-2"><div>Subtotal: <strong>{formatCurrency(invoice?.subtotalCents ?? 0)}</strong></div><div>Tax: <strong>{formatCurrency(invoice?.taxCents ?? 0)}</strong></div><div>Total: <strong>{formatCurrency(invoice?.amountCents ?? 0)}</strong></div><div>Canonical status: <strong>{invoice?.status}</strong></div><div>Display status: <strong>{invoice?.displayStatus.replaceAll("_", " ")}</strong></div><div>Paid: <strong>{formatCurrency(invoice?.amountPaidCents ?? 0)}</strong></div><div>Remaining: <strong>{formatCurrency(invoice?.amountRemainingCents ?? 0)}</strong></div></div>}
       </div>
     </Modal>
     {/* Swapped in rather than stacked on top: both dialogs use the same z-index

@@ -348,6 +348,11 @@ export interface InvoiceRecord {
   jobId: string | null;
   jobIds: string[];
   lineItems: InvoiceLineItem[];
+  /** Sum of the immutable office-reviewed line items, before tax. */
+  subtotalCents: number;
+  /** Tax returned by Stripe for a finalized invoice. */
+  taxCents: number;
+  /** Customer-facing total: subtotal plus Stripe-calculated tax. */
   amountCents: number;
   status: InvoiceStatus;
   displayStatus: InvoiceDisplayStatus;

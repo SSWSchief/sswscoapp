@@ -46,6 +46,7 @@ export default function EmployeeAccessPage({
     setPermissionOverride,
     resetPermissionOverrides,
     updateEmployeeDetails,
+    adjustPtoBalance,
     protectedAdministratorIds,
   } = useOperations();
   const { toast } = useToast();
@@ -62,6 +63,9 @@ export default function EmployeeAccessPage({
     role: "driver" as UserRole,
   });
   const [savingDetails, setSavingDetails] = React.useState(false);
+  const [ptoDelta, setPtoDelta] = React.useState("");
+  const [ptoReason, setPtoReason] = React.useState("");
+  const [savingPto, setSavingPto] = React.useState(false);
   const employee = users.find((user) => user.id === id);
   React.useEffect(() => {
     if (employee)
@@ -112,6 +116,18 @@ export default function EmployeeAccessPage({
       tone: result.ok ? "success" : "error",
     });
     setSavingDetails(false);
+  };
+  const savePto = async () => {
+    const delta = Number(ptoDelta);
+    if (!Number.isFinite(delta) || delta === 0 || !ptoReason.trim()) {
+      toast("Enter a non-zero PTO adjustment and a reason.", { tone: "error" });
+      return;
+    }
+    setSavingPto(true);
+    const result = await adjustPtoBalance(employee.id, delta, ptoReason);
+    setSavingPto(false);
+    if (result.ok) { setPtoDelta(""); setPtoReason(""); }
+    toast(result.ok ? "PTO balance adjusted" : result.error.message, { tone: result.ok ? "success" : "error" });
   };
 
   return (
@@ -287,6 +303,16 @@ export default function EmployeeAccessPage({
                 <option value="management">Owner / Management</option>
               </Select>
             </FormField>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="PTO Balance" />
+          <div className="grid gap-3 p-5 sm:grid-cols-[10rem_1fr_auto] sm:items-end">
+            <FormField label="Current balance"><Input readOnly value={`${employee.ptoBalanceHours ?? 0} hours`} /></FormField>
+            <FormField label="Adjustment" hint="Use positive hours to accrue; negative hours to correct."><Input disabled={!detailsEditable} inputMode="decimal" placeholder="e.g. 8 or -2" value={ptoDelta} onChange={(e) => setPtoDelta(e.target.value)} /></FormField>
+            <FormField label="Reason"><Input disabled={!detailsEditable} placeholder="Accrual or correction reason" value={ptoReason} onChange={(e) => setPtoReason(e.target.value)} /></FormField>
+            <Button disabled={!detailsEditable || savingPto} onClick={() => void savePto()}>{savingPto ? "Saving…" : "Adjust PTO"}</Button>
           </div>
         </Card>
 

@@ -293,6 +293,7 @@ interface Value extends State {
     id: string,
     decision: "approved" | "denied",
   ) => Promise<MutationResult<void>>;
+  adjustPtoBalance: (id: string, deltaHours: number, reason: string) => Promise<MutationResult<void>>;
   uploadJobPhotos: (
     jobId: string,
     files: File[],
@@ -1110,6 +1111,14 @@ export function OperationsProvider({
             decision,
           }),
         );
+        return r.ok ? { ok: true, data: undefined } : r;
+      },
+      adjustPtoBalance: async (id, deltaHours, reason) => {
+        const r = await run(() => createClient().rpc("adjust_pto_balance", {
+          target_user_id: id,
+          delta_hours: deltaHours,
+          adjustment_reason: reason,
+        }));
         return r.ok ? { ok: true, data: undefined } : r;
       },
       uploadJobPhotos: async (jobId, files) => {

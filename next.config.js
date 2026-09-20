@@ -11,6 +11,9 @@ const release =
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "**.supabase.co" }],
+  },
   env: { NEXT_PUBLIC_RELEASE: release },
   async headers() {
     return [

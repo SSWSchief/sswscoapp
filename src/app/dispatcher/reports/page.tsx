@@ -52,6 +52,10 @@ export default function Page() {
     .reduce((n, i) => n + i.amountCents, 0);
   const href = (type: string) =>
     `/api/exports/${type}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  const printReport = (type: string) => {
+    if (invalidRange) return;
+    window.open(`${href(type)}&print=1`, "_blank", "noopener");
+  };
   const download = async (type: string, title: string) => {
     if (invalidRange) {
       toast("Choose a From date before the Through date.", { tone: "error" });
@@ -131,13 +135,10 @@ export default function Page() {
             <Card key={type} className="p-5">
               <h2 className="font-semibold">{title} Export</h2>
               <p className="mt-1 text-sm text-brand-steel">{description}</p>
-              <Button
-                className="mt-4 w-full sm:w-auto"
-                disabled={!canMutate || invalidRange || downloading !== null}
-                onClick={() => void download(type, title)}
-              >
-                {downloading === type ? "Downloading…" : "Download CSV"}
-              </Button>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <Button disabled={!canMutate || invalidRange || downloading !== null} onClick={() => void download(type, title)}>{downloading === type ? "Downloading…" : "Download CSV"}</Button>
+                <Button variant="secondary" disabled={!canMutate || invalidRange} onClick={() => printReport(type)}>Print / Save PDF</Button>
+              </div>
             </Card>
           ))}
         </div>

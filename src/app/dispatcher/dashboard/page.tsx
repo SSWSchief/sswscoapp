@@ -13,10 +13,11 @@ import { RelativeTime } from "@/components/ui/RelativeTime";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { jobsForPacificDay } from "@/lib/job-dates";
+import { summarizeTime } from "@/lib/time-clock";
 
 export default function DashboardPage() {
   const [createOpen, setCreateOpen] = useState(false);
-  const { jobs, activities, users, trucks, dumpsters, timeRequests } =
+  const { jobs, activities, users, openPlacements, timeEntries, timeRequests } =
     useOperations();
   const { pretripSubmissions, invoices } = useExpandedOperations();
   const todaysJobs = jobsForPacificDay(jobs);
@@ -40,12 +41,23 @@ export default function DashboardPage() {
     arrived: todaysJobs.filter((job) => job.status === "arrived").length,
     completed: todaysJobs.filter((job) => job.status === "complete").length,
     pending: todaysJobs.filter((job) => job.status === "pending").length,
+    // An active employee is not necessarily working a shift. The time clock
+    // is the source of truth for who is on duty, including someone on break.
     driversOnDuty: users.filter(
-      (user) => user.role === "driver" && user.status === "active",
+      (user) =>
+        user.role === "driver" &&
+        user.status === "active" &&
+        summarizeTime(user.id, timeEntries).phase !== "out",
     ).length,
-    trucksInUse: trucks.filter((truck) => truck.status === "in_use").length,
-    dumpstersOut: dumpsters.filter((dumpster) => dumpster.status === "out")
-      .length,
+    // Truck maintenance status says whether the asset is dispatchable; its
+    // current job says whether it is actually in use.
+    trucksInUse: jobs.filter(
+      (job) =>
+        Boolean(job.assignedTruckId) &&
+        ["en_route", "arrived"].includes(job.status),
+    ).length,
+    // Open placement is authoritative for a dumpster physically at a site.
+    dumpstersOut: openPlacements.length,
   };
   const activity = activities.slice(0, 4);
 

@@ -227,6 +227,7 @@ export interface InvoiceRow extends Record<string, unknown> {
   customer_id: string;
   job_id: string | null;
   amount_cents: number;
+  tax_cents: number;
   status: "draft" | "open" | "paid" | "uncollectible" | "void";
   billing_mode: "per_job" | "statement" | "one_off";
   payment_terms: "due_on_receipt" | "net_15" | "net_30";
@@ -675,6 +676,10 @@ export interface Database {
       review_time_request: {
         Args: { request_id: string; decision: string };
         Returns: TimeRequestRow;
+      };
+      adjust_pto_balance: {
+        Args: { target_user_id: string; delta_hours: number; adjustment_reason: string };
+        Returns: UserRow;
       };
       audit_admin_action: {
         Args: { target_user_id: string; admin_action: string };

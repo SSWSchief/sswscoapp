@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Topbar } from "@/components/dispatcher/Topbar";
@@ -18,6 +19,7 @@ import { CreateJobModal } from "@/components/dispatcher/CreateJobModal";
 import { useToast } from "@/components/system/ToastProvider";
 import { useConfirm } from "@/components/system/ConfirmProvider";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import { Modal } from "@/components/ui/Modal";
 
 // Screen 4 — Job Details (dispatcher view).
 export default function JobDetailsPage({
@@ -52,6 +54,7 @@ export default function JobDetailsPage({
   const [correctedDumpsterId, setCorrectedDumpsterId] = React.useState("");
   const [correctionReason, setCorrectionReason] = React.useState("");
   const [correctedPickupAt, setCorrectedPickupAt] = React.useState("");
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = React.useState<string | null>(null);
   const fileInput = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -385,22 +388,33 @@ export default function JobDetailsPage({
             <CardHeader title="Photos" />
             <div className="px-5 py-4 flex flex-wrap gap-3">
               {job.photos.map((p) => (
-                <div
-                  key={p.id}
-                  className="h-20 w-20 rounded bg-brand-mist border border-brand-ice flex items-center justify-center text-brand-silver"
-                  style={
-                    p.url
-                      ? {
-                          backgroundImage: `url(${p.url})`,
-                          backgroundSize: "cover",
-                          backgroundPosition: "center",
-                        }
-                      : undefined
-                  }
-                  role={p.url ? "img" : undefined}
-                  aria-label={p.url ? "Job photo" : undefined}
-                >
-                  {!p.url && <Icon name="photo" width={26} height={26} />}
+                <div key={p.id} className="relative h-20 w-20 overflow-hidden rounded border border-brand-ice bg-brand-mist">
+                  <div
+                    className="h-full w-full flex items-center justify-center text-brand-silver"
+                    style={p.url ? { backgroundImage: `url(${p.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                    role={p.url ? "img" : undefined}
+                    aria-label={p.url ? "Job photo" : undefined}
+                  >
+                    {!p.url && <Icon name="photo" width={26} height={26} />}
+                  </div>
+                  {p.url && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPhotoUrl(p.url)}
+                      className="absolute inset-x-0 top-0 bottom-7 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue focus-visible:ring-inset"
+                      aria-label="View job photo full size"
+                    />
+                  )}
+                  {p.url && (
+                    <a
+                      href={p.url}
+                      download={`job-${job.reference}-photo`}
+                      className="absolute inset-x-0 bottom-0 flex min-h-7 items-center justify-center bg-black/65 px-1 text-[10px] font-semibold text-white hover:bg-black/80"
+                      aria-label="Download job photo"
+                    >
+                      Download
+                    </a>
+                  )}
                 </div>
               ))}
               <button
@@ -468,6 +482,13 @@ export default function JobDetailsPage({
           </Card>
         </div>
       </div>
+      <Modal open={selectedPhotoUrl !== null} onClose={() => setSelectedPhotoUrl(null)} title="Job photo" widthClass="max-w-5xl">
+        {selectedPhotoUrl && (
+          <div className="relative h-[70dvh] min-h-80 w-full bg-black">
+            <Image src={selectedPhotoUrl} alt="Job evidence photo" fill unoptimized sizes="(max-width: 1024px) 100vw, 80vw" className="object-contain" />
+          </div>
+        )}
+      </Modal>
       <CreateJobModal
         open={editOpen}
         onClose={() => setEditOpen(false)}

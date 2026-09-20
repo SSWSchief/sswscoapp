@@ -183,6 +183,9 @@ describe("sendInvoice", () => {
     const approved = world({ settings: { tax_policy_status: "automatic_tax_approved" } });
     automaticTaxEnabled.mockReturnValue(true);
     await expect(sendInvoice("inv-1", approved.client)).resolves.toBeTruthy();
+
+    const nonTaxable = world({ settings: { tax_policy_status: "non_taxable_approved" } });
+    await expect(sendInvoice("inv-1", nonTaxable.client)).resolves.toBeTruthy();
   });
 
   it("reactivates the revision's job links and reconciles the original it replaces", async () => {

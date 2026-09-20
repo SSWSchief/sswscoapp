@@ -232,6 +232,7 @@ describe("database mappers", () => {
       customer_id: "customer",
       job_id: null,
       amount_cents: 100,
+      tax_cents: 0,
       status: "draft",
       billing_mode: "per_job",
       payment_terms: "net_30",
