@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import { apiFailure, logRequest, requestId } from "@/lib/api-response";
 import { toCsv } from "@/lib/csv";
 import { createClient } from "@/lib/supabase/server";
-import { pacificDate, pacificDayEnd, pacificDayStart } from "@/lib/time-clock";
+import {
+  applyTimeCorrections,
+  formatHoursDuration,
+  pacificDate,
+  pacificDayEnd,
+  pacificDayStart,
+  summarizeRange,
+} from "@/lib/time-clock";
 import { exportQuerySchema } from "@/lib/validation";
 
 const allowed = new Set(["jobs", "invoices", "time", "assets"]);
@@ -137,7 +144,7 @@ export async function GET(
       // `maximumRows` and then narrowing in JS returns steadily less of the
       // requested range as the table grows, and eventually an empty file for
       // any recent week — the exact range payroll asks for.
-      const [result, staff] = await Promise.all([
+      const [result, corrections, staff] = await Promise.all([
         db
           .from("time_entries")
           .select("*")
@@ -145,26 +152,82 @@ export async function GET(
           .lt("occurred_at", pacificDayEnd(to))
           .order("occurred_at")
           .limit(maximumRows + 1),
+        db
+          .from("time_entry_corrections")
+          .select("id,original_entry_id,user_id,replacement_type,replacement_at,request_id")
+          .gte("replacement_at", pacificDayStart(from))
+          .lt("replacement_at", pacificDayEnd(to))
+          .limit(maximumRows + 1),
         db.from("users").select("id,employee_id,full_name,role"),
       ]);
       if (result.error) throw result.error;
+      if (corrections.error) throw corrections.error;
       if (staff.error) throw staff.error;
       const byId = new Map(
         (staff.data ?? []).map((person) => [person.id, person]),
       );
-      // Named, because a payroll clerk cannot act on an internal row id. The
-      // old file's "Employee ID" column held exactly that.
-      headers = ["Employee ID", "Employee", "Role", "Event", "Timestamp"];
-      rows = (result.data ?? []).map((entry) => {
-        const person = byId.get(entry.user_id);
-        return [
-          person?.employee_id ?? entry.user_id,
-          person?.full_name ?? "",
-          person?.role ?? "",
-          entry.entry_type,
-          entry.occurred_at,
-        ];
-      });
+      const effectiveEntries = applyTimeCorrections(
+        (result.data ?? []).map((entry) => ({
+          id: entry.id,
+          userId: entry.user_id,
+          type: entry.entry_type,
+          at: entry.occurred_at,
+        })),
+        (corrections.data ?? []).map((correction) => ({
+          id: correction.id,
+          requestId: correction.request_id,
+          originalEntryId: correction.original_entry_id,
+          userId: correction.user_id,
+          replacementType: correction.replacement_type,
+          replacementAt: correction.replacement_at,
+        })),
+      );
+      // A raw punch log leaves payroll to calculate breaks and daily totals by
+      // hand. Keep the actual timestamps, but group them into the day they
+      // belong to and calculate the worked time from the same corrected events
+      // displayed in Staff Hours.
+      headers = [
+        "Employee ID",
+        "Employee",
+        "Role",
+        "Date",
+        "Clock In",
+        "Clock Out",
+        "Break Time",
+        "Worked Time",
+        "Status",
+        "Punches",
+      ];
+      rows = [...new Set(effectiveEntries.map((entry) => entry.userId))]
+        .flatMap((userId) => {
+          const person = byId.get(userId);
+          return summarizeRange(userId, effectiveEntries, from, to).days
+            .filter((day) => day.entryCount > 0)
+            .map((day) => {
+              const punches = effectiveEntries
+                .filter(
+                  (entry) =>
+                    entry.userId === userId && pacificDate(entry.at) === day.day,
+                )
+                .map((entry) => `${entry.type} ${entry.at}`)
+                .join(" · ");
+              return [
+                person?.employee_id ?? userId,
+                person?.full_name ?? "",
+                person?.role ?? "",
+                day.day,
+                day.firstIn ?? "",
+                day.lastOut ?? "",
+                formatHoursDuration(day.breakSeconds / 3600),
+                formatHoursDuration(day.workedSeconds / 3600),
+                day.open ? "Needs clock-out" : "Complete",
+                punches,
+              ];
+            });
+        })
+        .sort((left, right) =>
+          `${left[3]}:${left[1]}`.localeCompare(`${right[3]}:${right[1]}`),
+        );
     } else {
       const [trucks, dumpsters] = await Promise.all([
         db

@@ -18,7 +18,11 @@ const reportCards = [
     "Date-filtered jobs, status, assignment, and service data.",
     "jobs",
   ],
-  ["Employee Time", "Exact time events without payroll rounding.", "time"],
+  [
+    "Employee Time",
+    "Daily clock timestamps, unpaid breaks, and calculated worked hours.",
+    "time",
+  ],
   [
     "Asset Utilization",
     "Truck, dumpster, location, status, and AirTag records.",

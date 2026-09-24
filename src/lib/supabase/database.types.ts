@@ -419,6 +419,22 @@ export interface DisposalTicketRow extends Record<string, unknown> {
   created_at: string;
   updated_at: string;
 }
+export interface DisposalSiteRow extends Record<string, unknown> {
+  id: string;
+  vendor_id: string | null;
+  name: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  operating_hours: string;
+  material_rules: Json;
+  truck_restrictions: string;
+  estimated_wait_minutes: number;
+  notes: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 export interface ContainerPlacementRow extends Record<string, unknown> {
   id: string;
   customer_id: string;
@@ -564,6 +580,7 @@ export interface Database {
       training_datasets: Table<TrainingDatasetRow>;
       price_list: Table<PriceListRow>;
       disposal_tickets: Table<DisposalTicketRow>;
+      disposal_sites: Table<DisposalSiteRow>;
       container_placements: Table<ContainerPlacementRow>;
       vehicle_inspections: Table<VehicleInspectionRow>;
       vehicle_inspection_photos: Table<VehicleInspectionPhotoRow>;

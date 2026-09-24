@@ -84,6 +84,13 @@ export const staffNavSections: AppNavSection[] = [
         permission: "vendors",
         keywords: "contacts subcontractors towing locksmith suppliers",
       },
+      {
+        href: "/dispatcher/disposal-sites",
+        label: "Disposal Sites",
+        icon: "map",
+        permission: "vendors",
+        keywords: "dumpsites landfill transfer station rates disposal",
+      },
     ],
   },
   {
