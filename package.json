@@ -27,9 +27,11 @@
     "identities:retire": "node scripts/retire-test-identities.mjs"
   },
   "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.2",
     "next": "^15.5.24",
+    "pdf-lib": "^1.17.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "server-only": "^0.0.1",

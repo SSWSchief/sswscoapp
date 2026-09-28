@@ -212,6 +212,13 @@ export const driverPrimaryNav: AppNavItem[] = [
 
 export const driverSecondaryNav: AppNavItem[] = [
   {
+    href: "/driver/dumpsters",
+    label: "Dumpsters",
+    icon: "dumpster",
+    permission: "driver_jobs",
+    keywords: "container inventory location status",
+  },
+  {
     href: "/driver/sops",
     label: "SOPs",
     icon: "jobs",

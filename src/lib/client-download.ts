@@ -23,9 +23,11 @@ async function safeErrorMessage(response: Response) {
   }
 }
 
-export async function downloadCsv(url: string, fallbackName: string) {
-  const response = await fetch(url, { headers: { accept: "text/csv" } });
+async function downloadFile(url: string, fallbackName: string, contentType: string) {
+  const response = await fetch(url, { headers: { accept: contentType } });
   if (!response.ok) throw new Error(await safeErrorMessage(response));
+  if (!response.headers.get("content-type")?.startsWith(contentType))
+    throw new Error(`The server did not return a ${fallbackName.endsWith(".pdf") ? "PDF" : "CSV"} file.`);
 
   const blob = await response.blob();
   const objectUrl = URL.createObjectURL(blob);
@@ -40,3 +42,6 @@ export async function downloadCsv(url: string, fallbackName: string) {
   link.remove();
   URL.revokeObjectURL(objectUrl);
 }
+
+export const downloadCsv = (url: string, fallbackName: string) => downloadFile(url, fallbackName, "text/csv");
+export const downloadPdf = (url: string, fallbackName: string) => downloadFile(url, fallbackName, "application/pdf");

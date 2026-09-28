@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Field";
 import { useToast } from "@/components/system/ToastProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
-import { downloadCsv } from "@/lib/client-download";
+import { downloadCsv, downloadPdf } from "@/lib/client-download";
 import { pacificDate } from "@/lib/time-clock";
 import { loadedJobWindow } from "@/lib/job-dates";
 
@@ -56,19 +56,16 @@ export default function Page() {
     .reduce((n, i) => n + i.amountCents, 0);
   const href = (type: string) =>
     `/api/exports/${type}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
-  const printReport = (type: string) => {
-    if (invalidRange) return;
-    window.open(`${href(type)}&print=1`, "_blank", "noopener");
-  };
-  const download = async (type: string, title: string) => {
+  const download = async (type: string, title: string, format: "csv" | "pdf") => {
     if (invalidRange) {
       toast("Choose a From date before the Through date.", { tone: "error" });
       return;
     }
-    setDownloading(type);
+    setDownloading(`${type}:${format}`);
     try {
-      await downloadCsv(href(type), `${type}-${from}-${to}.csv`);
-      toast(`${title} CSV downloaded.`, { tone: "success" });
+      if (format === "pdf") await downloadPdf(`${href(type)}&format=pdf`, `${type}-${from}-${to}.pdf`);
+      else await downloadCsv(href(type), `${type}-${from}-${to}.csv`);
+      toast(`${title} ${format.toUpperCase()} downloaded.`, { tone: "success" });
     } catch (error) {
       toast(
         error instanceof Error
@@ -140,12 +137,13 @@ export default function Page() {
               <h2 className="font-semibold">{title} Export</h2>
               <p className="mt-1 text-sm text-brand-steel">{description}</p>
               <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <Button disabled={!canMutate || invalidRange || downloading !== null} onClick={() => void download(type, title)}>{downloading === type ? "Downloading…" : "Download CSV"}</Button>
-                <Button variant="secondary" disabled={!canMutate || invalidRange} onClick={() => printReport(type)}>Print / Save PDF</Button>
+                <Button disabled={!canMutate || invalidRange || downloading !== null} onClick={() => void download(type, title, "csv")}>{downloading === `${type}:csv` ? "Downloading…" : "Download CSV"}</Button>
+                <Button variant="secondary" disabled={!canMutate || invalidRange || downloading !== null} onClick={() => void download(type, title, "pdf")}>{downloading === `${type}:pdf` ? "Downloading…" : "Download PDF"}</Button>
               </div>
             </Card>
           ))}
         </div>
+        <p className="text-xs text-brand-steel">CSV files are for Excel or Google Sheets. Your computer chooses which app opens a downloaded CSV; if it opens in Acrobat, use Open with to choose a spreadsheet app.</p>
       </div>
     </>
   );

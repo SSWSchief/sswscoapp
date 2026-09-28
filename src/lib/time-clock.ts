@@ -174,11 +174,12 @@ export function applyTimeCorrections(
   entries: TimeEntry[],
   corrections: TimeEntryCorrection[],
 ): TimeEntry[] {
+  const active = corrections.filter((correction) => !correction.supersededAt);
   const replaced = new Set(
-    corrections.map((c) => c.originalEntryId).filter(Boolean),
+    active.map((c) => c.originalEntryId).filter(Boolean),
   );
   const projected = entries.filter((e) => !replaced.has(e.id));
-  for (const c of corrections) {
+  for (const c of active) {
     projected.push({
       id: `correction:${c.id}`,
       userId: c.userId,

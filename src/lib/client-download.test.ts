@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { downloadCsv } from "./client-download";
+import { downloadCsv, downloadPdf } from "./client-download";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -52,5 +52,19 @@ describe("downloadCsv", () => {
     await expect(downloadCsv("/broken", "file.csv")).rejects.toThrow(
       "Download failed (500)",
     );
+  });
+
+  it("downloads an actual PDF response and rejects a mislabeled file", async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response("%PDF-1.7", {
+      headers: { "content-type": "application/pdf", "content-disposition": "attachment; filename=jobs.pdf" },
+    })).mockResolvedValueOnce(new Response("not a CSV", {
+      headers: { "content-type": "application/pdf" },
+    }));
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("URL", { createObjectURL: vi.fn().mockReturnValue("blob:pdf"), revokeObjectURL: vi.fn() });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    await downloadPdf("/report?format=pdf", "fallback.pdf");
+    expect(click).toHaveBeenCalledOnce();
+    await expect(downloadCsv("/report", "report.csv")).rejects.toThrow("did not return a CSV");
   });
 });

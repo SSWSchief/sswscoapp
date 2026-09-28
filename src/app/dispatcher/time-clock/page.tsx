@@ -10,6 +10,7 @@ import { useOperations } from "@/components/system/OperationsProvider";
 import { useTimeClock } from "@/components/system/useTimeClock";
 import { TimeRequestModal } from "@/components/time/TimeRequestModal";
 import { StaffHoursPanel } from "@/components/time/StaffHoursPanel";
+import { ManagementTimePanel } from "@/components/time/ManagementTimePanel";
 import {
   clocksIn,
   describeTimeRequest,
@@ -34,6 +35,7 @@ export default function TimeClockPage() {
     canMutate,
   } = useOperations();
   const { toast } = useToast();
+  const [timeRevision, setTimeRevision] = React.useState(0);
 
   // Owners and management are salaried, so the roster is the people actually on
   // the clock — drivers plus dispatch and office — split so the driver view
@@ -79,9 +81,8 @@ export default function TimeClockPage() {
           Time Clock page was being opened for and could not answer. It loads
           its own window, so it costs nothing until someone changes the dates.
         */}
-        <div className="mt-5">
-          <StaffHoursPanel />
-        </div>
+        <ManagementTimePanel onSaved={() => setTimeRevision((revision) => revision + 1)} />
+        <div className="mt-5"><StaffHoursPanel refreshKey={timeRevision} /></div>
         <Card className="mt-5">
           <div className="px-5 py-4 border-b border-brand-ice/60">
             <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
@@ -336,6 +337,9 @@ function RequestRow({
         <div className="text-sm text-brand-steel">
           {describeTimeRequest(request)} · {request.reason}
         </div>
+        {request.submittedById && request.submittedById !== request.userId && (
+          <div className="text-xs text-brand-steel">Entered by management</div>
+        )}
       </div>
       <Badge
         tone={request.status === "approved" ? "green" : "amber"}

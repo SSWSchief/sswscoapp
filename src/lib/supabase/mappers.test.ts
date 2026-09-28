@@ -198,6 +198,8 @@ describe("database mappers", () => {
         replacement_at: base.created_at,
         reason: "Correction",
         approved_by_id: "admin",
+        superseded_at: null,
+        superseded_by_id: null,
       }).requestId,
     ).toBe("request");
     expect(
@@ -214,6 +216,7 @@ describe("database mappers", () => {
         requested_at: null,
         reviewed_by_id: null,
         reviewed_at: null,
+        submitted_by_id: "driver",
       }).hours,
     ).toBe(8);
     expect(

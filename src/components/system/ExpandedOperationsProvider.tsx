@@ -74,6 +74,7 @@ type State = {
   settings: CompanySettings | null;
   trainingDataset: TrainingDataset;
   priceList: PriceListItem[];
+  priceListReady: boolean;
 };
 function mutationFailure(error: unknown): MutationResult<never> {
   const candidate = error as { code?: string; message?: string };
@@ -180,6 +181,7 @@ const Context = React.createContext<Value | null>(null);
 const initial: State = {
   invoices: [],
   priceList: [],
+  priceListReady: false,
   channels: [],
   messages: [],
   messageRecipients: [],
@@ -225,6 +227,8 @@ export function ExpandedOperationsProvider({
       }
       const started = Date.now();
       setLoading(true);
+      if (domains.has("finance"))
+        setData((previous) => ({ ...previous, priceListReady: false }));
       try {
         const db = createClient();
         const patch: Partial<State> = {};
@@ -254,6 +258,7 @@ export function ExpandedOperationsProvider({
           patch.priceList = (prices.data as PriceListRow[]).map(
             mapPriceListItem,
           );
+          patch.priceListReady = true;
         }
         if (domains.has("messaging")) {
           const [channels, messages, reads, recipients] = await Promise.all([
@@ -354,6 +359,8 @@ export function ExpandedOperationsProvider({
           durationMs: Date.now() - started,
         });
       } catch (error) {
+        if (domains.has("finance"))
+          setData((previous) => ({ ...previous, priceListReady: false }));
         log("error", "expanded_operations_refresh_failed", {
           message: error instanceof Error ? error.message : "unknown",
           domains: [...domains],

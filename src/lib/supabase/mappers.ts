@@ -21,6 +21,7 @@ import type {
   TeamMessage,
   TimeEntry,
   TimeEntryCorrection,
+  PaidTimeAdjustment,
   TimeRequest,
   Truck,
   User,
@@ -31,6 +32,7 @@ import type {
   CompanySettingsRow,
   ContainerPlacementRow,
   CorrectionRow,
+  PaidTimeAdjustmentRow,
   DisposalTicketRow,
   PriceListRow,
   ReadReceiptRow,
@@ -237,6 +239,21 @@ export function mapTimeCorrection(row: CorrectionRow): TimeEntryCorrection {
     userId: row.user_id,
     replacementType: row.replacement_type,
     replacementAt: row.replacement_at,
+    supersededAt: row.superseded_at,
+  };
+}
+export function mapPaidTimeAdjustment(row: PaidTimeAdjustmentRow): PaidTimeAdjustment {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    workDate: row.work_date,
+    paidMinutes: row.paid_minutes,
+    reason: row.reason,
+    enteredById: row.entered_by_id,
+    revisesId: row.revises_id,
+    voidedAt: row.voided_at,
+    voidReason: row.void_reason,
+    createdAt: row.created_at,
   };
 }
 export function mapTimeRequest(row: TimeRequestRow): TimeRequest {
@@ -251,6 +268,7 @@ export function mapTimeRequest(row: TimeRequestRow): TimeRequest {
     targetEntryId: row.target_entry_id,
     requestedEntryType: row.requested_entry_type,
     requestedAt: row.requested_at,
+    submittedById: row.submitted_by_id,
   };
 }
 export function mapAbsence(row: AbsenceRow) {

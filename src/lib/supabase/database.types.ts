@@ -209,6 +209,7 @@ export interface TimeRequestRow extends Record<string, unknown> {
   requested_at: string | null;
   reviewed_by_id: string | null;
   reviewed_at: string | null;
+  submitted_by_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -488,6 +489,21 @@ export interface CorrectionRow extends Record<string, unknown> {
   reason: string;
   approved_by_id: string;
   created_at: string;
+  superseded_at: string | null;
+  superseded_by_id: string | null;
+}
+export interface PaidTimeAdjustmentRow extends Record<string, unknown> {
+  id: string;
+  user_id: string;
+  work_date: string;
+  paid_minutes: number;
+  reason: string;
+  entered_by_id: string;
+  revises_id: string | null;
+  voided_at: string | null;
+  voided_by_id: string | null;
+  void_reason: string | null;
+  created_at: string;
 }
 export interface AuditRow extends Record<string, unknown> {
   id: number;
@@ -545,6 +561,7 @@ export interface Database {
       time_requests: Table<TimeRequestRow>;
       absence_events: Table<AbsenceRow>;
       time_entry_corrections: Table<CorrectionRow>;
+      paid_time_adjustments: Table<PaidTimeAdjustmentRow>;
       audit_log: Table<AuditRow>;
       invoices: Table<InvoiceRow>;
       invoice_line_items: Table<InvoiceLineItemRow>;
@@ -693,6 +710,18 @@ export interface Database {
       review_time_request: {
         Args: { request_id: string; decision: string };
         Returns: TimeRequestRow;
+      };
+      manage_time_correction: {
+        Args: { target_user_id: string; punch_type: TimeEntryType; punch_at: string; correction_reason: string; original_entry_id?: string | null; replaces_correction_id?: string | null };
+        Returns: CorrectionRow;
+      };
+      save_paid_time_adjustment: {
+        Args: { target_user_id: string; target_date: string; minutes: number; adjustment_reason: string; previous_id?: string | null };
+        Returns: PaidTimeAdjustmentRow;
+      };
+      void_paid_time_adjustment: {
+        Args: { target_id: string; reversal_reason: string };
+        Returns: PaidTimeAdjustmentRow;
       };
       adjust_pto_balance: {
         Args: { target_user_id: string; delta_hours: number; adjustment_reason: string };

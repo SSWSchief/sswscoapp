@@ -640,6 +640,7 @@ export function OperationsProvider({
             db
               .from("time_entry_corrections")
               .select("*")
+              .is("superseded_at", null)
               .order("created_at", { ascending: false })
               .limit(500),
             db
@@ -1091,6 +1092,7 @@ export function OperationsProvider({
             .from("time_requests")
             .insert({
               user_id: currentUser.id,
+              submitted_by_id: currentUser.id,
               kind: input.kind,
               status: "pending",
               requested_for: input.requestedFor,

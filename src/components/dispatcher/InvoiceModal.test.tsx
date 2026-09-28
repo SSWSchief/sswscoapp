@@ -6,7 +6,7 @@ import { InvoiceModal } from "./InvoiceModal";
 import type { Customer, Job } from "@/lib/types";
 
 const customers = [
-  { id: "cust-1", name: "Vegas GC", billingContactName: "Pat", billingEmail: "pat@x.com" },
+  { id: "cust-1", name: "Vegas GC", billingContactName: "Pat", billingEmail: "pat@x.com", billingAddressLine1: "", billingCity: "", billingState: "", billingPostalCode: "" },
 ] as Customer[];
 
 const jobs = [
@@ -43,7 +43,7 @@ const priceList = [{ id: "p1", serviceType: "Delivery", dumpsterSize: "20 Yard",
 const invoices: unknown[] = [];
 const expandedOperationsValue = {
   saveInvoice: async (payload: unknown) => { saved.push(payload); return { ok: true, data: {} }; },
-  settings, priceList, invoices,
+  settings, priceList, invoices, loading: false, priceListReady: true, refresh: async () => {},
 };
 vi.mock("@/components/system/ExpandedOperationsProvider", () => ({
   useExpandedOperations: () => expandedOperationsValue,
@@ -59,6 +59,8 @@ describe("InvoiceModal — multi-job statement", () => {
     savedCustomers.length = 0;
     confirmCalls.length = 0;
     confirmAnswer = true;
+    expandedOperationsValue.loading = false;
+    expandedOperationsValue.priceListReady = true;
   });
 
   const openStatementWithBothJobs = async () => {
@@ -85,6 +87,30 @@ describe("InvoiceModal — multi-job statement", () => {
       jobs[1].dumpsterSize = original;
       priceList.pop();
     }
+  });
+
+  it("waits for the price catalog before a job can create its invoice line", async () => {
+    expandedOperationsValue.loading = true;
+    const view = render(<InvoiceModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/Customer/i), "Vegas GC");
+    const job = screen.getByRole("radio", { name: /J-1/i });
+    expect(job).toBeDisabled();
+    expect(screen.getByText(/Loading preset prices/i)).toBeInTheDocument();
+    expandedOperationsValue.loading = false;
+    view.rerender(<InvoiceModal open onClose={() => {}} />);
+    expect(job).not.toBeDisabled();
+    await user.click(job);
+    expect(screen.getByLabelText("Line 1 amount")).toHaveValue(400);
+  });
+
+  it("blocks job selection when the rate catalog fails to load", async () => {
+    expandedOperationsValue.priceListReady = false;
+    render(<InvoiceModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/Customer/i), "Vegas GC");
+    expect(screen.getByRole("radio", { name: /J-1/i })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/rates could not be loaded/i);
   });
 
   it("still adds a line item for a job with no matching price-list rate, instead of dropping it", async () => {
@@ -114,7 +140,7 @@ describe("InvoiceModal — multi-job statement", () => {
     const amounts = screen.getAllByLabelText(/amount/i) as HTMLInputElement[];
     await user.type(amounts[1], "175.00");
 
-    expect(screen.queryByText(/No rate on file/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("No rate on file — enter an amount.")).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("Dry Run · 40 Yard · J-2")).toBeInTheDocument();
   });
 

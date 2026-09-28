@@ -267,6 +267,20 @@ export interface TimeEntryCorrection {
   userId: string;
   replacementType: TimeEntryType;
   replacementAt: string;
+  supersededAt?: string | null;
+}
+
+export interface PaidTimeAdjustment {
+  id: string;
+  userId: string;
+  workDate: string;
+  paidMinutes: number;
+  reason: string;
+  enteredById: string;
+  revisesId: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
+  createdAt: string;
 }
 
 export interface TimeRequest {
@@ -280,6 +294,7 @@ export interface TimeRequest {
   targetEntryId?: string | null;
   requestedEntryType?: TimeEntryType | null;
   requestedAt?: string | null;
+  submittedById?: string | null;
 }
 
 export interface AbsenceEvent {

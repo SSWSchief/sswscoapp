@@ -31,7 +31,7 @@ interface Options {
 }
 
 type Filter =
-  | ["eq" | "neq" | "ilike" | "is", string, unknown]
+  | ["eq" | "neq" | "ilike" | "is" | "gte" | "lte" | "lt", string, unknown]
   | ["in", string, unknown[]]
   | ["notis", string, unknown];
 
@@ -57,9 +57,12 @@ function matches(row: Row, filters: Filter[]) {
     const actual = row[column];
     if (operator === "eq") return actual === value;
     if (operator === "neq") return actual !== value;
-    if (operator === "is") return actual === value;
+    if (operator === "is") return value === null ? actual === null || actual === undefined : actual === value;
     if (operator === "in") return (value as unknown[]).includes(actual);
     if (operator === "notis") return actual !== value;
+    if (operator === "gte") return String(actual) >= String(value);
+    if (operator === "lte") return String(actual) <= String(value);
+    if (operator === "lt") return String(actual) < String(value);
     return typeof actual === "string" && likeMatcher(String(value)).test(actual);
   });
 }
@@ -107,6 +110,9 @@ export function fakeAdminClient(tables: Tables, options: Options = {}) {
       update: (values: Row) => ((operation = "update"), (payload = values), chain),
       delete: () => ((operation = "delete"), chain),
       eq: (column: string, value: unknown) => (filters.push(["eq", column, value]), chain),
+      gte: (column: string, value: unknown) => (filters.push(["gte", column, value]), chain),
+      lte: (column: string, value: unknown) => (filters.push(["lte", column, value]), chain),
+      lt: (column: string, value: unknown) => (filters.push(["lt", column, value]), chain),
       neq: (column: string, value: unknown) => (filters.push(["neq", column, value]), chain),
       is: (column: string, value: unknown) => (filters.push(["is", column, value]), chain),
       in: (column: string, values: unknown[]) => (filters.push(["in", column, values]), chain),

@@ -22,7 +22,7 @@ type EligibleJob = { id: string; reference: string; serviceType: string; dumpste
 const blankItem = (): EditorItem => ({ description: "", amount: "", amountCents: 0, category: "service", jobId: null, key: crypto.randomUUID() });
 
 export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClose: () => void; invoice?: InvoiceRecord }) {
-  const { saveInvoice, settings, priceList, invoices } = useExpandedOperations();
+  const { saveInvoice, settings, priceList, invoices, loading: financeLoading = false, priceListReady = true, refresh } = useExpandedOperations();
   const { customers, jobs, canMutate } = useOperations();
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -197,6 +197,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   const eligibleJobs = remoteJobs ?? localEligibleJobs;
 
   const selectJob = (jobId: string, checked: boolean) => {
+    if (financeLoading || !priceListReady) return;
     if (billingMode === "per_job") {
       setJobIds(checked ? [jobId] : []);
       if (checked) setItems((current) => current.map((item) => item.jobId && item.jobId !== jobId ? { ...item, jobId: null } : item));
@@ -368,7 +369,10 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
         ) : (
         <FormField label={billingMode === "statement" ? "Completed jobs" : "Completed job"} required hideRequiredMark>
           <div className="max-h-40 space-y-2 overflow-auto rounded border border-brand-ice p-3">
-            {eligibleJobs.map((job) => <label key={job.id} className="flex min-h-8 items-center gap-2"><input disabled={!jobSelectionEditable} type={billingMode === "per_job" ? "radio" : "checkbox"} name="invoice-job" checked={jobIds.includes(job.id)} onChange={(event) => selectJob(job.id, event.target.checked)} /><span>{job.reference} · {job.serviceType} · {job.dumpsterSize}</span></label>)}
+            {eligibleJobs.map((job) => {
+              const rate = priceList.find((item) => item.serviceType === job.serviceType && item.dumpsterSize === job.dumpsterSize);
+              return <label key={job.id} className="flex min-h-8 items-center gap-2"><input disabled={!jobSelectionEditable || financeLoading || !priceListReady} type={billingMode === "per_job" ? "radio" : "checkbox"} name="invoice-job" checked={jobIds.includes(job.id)} onChange={(event) => selectJob(job.id, event.target.checked)} /><span>{job.reference} · {job.serviceType} · {job.dumpsterSize} · {financeLoading ? "Loading rate…" : !priceListReady ? "Rates unavailable" : rate ? `${formatCurrency(rate.priceCents)} preset` : "No rate on file"}</span></label>;
+            })}
             {!eligibleJobs.length && <span className="text-sm text-brand-steel">No uninvoiced completed jobs for this customer. Switch to a one-off invoice to bill without one.</span>}
           </div>
         </FormField>
@@ -378,6 +382,15 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
             <h3 className="font-heading font-semibold">Line items</h3>
             <span className="text-xs text-brand-steel">{items.length} {items.length === 1 ? "line" : "lines"}</span>
           </div>
+          {financeLoading ? (
+            <p className="mb-3 text-sm text-brand-steel" role="status">Loading preset prices before you select a job…</p>
+          ) : !priceListReady ? (
+            <p className="mb-3 text-sm text-red-700" role="alert">Settings rates could not be loaded. <button type="button" className="underline" onClick={() => void refresh()}>Retry</button> before selecting a job.</p>
+          ) : priceList.length === 0 ? (
+            <p className="mb-3 text-sm text-status-pending">No preset prices are configured. Enter line amounts manually or ask management to add rates in Settings.</p>
+          ) : (
+            <p className="mb-3 text-xs text-brand-steel">Job lines use the Settings rate for their service and dumpster size. You can change the suggested amount.</p>
+          )}
           <div className="space-y-3">{items.map((item, index) => <div key={item.key} className="grid gap-2 rounded border border-brand-ice p-3 lg:grid-cols-[minmax(12rem,1fr)_9rem_9rem_auto]">
             <Input aria-label={`Line ${index + 1} description`} disabled={!editable} placeholder="Description" value={item.description} onChange={(event) => updateItem(index, { description: event.target.value })} />
             <div>
@@ -406,7 +419,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
           )}
           {editable && priceList.length > 0 && (
             <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
-              <Select aria-label="Add priced catalog line" value={catalogItemId} onChange={(event) => addCatalogLine(event.target.value)}>
+              <Select aria-label="Add priced catalog line" disabled={financeLoading || !priceListReady} value={catalogItemId} onChange={(event) => addCatalogLine(event.target.value)}>
                 <option value="">Add priced rental or transport line…</option>
                 {priceList.map((item) => <option key={item.id} value={item.id}>{item.dumpsterSize} {item.serviceType} · {formatCurrency(item.priceCents)}</option>)}
               </Select>

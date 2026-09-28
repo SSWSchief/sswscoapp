@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiFailure, logRequest, requestId } from "@/lib/api-response";
 import { toCsv } from "@/lib/csv";
+import { createReportPdf } from "@/lib/report-pdf";
 import { createClient } from "@/lib/supabase/server";
 import {
   applyTimeCorrections,
@@ -76,6 +77,9 @@ export async function GET(
       400,
     );
   const { from, to } = parsedRange.data;
+  const format = url.searchParams.get("format") ?? "csv";
+  if (format !== "csv" && format !== "pdf")
+    return fail("invalid_format", "Choose CSV or PDF.", 400);
   let headers: string[] = [];
   let rows: unknown[][] = [];
   try {
@@ -144,7 +148,7 @@ export async function GET(
       // `maximumRows` and then narrowing in JS returns steadily less of the
       // requested range as the table grows, and eventually an empty file for
       // any recent week — the exact range payroll asks for.
-      const [result, corrections, staff] = await Promise.all([
+      const [result, corrections, staff, adjustments] = await Promise.all([
         db
           .from("time_entries")
           .select("*")
@@ -155,14 +159,19 @@ export async function GET(
         db
           .from("time_entry_corrections")
           .select("id,original_entry_id,user_id,replacement_type,replacement_at,request_id")
+          .is("superseded_at", null)
           .gte("replacement_at", pacificDayStart(from))
           .lt("replacement_at", pacificDayEnd(to))
           .limit(maximumRows + 1),
         db.from("users").select("id,employee_id,full_name,role"),
+        db.from("paid_time_adjustments").select("user_id,work_date,paid_minutes,reason")
+          .gte("work_date", from).lte("work_date", to).is("voided_at", null)
+          .limit(maximumRows + 1),
       ]);
       if (result.error) throw result.error;
       if (corrections.error) throw corrections.error;
       if (staff.error) throw staff.error;
+      if (adjustments.error) throw adjustments.error;
       const byId = new Map(
         (staff.data ?? []).map((person) => [person.id, person]),
       );
@@ -195,15 +204,30 @@ export async function GET(
         "Clock Out",
         "Break Time",
         "Worked Time",
+        "Paid Adjustment",
+        "Payable Time",
+        "Adjustment Reason",
         "Status",
         "Punches",
       ];
-      rows = [...new Set(effectiveEntries.map((entry) => entry.userId))]
+      const paidByUserDay = new Map<string, { minutes: number; reasons: string[] }>();
+      for (const adjustment of adjustments.data ?? []) {
+        const key = `${adjustment.user_id}:${adjustment.work_date}`;
+        const current = paidByUserDay.get(key) ?? { minutes: 0, reasons: [] };
+        current.minutes += adjustment.paid_minutes;
+        current.reasons.push(adjustment.reason);
+        paidByUserDay.set(key, current);
+      }
+      rows = [...new Set([
+        ...effectiveEntries.map((entry) => entry.userId),
+        ...(adjustments.data ?? []).map((adjustment) => adjustment.user_id),
+      ])]
         .flatMap((userId) => {
           const person = byId.get(userId);
           return summarizeRange(userId, effectiveEntries, from, to).days
-            .filter((day) => day.entryCount > 0)
+            .filter((day) => day.entryCount > 0 || paidByUserDay.has(`${userId}:${day.day}`))
             .map((day) => {
+              const paid = paidByUserDay.get(`${userId}:${day.day}`) ?? { minutes: 0, reasons: [] };
               const punches = effectiveEntries
                 .filter(
                   (entry) =>
@@ -220,7 +244,10 @@ export async function GET(
                 day.lastOut ?? "",
                 formatHoursDuration(day.breakSeconds / 3600),
                 formatHoursDuration(day.workedSeconds / 3600),
-                day.open ? "Needs clock-out" : "Complete",
+                formatHoursDuration(paid.minutes / 60),
+                formatHoursDuration(day.workedSeconds / 3600 + paid.minutes / 60),
+                paid.reasons.join(" · "),
+                day.open ? "Needs clock-out" : day.entryCount ? "Complete" : "Paid adjustment only",
                 punches,
               ];
             });
@@ -270,9 +297,17 @@ export async function GET(
       "Narrow the date range to fewer than 10,000 rows.",
       413,
     );
+  let pdf: Uint8Array<ArrayBuffer> | null = null;
+  if (format === "pdf") {
+    try {
+      pdf = new Uint8Array(await createReportPdf(type, from, to, headers, rows));
+    } catch {
+      return fail("pdf_generation_failed", "PDF report could not be generated.", 500);
+    }
+  }
   const audit = await db.from("export_audit").insert({
     export_type: type,
-    filters: { from, to },
+    filters: { from, to, format },
     row_count: rows.length,
     requested_by_id: profile.data.id,
   });
@@ -296,6 +331,14 @@ export async function GET(
     const html = `<!doctype html><html><head><title>${escape(type)} report ${escape(from)}–${escape(to)}</title><style>body{font-family:Arial,sans-serif;color:#17212b;margin:32px}h1{font-size:20px}p{color:#52616b}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #cbd5df;padding:7px;text-align:left;vertical-align:top}th{background:#edf3f7}@media print{body{margin:12mm}}</style></head><body><h1>SSWSCO ${escape(type)} report</h1><p>${escape(from)} through ${escape(to)}</p>${table}<script>addEventListener('load',()=>print())</script></body></html>`;
     return new NextResponse(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-request-id": requestIdValue } });
   }
+  if (pdf) return new NextResponse(pdf, {
+    headers: {
+      "content-type": "application/pdf",
+      "content-disposition": `attachment; filename="${type}-${from}-${to}.pdf"`,
+      "cache-control": "no-store",
+      "x-request-id": requestIdValue,
+    },
+  });
   return new NextResponse(csv, {
     headers: {
       "content-type": "text/csv; charset=utf-8",

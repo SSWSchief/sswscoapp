@@ -71,6 +71,14 @@ describe("applyTimeCorrections", () => {
         .workedSeconds,
     ).toBe(6 * 3600);
   });
+  it("ignores a superseded correction when management revises a punch", () => {
+    const rows = [entry("1", "clock_in", "2026-09-24T15:00:00Z")];
+    const projected = applyTimeCorrections(rows, [
+      { id: "old", requestId: "r1", originalEntryId: "1", userId: "u1", replacementType: "clock_in", replacementAt: "2026-09-24T14:00:00Z", supersededAt: "2026-09-25T00:00:00Z" },
+      { id: "new", requestId: "r2", originalEntryId: "1", userId: "u1", replacementType: "clock_in", replacementAt: "2026-09-24T13:00:00Z", supersededAt: null },
+    ]);
+    expect(projected.map((row) => row.id)).toEqual(["correction:new"]);
+  });
 });
 describe("formatHoursDuration", () => {
   it("renders decimal hours as readable hours and minutes", () => {
