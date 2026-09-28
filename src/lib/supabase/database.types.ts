@@ -505,6 +505,15 @@ export interface PaidTimeAdjustmentRow extends Record<string, unknown> {
   void_reason: string | null;
   created_at: string;
 }
+export interface PtoBalanceAdjustmentRow extends Record<string, unknown> {
+  id: string;
+  user_id: string;
+  delta_hours: number;
+  balance_after_hours: number;
+  reason: string;
+  adjusted_by_id: string;
+  created_at: string;
+}
 export interface AuditRow extends Record<string, unknown> {
   id: number;
   actor_id: string | null;
@@ -562,6 +571,7 @@ export interface Database {
       absence_events: Table<AbsenceRow>;
       time_entry_corrections: Table<CorrectionRow>;
       paid_time_adjustments: Table<PaidTimeAdjustmentRow>;
+      pto_balance_adjustments: Table<PtoBalanceAdjustmentRow>;
       audit_log: Table<AuditRow>;
       invoices: Table<InvoiceRow>;
       invoice_line_items: Table<InvoiceLineItemRow>;
