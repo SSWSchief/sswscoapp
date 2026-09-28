@@ -54,7 +54,11 @@ export async function createReportPdf(
   const document = await PDFDocument.create();
   document.registerFontkit(fontkit);
   const fontBytes = await readFile(path.join(process.cwd(), "public", "NotoSans-Regular.ttf"));
-  const font = await document.embedFont(new Uint8Array(fontBytes), { subset: true });
+  // Never `subset: true`: @pdf-lib/fontkit's subsetter drops most glyph
+  // outlines, so the text extracts fine but Preview, Safari and iOS draw only
+  // a few letters per word. The font file is already a static Latin subset
+  // (~24 KB, cut with fontTools), so embedding it whole stays small.
+  const font = await document.embedFont(new Uint8Array(fontBytes), { subset: false });
   const pageWidth = headers.length > 8 ? 1224 : 792;
   const pageHeight = 792;
   const widthAvailable = pageWidth - margin * 2;

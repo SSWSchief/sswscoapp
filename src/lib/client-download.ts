@@ -40,7 +40,9 @@ async function downloadFile(url: string, fallbackName: string, contentType: stri
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(objectUrl);
+  // Safari and iOS read the blob after click() returns; revoking it
+  // synchronously there fails the download with WebKitBlobResource error 1.
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }
 
 export const downloadCsv = (url: string, fallbackName: string) => downloadFile(url, fallbackName, "text/csv");

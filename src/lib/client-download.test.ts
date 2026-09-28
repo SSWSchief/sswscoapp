@@ -25,9 +25,14 @@ describe("downloadCsv", () => {
     const click = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => undefined);
+    vi.useFakeTimers();
     await downloadCsv("/api/export", "fallback.csv");
     expect(createObjectURL).toHaveBeenCalledOnce();
     expect(click).toHaveBeenCalledOnce();
+    // Revoked later, not synchronously, so Safari can still read the blob.
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    vi.runAllTimers();
+    vi.useRealTimers();
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:test");
   });
 
