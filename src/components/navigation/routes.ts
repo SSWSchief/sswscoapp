@@ -219,6 +219,13 @@ export const driverSecondaryNav: AppNavItem[] = [
     keywords: "container inventory location status",
   },
   {
+    href: "/driver/disposal-sites",
+    label: "Disposal Sites",
+    icon: "map",
+    permission: "driver_jobs",
+    keywords: "dumpsites landfill transfer station dump rates hours",
+  },
+  {
     href: "/driver/sops",
     label: "SOPs",
     icon: "jobs",

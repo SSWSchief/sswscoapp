@@ -11,8 +11,9 @@ import { Badge } from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
-import { downloadCsv } from "@/lib/client-download";
+import { downloadXlsx } from "@/lib/client-download";
 import { apiErrorMessage } from "@/lib/client-api";
+import { canTextInvoice, invoiceSmsHref, invoiceTextMessage } from "@/lib/invoice-text";
 import type { InvoiceRecord } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -147,8 +148,8 @@ export default function InvoicesPage() {
   const exportInvoices = async () => {
     setExporting(true);
     try {
-      await downloadCsv("/api/exports/invoices", "invoices.csv");
-      toast("Invoice CSV downloaded.", { tone: "success" });
+      await downloadXlsx("/api/exports/invoices?format=xlsx", "invoices.xlsx");
+      toast("Invoice Excel file downloaded.", { tone: "success" });
     } catch (error) {
       toast(
         error instanceof Error
@@ -215,7 +216,7 @@ export default function InvoicesPage() {
               disabled={!canMutate || exporting}
               onClick={() => void exportInvoices()}
             >
-              {exporting ? "Exporting…" : "Export CSV"}
+              {exporting ? "Exporting…" : "Export to Excel"}
             </Button>
           </div>
 
@@ -265,6 +266,7 @@ export default function InvoicesPage() {
                           Delete
                         </button>
                       )}
+                      <TextInvoiceAction invoice={invoice} phone={customers.find((customer) => customer.id === invoice.customerId)?.phone ?? ""} />
                       <LifecycleActions invoice={invoice} busy={sending === invoice.id} onAction={(action) => void lifecycleAction(invoice, action)} />
                     </div>
                   </TD>
@@ -322,6 +324,7 @@ export default function InvoicesPage() {
                       Delete draft
                     </Button>
                   )}
+                  <TextInvoiceAction invoice={invoice} phone={customers.find((customer) => customer.id === invoice.customerId)?.phone ?? ""} full />
                   <LifecycleActions invoice={invoice} busy={sending === invoice.id} onAction={(action) => void lifecycleAction(invoice, action)} full />
                 </div>
               </li>
@@ -379,6 +382,31 @@ function StripeAction({
       {busy ? "Sending…" : "Send via Stripe"}
     </button>
   );
+}
+
+/**
+ * Opens the office phone's Messages app with the payment link filled in, and
+ * offers the same message on the clipboard for a desktop without texting.
+ */
+function TextInvoiceAction({ invoice, phone, full }: { invoice: InvoiceRecord; phone: string; full?: boolean }) {
+  const { toast } = useToast();
+  if (!canTextInvoice(invoice)) return null;
+  const href = invoiceSmsHref(invoice, phone);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(invoiceTextMessage(invoice));
+      toast("Invoice text copied. Paste it into a message to the customer.", { tone: "success" });
+    } catch {
+      toast("Copy was blocked by the browser. Open the payment page and copy its address.", { tone: "error" });
+    }
+  };
+  const style = `inline-flex min-h-11 items-center justify-center text-brand-blue ${full ? "w-full rounded border border-brand-ice" : ""}`;
+  return <>
+    {href
+      ? <a className={style} href={href}>Text invoice</a>
+      : <span className={`${style} text-brand-steel`} title="Add a 10-digit mobile number to this customer to text the invoice.">No phone to text</span>}
+    <button type="button" className={style} onClick={() => void copy()}>Copy text</button>
+  </>;
 }
 
 function InvoiceStatus({ invoice }: { invoice: InvoiceRecord }) {

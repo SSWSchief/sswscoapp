@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { apiFailure, logRequest, requestId } from "@/lib/api-response";
 import { toCsv } from "@/lib/csv";
 import { createReportPdf } from "@/lib/report-pdf";
+import { createReportXlsx } from "@/lib/report-xlsx";
 import { createClient } from "@/lib/supabase/server";
 import {
   applyTimeCorrections,
   formatHoursDuration,
+  formatPacificTime,
   pacificDate,
   pacificDayEnd,
   pacificDayStart,
@@ -14,6 +16,12 @@ import {
 import { exportQuerySchema } from "@/lib/validation";
 
 const allowed = new Set(["jobs", "invoices", "time", "assets"]);
+const punchLabels: Record<string, string> = {
+  clock_in: "In",
+  break_start: "Break",
+  break_end: "Back",
+  clock_out: "Out",
+};
 const maximumRows = 10_000;
 
 export async function GET(
@@ -78,8 +86,8 @@ export async function GET(
     );
   const { from, to } = parsedRange.data;
   const format = url.searchParams.get("format") ?? "csv";
-  if (format !== "csv" && format !== "pdf")
-    return fail("invalid_format", "Choose CSV or PDF.", 400);
+  if (format !== "csv" && format !== "pdf" && format !== "xlsx")
+    return fail("invalid_format", "Choose Excel, CSV, or PDF.", 400);
   let headers: string[] = [];
   let rows: unknown[][] = [];
   try {
@@ -233,15 +241,15 @@ export async function GET(
                   (entry) =>
                     entry.userId === userId && pacificDate(entry.at) === day.day,
                 )
-                .map((entry) => `${entry.type} ${entry.at}`)
+                .map((entry) => `${punchLabels[entry.type]} ${formatPacificTime(entry.at)}`)
                 .join(" · ");
               return [
                 person?.employee_id ?? userId,
                 person?.full_name ?? "",
                 person?.role ?? "",
                 day.day,
-                day.firstIn ?? "",
-                day.lastOut ?? "",
+                day.firstIn ? formatPacificTime(day.firstIn) : "",
+                day.lastOut ? formatPacificTime(day.lastOut) : "",
                 formatHoursDuration(day.breakSeconds / 3600),
                 formatHoursDuration(day.workedSeconds / 3600),
                 formatHoursDuration(paid.minutes / 60),
@@ -325,12 +333,14 @@ export async function GET(
     startedAt,
     status: 200,
   });
-  if (url.searchParams.get("print") === "1") {
-    const escape = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] as string);
-    const table = `<table><thead><tr>${headers.map((header) => `<th>${escape(header)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((value) => `<td>${escape(value)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
-    const html = `<!doctype html><html><head><title>${escape(type)} report ${escape(from)}–${escape(to)}</title><style>body{font-family:Arial,sans-serif;color:#17212b;margin:32px}h1{font-size:20px}p{color:#52616b}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #cbd5df;padding:7px;text-align:left;vertical-align:top}th{background:#edf3f7}@media print{body{margin:12mm}}</style></head><body><h1>SSWSCO ${escape(type)} report</h1><p>${escape(from)} through ${escape(to)}</p>${table}<script>addEventListener('load',()=>print())</script></body></html>`;
-    return new NextResponse(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-request-id": requestIdValue } });
-  }
+  if (format === "xlsx") return new NextResponse(new Uint8Array(createReportXlsx(`${type} ${from} to ${to}`, headers, rows)), {
+    headers: {
+      "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "content-disposition": `attachment; filename="${type}-${from}-${to}.xlsx"`,
+      "cache-control": "no-store",
+      "x-request-id": requestIdValue,
+    },
+  });
   if (pdf) return new NextResponse(pdf, {
     headers: {
       "content-type": "application/pdf",

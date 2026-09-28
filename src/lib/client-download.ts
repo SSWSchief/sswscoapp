@@ -27,7 +27,7 @@ async function downloadFile(url: string, fallbackName: string, contentType: stri
   const response = await fetch(url, { headers: { accept: contentType } });
   if (!response.ok) throw new Error(await safeErrorMessage(response));
   if (!response.headers.get("content-type")?.startsWith(contentType))
-    throw new Error(`The server did not return a ${fallbackName.endsWith(".pdf") ? "PDF" : "CSV"} file.`);
+    throw new Error(`The server did not return ${fallbackName.endsWith(".pdf") ? "a PDF" : fallbackName.endsWith(".xlsx") ? "an Excel" : "a CSV"} file.`);
 
   const blob = await response.blob();
   const objectUrl = URL.createObjectURL(blob);
@@ -45,3 +45,4 @@ async function downloadFile(url: string, fallbackName: string, contentType: stri
 
 export const downloadCsv = (url: string, fallbackName: string) => downloadFile(url, fallbackName, "text/csv");
 export const downloadPdf = (url: string, fallbackName: string) => downloadFile(url, fallbackName, "application/pdf");
+export const downloadXlsx = (url: string, fallbackName: string) => downloadFile(url, fallbackName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

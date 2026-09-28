@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Field";
 import { useToast } from "@/components/system/ToastProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
-import { downloadCsv, downloadPdf } from "@/lib/client-download";
+import { downloadCsv, downloadPdf, downloadXlsx } from "@/lib/client-download";
 import { pacificDate } from "@/lib/time-clock";
 import { loadedJobWindow } from "@/lib/job-dates";
 
@@ -56,7 +56,7 @@ export default function Page() {
     .reduce((n, i) => n + i.amountCents, 0);
   const href = (type: string) =>
     `/api/exports/${type}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
-  const download = async (type: string, title: string, format: "csv" | "pdf") => {
+  const download = async (type: string, title: string, format: "xlsx" | "csv" | "pdf") => {
     if (invalidRange) {
       toast("Choose a From date before the Through date.", { tone: "error" });
       return;
@@ -64,8 +64,9 @@ export default function Page() {
     setDownloading(`${type}:${format}`);
     try {
       if (format === "pdf") await downloadPdf(`${href(type)}&format=pdf`, `${type}-${from}-${to}.pdf`);
+      else if (format === "xlsx") await downloadXlsx(`${href(type)}&format=xlsx`, `${type}-${from}-${to}.xlsx`);
       else await downloadCsv(href(type), `${type}-${from}-${to}.csv`);
-      toast(`${title} ${format.toUpperCase()} downloaded.`, { tone: "success" });
+      toast(`${title} ${format === "xlsx" ? "Excel file" : format.toUpperCase()} downloaded.`, { tone: "success" });
     } catch (error) {
       toast(
         error instanceof Error
@@ -111,7 +112,7 @@ export default function Page() {
           */}
           {reachesPastLoaded && !invalidRange && (
             <p className="text-sm text-brand-steel sm:col-span-2">
-              Figures below cover {loadedFrom} onwards. The CSV exports cover
+              Figures below cover {loadedFrom} onwards. The exports cover
               the full range you chose.
             </p>
           )}
@@ -137,13 +138,14 @@ export default function Page() {
               <h2 className="font-semibold">{title} Export</h2>
               <p className="mt-1 text-sm text-brand-steel">{description}</p>
               <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <Button disabled={!canMutate || invalidRange || downloading !== null} onClick={() => void download(type, title, "csv")}>{downloading === `${type}:csv` ? "Downloading…" : "Download CSV"}</Button>
+                <Button disabled={!canMutate || invalidRange || downloading !== null} onClick={() => void download(type, title, "xlsx")}>{downloading === `${type}:xlsx` ? "Downloading…" : "Download Excel"}</Button>
                 <Button variant="secondary" disabled={!canMutate || invalidRange || downloading !== null} onClick={() => void download(type, title, "pdf")}>{downloading === `${type}:pdf` ? "Downloading…" : "Download PDF"}</Button>
               </div>
+              <button type="button" className="mt-2 text-xs text-brand-blue underline-offset-2 hover:underline disabled:opacity-40" disabled={!canMutate || invalidRange || downloading !== null} onClick={() => void download(type, title, "csv")}>{downloading === `${type}:csv` ? "Downloading…" : "Plain CSV for other software"}</button>
             </Card>
           ))}
         </div>
-        <p className="text-xs text-brand-steel">CSV files are for Excel or Google Sheets. Your computer chooses which app opens a downloaded CSV; if it opens in Acrobat, use Open with to choose a spreadsheet app.</p>
+        <p className="text-xs text-brand-steel">Excel files open in Excel and can be uploaded to Google Sheets. PDF files are ready to print or file.</p>
       </div>
     </>
   );

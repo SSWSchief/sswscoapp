@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PDFDocument } from "pdf-lib";
+import { strFromU8, unzipSync } from "fflate";
 import { fakeAdminClient, type Row } from "@/test/supabase-fake";
 
 const state = { tables: {} as Record<string, Row[]> };
@@ -31,7 +32,10 @@ beforeEach(() => {
     invoices: [{ invoice_number: "INV-1", customer_id: "customer", billing_mode: "per_job", amount_cents: 40000, tax_cents: 0, amount_paid_cents: 0, amount_remaining_cents: 40000, status: "open", due_date: "2026-09-30", po_number: "", notes: "" }],
     trucks: [{ number: "T1", status: "in_use", last_known_location: "Reno", air_tag_id: null, deleted_at: null }],
     dumpsters: [{ code: "D1", status: "out", current_location: "Reno", air_tag_id: "AT1", deleted_at: null }],
-    time_entries: [],
+    time_entries: [
+      { id: "in", user_id: "driver", entry_type: "clock_in", occurred_at: "2026-09-01T15:44:32.025273+00:00" },
+      { id: "out", user_id: "driver", entry_type: "clock_out", occurred_at: "2026-09-01T18:46:53.262801+00:00" },
+    ],
     time_entry_corrections: [],
     paid_time_adjustments: [{ user_id: "driver", work_date: "2026-09-24", paid_minutes: 240, reason: "Minimum and meeting", voided_at: null }],
     export_audit: [],
@@ -58,5 +62,31 @@ describe("report downloads", () => {
     expect(csv).toContain("Paid Adjustment,Payable Time");
     expect(csv).toContain("Minimum and meeting");
     expect(csv).toContain("Paid adjustment only");
+  });
+
+  it("prints punch times in Pacific time, not raw UTC timestamps", async () => {
+    const csv = await (await get("time")).text();
+    expect(csv).not.toContain("2026-09-01T15:44");
+    expect(csv).toContain("2026-09-01,8:44 AM,11:46 AM");
+    expect(csv).toContain("In 8:44 AM · Out 11:46 AM");
+  });
+
+  it.each(["jobs", "invoices", "time", "assets"])("returns a real %s Excel workbook", async (type) => {
+    const response = await get(type, "xlsx");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    expect(response.headers.get("content-disposition")).toContain(`${type}-2026-09-01-2026-09-30.xlsx`);
+    const files = unzipSync(new Uint8Array(await response.arrayBuffer()));
+    expect(Object.keys(files)).toEqual(expect.arrayContaining(["[Content_Types].xml", "xl/workbook.xml", "xl/worksheets/sheet1.xml"]));
+    if (type === "time") {
+      const sheet = strFromU8(files["xl/worksheets/sheet1.xml"]);
+      expect(sheet).toContain(">006<");
+      expect(sheet).toContain("Minimum and meeting");
+    }
+    if (type === "invoices") expect(strFromU8(files["xl/worksheets/sheet1.xml"])).toContain('s="2"><v>400.00</v>');
+  });
+
+  it("rejects an unknown format", async () => {
+    expect((await get("jobs", "html")).status).toBe(400);
   });
 });
