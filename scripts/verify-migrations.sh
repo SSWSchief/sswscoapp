@@ -94,7 +94,7 @@ fi
 
 step "Running the pgTAP suites"
 psql -q -d "$DB" -c 'create extension if not exists pgtap;' >/dev/null
-for suite in "$ROOT"/supabase/tests/rls.sql "$ROOT"/supabase/tests/rls_behavior.sql "$ROOT"/supabase/tests/management_time.sql "$ROOT"/supabase/tests/driver_disposal_sites.sql; do
+for suite in "$ROOT"/supabase/tests/rls.sql "$ROOT"/supabase/tests/rls_behavior.sql "$ROOT"/supabase/tests/management_time.sql "$ROOT"/supabase/tests/driver_disposal_sites.sql "$ROOT"/supabase/tests/invoice_typed_billing.sql; do
   name="$(basename "$suite")"
   results="$(psql -d "$DB" -tA -f "$suite" 2>&1)"
   # "Bad plan" is a failure pgTAP reports without ever printing "not ok", so

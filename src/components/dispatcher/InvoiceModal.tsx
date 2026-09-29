@@ -4,12 +4,12 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
-import { CustomerModal } from "./CustomerModal";
 import { useConfirm } from "@/components/system/ConfirmProvider";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useToast } from "@/components/system/ToastProvider";
-import type { InvoiceBillingMode, InvoiceDraftItem, InvoiceLineCategory, InvoicePaymentTerms, InvoiceRecord } from "@/lib/types";
+import type { Customer, InvoiceBillingInput, InvoiceBillingMode, InvoiceDraftItem, InvoiceLineCategory, InvoicePaymentTerms, InvoiceRecord } from "@/lib/types";
+import { parseUsAddress } from "@/lib/invoices/address";
 import { formatCurrency } from "@/lib/utils";
 
 const categories: InvoiceLineCategory[] = ["service", "rental", "tonnage", "fee", "surcharge", "adjustment"];
@@ -20,6 +20,24 @@ const fuelEligibleServices = new Set(["Delivery", "Pick-Up", "Dump & Return", "S
 type EditorItem = InvoiceDraftItem & { amount: string; key: string; needsRate?: boolean; fuelSurchargeEligible?: boolean };
 type EligibleJob = { id: string; reference: string; serviceType: string; dumpsterSize: string; scheduledFor: string };
 const blankItem = (): EditorItem => ({ description: "", amount: "", amountCents: 0, category: "service", jobId: null, key: crypto.randomUUID() });
+const blankBilling = (contactName = ""): InvoiceBillingInput => ({ contactName, email: "", phone: "", addressLine1: "", addressLine2: "", city: "", state: "", postalCode: "" });
+function billingFromCustomer(customer: Customer): InvoiceBillingInput {
+  // A name-only customer booked from the job form may still have a one-line
+  // address; split it when it has a clean city, state and ZIP.
+  const parsed = customer.billingAddressLine1 ? null : parseUsAddress(customer.address);
+  return {
+    contactName: customer.billingContactName || customer.name,
+    email: customer.billingEmail || customer.email,
+    phone: customer.phone,
+    addressLine1: customer.billingAddressLine1 || parsed?.addressLine1 || customer.address,
+    addressLine2: customer.billingAddressLine2,
+    city: customer.billingCity || parsed?.city || "",
+    state: customer.billingState || parsed?.state || "",
+    postalCode: customer.billingPostalCode || parsed?.postalCode || "",
+  };
+}
+const billingComplete = (billing: InvoiceBillingInput) =>
+  Boolean(billing.contactName.trim() && billing.email.trim() && billing.addressLine1.trim() && billing.city.trim() && billing.state.trim() && billing.postalCode.trim());
 
 export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClose: () => void; invoice?: InvoiceRecord }) {
   const { saveInvoice, settings, priceList, invoices, loading: financeLoading = false, priceListReady = true, refresh } = useExpandedOperations();
@@ -29,10 +47,14 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   const [busy, setBusy] = React.useState(false);
   const [customerId, setCustomerId] = React.useState("");
   const [customerName, setCustomerName] = React.useState("");
-  // The name being created in CustomerModal, and the name awaiting resolution
-  // back to an id once the operations cache has caught up.
-  const [creatingCustomer, setCreatingCustomer] = React.useState<string | null>(null);
-  const [pendingCustomer, setPendingCustomer] = React.useState<string | null>(null);
+  // The billing contact this invoice is sent to. Typed here for a one-off
+  // customer, rather than requiring a full customer profile first.
+  const [billing, setBilling] = React.useState<InvoiceBillingInput>(blankBilling);
+  const [saveToProfile, setSaveToProfile] = React.useState(false);
+  // Read once when the dialog opens; the live list changes under realtime
+  // updates and must not reset what the office is typing.
+  const customersRef = React.useRef(customers);
+  customersRef.current = customers;
   const [billingMode, setBillingMode] = React.useState<InvoiceBillingMode>("per_job");
   const [jobIds, setJobIds] = React.useState<string[]>([]);
   const [paymentTerms, setPaymentTerms] = React.useState<InvoicePaymentTerms>("net_30");
@@ -55,8 +77,18 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   React.useEffect(() => {
     if (!open) return;
     setCustomerId(invoice?.customerId ?? "");
-    setCreatingCustomer(null);
-    setPendingCustomer(null);
+    setCustomerName("");
+    setBilling(invoice ? {
+      contactName: invoice.billingContactName,
+      email: invoice.billingEmail,
+      phone: customersRef.current.find((customer) => customer.id === invoice.customerId)?.phone ?? "",
+      addressLine1: invoice.billingAddressLine1,
+      addressLine2: invoice.billingAddressLine2,
+      city: invoice.billingCity,
+      state: invoice.billingState,
+      postalCode: invoice.billingPostalCode,
+    } : blankBilling());
+    setSaveToProfile(false);
     setBillingMode(invoice?.billingMode ?? "per_job");
     setJobIds(invoice?.jobIds ?? []);
     setPaymentTerms(invoice?.paymentTerms ?? settings?.defaultPaymentTerms ?? "net_30");
@@ -85,16 +117,15 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   const selectedCustomer = customers.find((customer) => customer.id === customerId);
 
   React.useEffect(() => {
-    if (!open || !editable || !selectedCustomer) {
+    if (!open || !editable) {
       setTaxPreview(null);
       setTaxPreviewState("idle");
       return;
     }
-    const address = selectedCustomer;
     const previewItems = items
       .map((item) => ({ id: item.key, amountCents: Math.round(Number(item.amount) * 100) }))
       .filter((item) => Number.isSafeInteger(item.amountCents) && item.amountCents > 0);
-    if (!address.billingAddressLine1.trim() || !address.billingCity.trim() || !address.billingState.trim() || !address.billingPostalCode.trim() || !previewItems.length) {
+    if (!billing.addressLine1.trim() || !billing.city.trim() || !/^[A-Za-z]{2}$/.test(billing.state.trim()) || !/^\d{5}(-\d{4})?$/.test(billing.postalCode.trim()) || !previewItems.length) {
       setTaxPreview(null);
       setTaxPreviewState("idle");
       return;
@@ -108,12 +139,12 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
         signal: controller.signal,
         body: JSON.stringify({
           address: {
-            line1: address.billingAddressLine1,
-            line2: address.billingAddressLine2,
-            city: address.billingCity,
-            state: address.billingState,
-            postalCode: address.billingPostalCode,
-            country: address.billingCountry,
+            line1: billing.addressLine1.trim(),
+            line2: billing.addressLine2.trim(),
+            city: billing.city.trim(),
+            state: billing.state.trim().toUpperCase(),
+            postalCode: billing.postalCode.trim(),
+            country: "US",
           },
           items: previewItems,
         }),
@@ -137,7 +168,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [editable, items, open, selectedCustomer]);
+  }, [editable, items, open, billing.addressLine1, billing.addressLine2, billing.city, billing.state, billing.postalCode]);
   // Derived rather than stored, so an existing invoice shows its customer
   // without the setup effect having to read the customer list.
   const customerFieldValue = selectedCustomer?.name ?? customerName;
@@ -154,44 +185,33 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
     setCustomerName(name);
     const match = matchCustomer(name);
     const nextId = match?.id ?? "";
+    if (match) {
+      if (nextId !== customerId) {
+        setBilling(billingFromCustomer(match));
+        // Offer to fill the profile's gaps; leave a complete profile alone so a
+        // one-time billing address never quietly replaces it.
+        setSaveToProfile(!billingComplete(billingFromCustomer(match)));
+      }
+    } else {
+      // A new name: carry it into the billing name while the office types,
+      // unless they have already written a different contact.
+      setBilling((current) => customerId
+        ? blankBilling(name)
+        : { ...current, contactName: !current.contactName || current.contactName === customerName ? name : current.contactName });
+    }
     if (nextId === customerId) return;
     setCustomerId(nextId);
     setJobIds([]);
     setItems([blankItem()]);
   };
 
-  /**
-   * A name that matches nothing is an intent to create, not a typo to reject.
-   * Confirm it, hand the full billing form the name, and come back with the
-   * new customer selected — invoicing needs the billing contact and address
-   * that form collects, so there is no lighter version of this step.
-   */
-  const offerToCreateCustomer = async () => {
-    const name = customerName.trim();
-    if (!name || matchCustomer(name)) return;
-    const agreed = await confirm({
-      title: `Create “${name}” as a new customer?`,
-      message: "Invoices carry a reviewed billing contact and address, so the customer record has to exist before this invoice can be drafted.",
-      confirmLabel: "Create customer",
-      cancelLabel: "Keep editing",
-    });
-    if (agreed) setCreatingCustomer(name);
-  };
-
-  // The save resolves to no payload, so the new record is picked up by name as
-  // soon as the refreshed list contains it.
-  React.useEffect(() => {
-    if (!pendingCustomer) return;
-    const match = customers.find(
-      (candidate) => candidate.name.trim().toLowerCase() === pendingCustomer.trim().toLowerCase(),
-    );
-    if (!match) return;
-    setCustomerId(match.id);
-    setCustomerName(match.name);
-    setJobIds([]);
-    setItems([blankItem()]);
-    setPendingCustomer(null);
-  }, [pendingCustomer, customers]);
+  const updateBilling = (patch: Partial<InvoiceBillingInput>) => setBilling((current) => ({ ...current, ...patch }));
+  const isNewCustomer = !customerId && Boolean(customerName.trim());
+  const jobSiteAddress = jobIds
+    .map((jobId) => jobs.find((job) => job.id === jobId)?.address ?? "")
+    .map(parseUsAddress)
+    .find(Boolean) ?? null;
+  const jobSiteDiffers = Boolean(jobSiteAddress && (jobSiteAddress.addressLine1 !== billing.addressLine1 || jobSiteAddress.postalCode !== billing.postalCode));
   const unavailableJobs = new Set(invoices.filter((candidate) => candidate.id !== invoice?.id && candidate.status !== "void").flatMap((candidate) => candidate.jobIds));
   const localEligibleJobs = jobs.filter((job) => job.customerId === customerId && job.status === "complete" && !unavailableJobs.has(job.id));
   const eligibleJobs = remoteJobs ?? localEligibleJobs;
@@ -286,11 +306,12 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   };
 
   const save = async () => {
-    // A typed-but-unmatched name at save time means the create step was
-    // dismissed or skipped. Re-offer it instead of failing with a generic
-    // "select completed work" message that says nothing about the real cause.
-    if (!customerId && customerName.trim()) {
-      await offerToCreateCustomer();
+    if (!customerId && !customerName.trim()) {
+      toast("Pick a customer or type a new name.", { tone: "error" });
+      return;
+    }
+    if (billing.email.trim() && !/^\S+@\S+\.\S+$/.test(billing.email.trim())) {
+      toast("Enter a valid billing email, or leave it blank until you have one.", { tone: "error" });
       return;
     }
     const normalized = items.map((item) => ({
@@ -300,7 +321,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
       category: item.category,
     }));
     const total = normalized.reduce((sum, item) => sum + item.amountCents, 0);
-    if (!customerId || (billingMode !== "one_off" && !jobIds.length) || total <= 0 || !Number.isSafeInteger(total) || normalized.some((item) => !item.description || !Number.isSafeInteger(item.amountCents) || item.amountCents === 0)) {
+    if ((billingMode !== "one_off" && !jobIds.length) || total <= 0 || !Number.isSafeInteger(total) || normalized.some((item) => !item.description || !Number.isSafeInteger(item.amountCents) || item.amountCents === 0)) {
       toast(billingMode === "one_off"
       ? "Describe each line, use non-zero amounts, and keep the invoice total positive."
       : "Select completed work, use non-zero line amounts, and keep the invoice total positive.", { tone: "error" }); return;
@@ -323,15 +344,23 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
       if (!agreed) return;
     }
     setBusy(true);
-    const result = await saveInvoice({ customerId, billingMode, jobIds, paymentTerms, poNumber, notes, items: normalized }, invoice?.id);
+    const result = await saveInvoice({
+      customerId,
+      ...(customerId ? {} : { customerName: customerName.trim() }),
+      billing,
+      saveBillingToCustomer: Boolean(customerId) && saveToProfile,
+      billingMode, jobIds, paymentTerms, poNumber, notes, items: normalized,
+    }, invoice?.id);
     setBusy(false);
-    toast(result.ok ? "Invoice draft saved" : result.error.message, { tone: result.ok ? "success" : "error" });
+    toast(result.ok
+      ? isNewCustomer ? `Invoice draft saved. ${customerName.trim()} was added as a One-off customer.` : "Invoice draft saved"
+      : result.error.message, { tone: result.ok ? "success" : "error" });
     if (result.ok) onClose();
   };
 
   return (
     <>
-    <Modal open={open && !creatingCustomer} onClose={onClose} title={invoice ? `${editable ? "Edit" : "View"} ${invoice.invoiceNumber}` : "New invoice draft"} widthClass="max-w-5xl" footer={<><Button variant="secondary" onClick={onClose}>{editable ? "Cancel" : "Close"}</Button>{editable && <Button disabled={busy || !canMutate} onClick={() => void save()}>{busy ? "Saving…" : "Save draft"}</Button>}</>}>
+    <Modal open={open} onClose={onClose} title={invoice ? `${editable ? "Edit" : "View"} ${invoice.invoiceNumber}` : "New invoice draft"} widthClass="max-w-5xl" footer={<><Button variant="secondary" onClick={onClose}>{editable ? "Cancel" : "Close"}</Button>{editable && <Button disabled={busy || !canMutate} onClick={() => void save()}>{busy ? "Saving…" : "Save draft"}</Button>}</>}>
       <div className="space-y-5">
         {!editable && <div className="rounded border border-brand-ice bg-brand-mist p-3 text-sm text-brand-steel">This invoice is finalized and read-only. Use a revision for corrections.</div>}
         <div className="grid gap-4 sm:grid-cols-2">
@@ -341,14 +370,13 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
               <option value="per_job">Per job</option><option value="statement">Multi-job statement</option><option value="one_off">One-off (no job)</option>
             </Select>
           </FormField>
-          <FormField label="Customer" required hideRequiredMark hint={editable && !invoice ? "Pick an existing customer or type a new name." : undefined}>
+          <FormField label="Customer" required hideRequiredMark hint={editable && !invoice ? "Pick an existing customer, or type a new name. No profile needed for one-off jobs." : undefined}>
             <Input
               list="invoice-customers"
               disabled={!editable || Boolean(invoice)}
               placeholder="Customer name"
               value={customerFieldValue}
               onChange={(event) => changeCustomerName(event.target.value)}
-              onBlur={() => void offerToCreateCustomer()}
             />
           </FormField>
           {/* Outside the field: FormField clones its single child to carry the
@@ -359,7 +387,44 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
           </datalist>
           <FormField label="Payment terms"><Select disabled={!editable} value={paymentTerms} onChange={(event) => setPaymentTerms(event.target.value as InvoicePaymentTerms)}><option value="due_on_receipt">Due on receipt</option><option value="net_15">Net 15</option><option value="net_30">Net 30</option></Select></FormField>
         </div>
-        {selectedCustomer && <div className="rounded border border-brand-ice p-3 text-sm"><div className="font-semibold">Recipient review</div><div>{selectedCustomer.billingContactName || "Missing contact"} · {selectedCustomer.billingEmail || "Missing email"}</div><div className="text-brand-steel">{[selectedCustomer.billingAddressLine1, selectedCustomer.billingCity, selectedCustomer.billingState, selectedCustomer.billingPostalCode].filter(Boolean).join(", ") || "Billing address incomplete"}</div></div>}
+        {(selectedCustomer || isNewCustomer || invoice) && (
+          <fieldset className="rounded border border-brand-ice p-3">
+            <legend className="px-1 font-heading font-semibold">Bill to</legend>
+            <p className="mb-3 text-xs text-brand-steel">
+              {isNewCustomer
+                ? `${customerName.trim()} will be added as a One-off customer with these details. No profile to fill out.`
+                : "Where this invoice is emailed and what address it carries. Change it here for this invoice only."}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <FormField label="Billing name"><Input disabled={!editable} autoComplete="off" value={billing.contactName} onChange={(event) => updateBilling({ contactName: event.target.value })} /></FormField>
+              <FormField label="Billing email" hint={billing.email.trim() ? undefined : "Needed before sending. The invoice and payment link go here."}><Input disabled={!editable} type="email" autoComplete="off" value={billing.email} onChange={(event) => updateBilling({ email: event.target.value })} /></FormField>
+              <FormField label="Mobile phone" hint="Optional. Used for Text invoice."><Input disabled={!editable} type="tel" autoComplete="off" value={billing.phone} onChange={(event) => updateBilling({ phone: event.target.value })} /></FormField>
+              <div className="hidden sm:block" />
+              <FormField label="Street address"><Input disabled={!editable} autoComplete="off" value={billing.addressLine1} onChange={(event) => updateBilling({ addressLine1: event.target.value })} /></FormField>
+              <FormField label="Apt / suite"><Input disabled={!editable} autoComplete="off" value={billing.addressLine2} onChange={(event) => updateBilling({ addressLine2: event.target.value })} /></FormField>
+              <div className="grid grid-cols-[1fr_5rem_7rem] gap-3 sm:col-span-2">
+                <FormField label="City"><Input disabled={!editable} autoComplete="off" value={billing.city} onChange={(event) => updateBilling({ city: event.target.value })} /></FormField>
+                <FormField label="State"><Input disabled={!editable} autoComplete="off" maxLength={2} value={billing.state} onChange={(event) => updateBilling({ state: event.target.value.toUpperCase() })} /></FormField>
+                <FormField label="ZIP"><Input disabled={!editable} autoComplete="off" inputMode="numeric" maxLength={10} value={billing.postalCode} onChange={(event) => updateBilling({ postalCode: event.target.value })} /></FormField>
+              </div>
+            </div>
+            {editable && (jobSiteDiffers || (customerId && !invoice)) && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                {jobSiteAddress && jobSiteDiffers ? (
+                  <button type="button" className="text-sm font-semibold text-brand-blue underline-offset-2 hover:underline" onClick={() => jobSiteAddress && updateBilling(jobSiteAddress)}>
+                    Use job site address ({jobSiteAddress.addressLine1}, {jobSiteAddress.city})
+                  </button>
+                ) : <span />}
+                {customerId && !invoice && selectedCustomer && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={saveToProfile} onChange={(event) => setSaveToProfile(event.target.checked)} />
+                    Also save these details to {selectedCustomer.name}&apos;s profile
+                  </label>
+                )}
+              </div>
+            )}
+          </fieldset>
+        )}
         {/* Austin asked for no asterisks anywhere in invoicing. Both fields stay
             required for validation and assistive technology. */}
         {billingMode === "one_off" ? (
@@ -449,16 +514,6 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
         {!editable && <div className="grid gap-2 text-sm sm:grid-cols-2"><div>Subtotal: <strong>{formatCurrency(invoice?.subtotalCents ?? 0)}</strong></div><div>Tax: <strong>{formatCurrency(invoice?.taxCents ?? 0)}</strong></div><div>Total: <strong>{formatCurrency(invoice?.amountCents ?? 0)}</strong></div><div>Canonical status: <strong>{invoice?.status}</strong></div><div>Display status: <strong>{invoice?.displayStatus.replaceAll("_", " ")}</strong></div><div>Paid: <strong>{formatCurrency(invoice?.amountPaidCents ?? 0)}</strong></div><div>Remaining: <strong>{formatCurrency(invoice?.amountRemainingCents ?? 0)}</strong></div></div>}
       </div>
     </Modal>
-    {/* Swapped in rather than stacked on top: both dialogs use the same z-index
-        and share a window-level Escape handler, so one Escape would close both
-        and the two focus traps would fight. The invoice editor stays mounted,
-        so every line already entered is still there on the way back. */}
-    <CustomerModal
-      open={Boolean(creatingCustomer)}
-      initialName={creatingCustomer ?? undefined}
-      onClose={() => setCreatingCustomer(null)}
-      onSaved={(name) => setPendingCustomer(name)}
-    />
     </>
   );
 }
