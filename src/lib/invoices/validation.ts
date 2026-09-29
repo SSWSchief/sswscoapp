@@ -18,7 +18,7 @@ const lineItem = z.object({
  * Billing details typed on the invoice. Blank fields are allowed on a draft;
  * sending is what requires a complete contact and address.
  */
-export const invoiceBillingSchema = z.object({
+const invoiceBillingSchema = z.object({
   contactName: z.string().trim().max(200),
   email: z
     .string()

@@ -1,4 +1,4 @@
-export interface ParsedUsAddress {
+interface ParsedUsAddress {
   addressLine1: string;
   city: string;
   state: string;
