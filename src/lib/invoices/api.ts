@@ -42,7 +42,8 @@ export function invoiceWriteError(error: unknown) {
   if (lower.includes("not found")) return { code: "not_found", message: "Invoice not found.", status: 404 };
   const safeBusinessMessage = [
     "only a draft", "only unsent drafts", "only an open", "at least one",
-    "billing contact", "billing address", "invoice line total", "invoice number exceeds",
+    "billing contact", "billing address", "billing email", "billing state", "billing zip",
+    "select a customer or type a name", "active customer is required", "invoice line total", "invoice number exceeds",
     "tax policy is approved", "stripe invoicing is disabled", "cannot make that stripe transition", "company invoice terms",
     "every invoiced job",
     "original stripe invoice", "existing draft cannot change customers", "training data can only be removed",

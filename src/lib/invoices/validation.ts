@@ -14,9 +14,40 @@ const lineItem = z.object({
   ]),
 });
 
+/**
+ * Billing details typed on the invoice. Blank fields are allowed on a draft;
+ * sending is what requires a complete contact and address.
+ */
+const invoiceBillingSchema = z.object({
+  contactName: z.string().trim().max(200),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(320)
+    .refine((value) => value === "" || /^\S+@\S+\.\S+$/.test(value), "Enter a valid billing email."),
+  phone: z.string().trim().max(40),
+  addressLine1: z.string().trim().max(200),
+  addressLine2: z.string().trim().max(200),
+  city: z.string().trim().max(120),
+  state: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .refine((value) => value === "" || /^[A-Z]{2}$/.test(value), "Use a two-letter state, like NV."),
+  postalCode: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || /^\d{5}(-\d{4})?$/.test(value), "Enter a 5-digit ZIP code."),
+});
+
 export const invoiceDraftSchema = z
   .object({
-    customerId: z.string().trim().min(1),
+    // Empty when the office typed a name that matches no customer yet.
+    customerId: z.string().trim(),
+    customerName: z.string().trim().max(200).optional(),
+    billing: invoiceBillingSchema.optional(),
+    saveBillingToCustomer: z.boolean().optional(),
     billingMode: z.enum(["per_job", "statement", "one_off"]),
     // Emptiness is decided per billing mode below, not here.
     jobIds: z.array(z.string().trim().min(1)).max(100),
@@ -26,6 +57,12 @@ export const invoiceDraftSchema = z
     items: z.array(lineItem).min(1).max(100),
   })
   .superRefine((value, context) => {
+    if (!value.customerId && !value.customerName)
+      context.addIssue({
+        code: "custom",
+        path: ["customerId"],
+        message: "Pick a customer or type a new name.",
+      });
     if (value.billingMode === "per_job" && value.jobIds.length !== 1)
       context.addIssue({
         code: "custom",

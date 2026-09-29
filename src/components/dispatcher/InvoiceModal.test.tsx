@@ -6,11 +6,11 @@ import { InvoiceModal } from "./InvoiceModal";
 import type { Customer, Job } from "@/lib/types";
 
 const customers = [
-  { id: "cust-1", name: "Vegas GC", billingContactName: "Pat", billingEmail: "pat@x.com", billingAddressLine1: "", billingCity: "", billingState: "", billingPostalCode: "" },
+  { id: "cust-1", name: "Vegas GC", phone: "", email: "", address: "", billingContactName: "Pat", billingEmail: "pat@x.com", billingAddressLine1: "", billingAddressLine2: "", billingCity: "", billingState: "", billingPostalCode: "" },
 ] as Customer[];
 
 const jobs = [
-  { id: "job-1", customerId: "cust-1", status: "complete", serviceType: "Delivery", dumpsterSize: "20 Yard", reference: "J-1" },
+  { id: "job-1", customerId: "cust-1", status: "complete", serviceType: "Delivery", dumpsterSize: "20 Yard", reference: "J-1", address: "500 Fremont St, Las Vegas, NV 89101" },
   { id: "job-2", customerId: "cust-1", status: "complete", serviceType: "Dry Run", dumpsterSize: "40 Yard", reference: "J-2" },
 ] as Job[];
 
@@ -173,37 +173,77 @@ describe("InvoiceModal — multi-job statement", () => {
     }
   });
 
-  it("offers to create a customer whose name matches nothing, and prefills it", async () => {
+  it("bills a new one-off name from the invoice itself, with no customer profile step", async () => {
     render(<InvoiceModal open onClose={() => {}} />);
     const user = userEvent.setup();
-    const field = screen.getByLabelText(/Customer/i);
-    await user.type(field, "Henderson Framing");
+    await user.type(screen.getByLabelText(/Customer/i), "Maria Lopez");
     await user.tab();
 
-    // The unmatched name is read as an intent to create, not as a typo.
-    expect(confirmCalls).toHaveLength(1);
-    expect(confirmCalls[0].title).toMatch(/Henderson Framing/);
+    // No detour through the customer form: the invoice collects what it needs.
+    expect(confirmCalls).toHaveLength(0);
+    expect(screen.queryByRole("dialog", { name: /Add Customer/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/Maria Lopez will be added as a One-off customer/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Billing name/i)).toHaveValue("Maria Lopez");
 
-    // The full billing form takes over, carrying the typed name — invoicing
-    // needs the billing contact and address it collects.
-    expect(await screen.findByRole("dialog", { name: /Add Customer/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Name/i)).toHaveValue("Henderson Framing");
-    expect(screen.getByLabelText(/Billing contact name/i)).toHaveValue("Henderson Framing");
-    const customerType = screen.getByLabelText(/Customer type/i);
-    expect(customerType).toHaveTextContent("Commercial");
-    expect(customerType).toHaveTextContent("Residential");
-    expect(customerType).toHaveTextContent("One-off");
-    expect(customerType).not.toHaveTextContent("Big GC");
+    await user.type(screen.getByLabelText(/Billing email/i), "maria@example.com");
+    await user.type(screen.getByLabelText(/Street address/i), "42 Desert Rd");
+    await user.type(screen.getByLabelText(/^City/i), "Henderson");
+    await user.type(screen.getByLabelText(/^State/i), "nv");
+    await user.type(screen.getByLabelText(/^ZIP/i), "89002");
+    await user.selectOptions(screen.getByLabelText(/Billing mode/i), "one_off");
+    await user.type(screen.getByLabelText(/Line 1 description/i), "10 yard cleanup");
+    await user.type(screen.getByLabelText(/Line 1 amount/i), "350");
+    await user.click(screen.getByRole("button", { name: /Save draft/i }));
+
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).toMatchObject({
+      customerId: "",
+      customerName: "Maria Lopez",
+      saveBillingToCustomer: false,
+      billing: { contactName: "Maria Lopez", email: "maria@example.com", addressLine1: "42 Desert Rd", city: "Henderson", state: "NV", postalCode: "89002" },
+    });
   });
 
-  it("leaves the name alone when the create offer is declined", async () => {
-    confirmAnswer = false;
+  it("prefills an existing customer's billing details and offers to fill the profile's gaps", async () => {
     render(<InvoiceModal open onClose={() => {}} />);
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText(/Customer/i), "Henderson Framing");
-    await user.tab();
+    await user.type(screen.getByLabelText(/Customer/i), "Vegas GC");
 
-    expect(screen.queryByRole("dialog", { name: /Add Customer/i })).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/Customer/i)).toHaveValue("Henderson Framing");
+    expect(screen.getByLabelText(/Billing name/i)).toHaveValue("Pat");
+    expect(screen.getByLabelText(/Billing email/i)).toHaveValue("pat@x.com");
+    // The profile has no billing address, so saving back is offered and on.
+    expect(screen.getByLabelText(/Also save these details to Vegas GC/i)).toBeChecked();
+
+    // Changing the email here applies to this invoice.
+    await user.clear(screen.getByLabelText(/Billing email/i));
+    await user.type(screen.getByLabelText(/Billing email/i), "ap@vegasgc.com");
+    await user.click(screen.getByRole("radio", { name: /J-1/i }));
+    await user.click(screen.getByRole("button", { name: /Save draft/i }));
+    expect(saved[0]).toMatchObject({ customerId: "cust-1", saveBillingToCustomer: true, billing: { email: "ap@vegasgc.com" } });
+    expect(saved[0]).not.toHaveProperty("customerName");
+  });
+
+  it("fills the billing address from the selected job's site in one click", async () => {
+    render(<InvoiceModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/Customer/i), "Vegas GC");
+    await user.click(screen.getByRole("radio", { name: /J-1/i }));
+    await user.click(screen.getByRole("button", { name: /Use job site address/i }));
+    expect(screen.getByLabelText(/Street address/i)).toHaveValue("500 Fremont St");
+    expect(screen.getByLabelText(/^City/i)).toHaveValue("Las Vegas");
+    expect(screen.getByLabelText(/^State/i)).toHaveValue("NV");
+    expect(screen.getByLabelText(/^ZIP/i)).toHaveValue("89101");
+  });
+
+  it("refuses a malformed billing email before saving", async () => {
+    render(<InvoiceModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/Customer/i), "Maria Lopez");
+    await user.type(screen.getByLabelText(/Billing email/i), "maria-at-example");
+    await user.selectOptions(screen.getByLabelText(/Billing mode/i), "one_off");
+    await user.type(screen.getByLabelText(/Line 1 description/i), "Cleanup");
+    await user.type(screen.getByLabelText(/Line 1 amount/i), "100");
+    await user.click(screen.getByRole("button", { name: /Save draft/i }));
+    expect(saved).toHaveLength(0);
   });
 });

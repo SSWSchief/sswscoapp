@@ -347,8 +347,23 @@ export interface InvoiceDraftItem {
   jobId?: string | null;
   category: InvoiceLineCategory;
 }
+export interface InvoiceBillingInput {
+  contactName: string;
+  email: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  postalCode: string;
+}
 export interface InvoiceDraftInput {
+  /** Empty when `customerName` is a new name typed on the invoice. */
   customerId: string;
+  customerName?: string;
+  billing?: InvoiceBillingInput;
+  /** Also write `billing` to the customer's profile. */
+  saveBillingToCustomer?: boolean;
   billingMode: InvoiceBillingMode;
   jobIds: string[];
   paymentTerms: InvoicePaymentTerms;

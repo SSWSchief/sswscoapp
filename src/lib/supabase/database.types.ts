@@ -818,6 +818,20 @@ export interface Database {
         Args: { payload: Json };
         Returns: InvoiceRow;
       };
+      // Internal helpers of create/update_invoice_draft; not executable by the
+      // API roles, listed so the committed contract matches the schema.
+      resolve_invoice_customer: {
+        Args: { payload: Json };
+        Returns: CustomerRow;
+      };
+      invoice_billing_snapshot: {
+        Args: { payload: Json; customer: CustomerRow };
+        Returns: Json;
+      };
+      save_invoice_billing_to_customer: {
+        Args: { customer: CustomerRow; billing: Json };
+        Returns: undefined;
+      };
       next_invoice_number: {
         Args: Record<PropertyKey, never>;
         Returns: string;

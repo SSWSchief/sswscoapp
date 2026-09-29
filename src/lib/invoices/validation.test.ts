@@ -44,4 +44,19 @@ describe("invoiceDraftSchema", () => {
     expect(invoiceDraftSchema.safeParse({ ...valid, notes: "x".repeat(501) }).success).toBe(false);
     expect(invoiceDraftSchema.safeParse({ ...valid, items: [{ ...valid.items[0], description: "x".repeat(501) }] }).success).toBe(false);
   });
+  it("accepts a typed name and billing details in place of a customer profile", () => {
+    const billing = { contactName: "Maria Lopez", email: " Maria@Example.com ", phone: "", addressLine1: "42 Desert Rd", addressLine2: "", city: "Henderson", state: "nv", postalCode: "89002" };
+    const parsed = invoiceDraftSchema.safeParse({ ...valid, customerId: "", customerName: "Maria Lopez", billing });
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.billing).toMatchObject({ email: "maria@example.com", state: "NV" });
+    // Blank billing fields are fine on a draft; sending is what requires them.
+    expect(invoiceDraftSchema.safeParse({ ...valid, billing: { ...billing, email: "", postalCode: "" } }).success).toBe(true);
+  });
+  it("rejects a missing customer and malformed billing details", () => {
+    const billing = { contactName: "", email: "", phone: "", addressLine1: "", addressLine2: "", city: "", state: "", postalCode: "" };
+    expect(invoiceDraftSchema.safeParse({ ...valid, customerId: "" }).success).toBe(false);
+    expect(invoiceDraftSchema.safeParse({ ...valid, billing: { ...billing, email: "not-an-email" } }).success).toBe(false);
+    expect(invoiceDraftSchema.safeParse({ ...valid, billing: { ...billing, state: "Nevada" } }).success).toBe(false);
+    expect(invoiceDraftSchema.safeParse({ ...valid, billing: { ...billing, postalCode: "890" } }).success).toBe(false);
+  });
 });
