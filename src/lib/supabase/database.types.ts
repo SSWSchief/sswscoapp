@@ -100,6 +100,8 @@ export interface TruckRow extends Record<string, unknown> {
   gps_source: "manual" | "airtag" | "gps_placeholder" | null;
   last_known_location: string | null;
   last_seen_at: string | null;
+  /** Miles per gallon, for fuel costing; null until management sets it. */
+  mpg?: number | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -417,6 +419,9 @@ export interface DisposalTicketRow extends Record<string, unknown> {
   storage_path: string | null;
   notes: string;
   recorded_by_id: string | null;
+  /** The charge printed on the landfill ticket. */
+  disposal_fee_cents?: number | null;
+  disposal_site_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -433,8 +438,71 @@ export interface DisposalSiteRow extends Record<string, unknown> {
   estimated_wait_minutes: number;
   notes: string;
   is_active: boolean;
+  /** Fallback dump fee when a ticket carries no charge. */
+  rate_per_ton_cents?: number | null;
   created_at: string;
   updated_at: string;
+}
+export type CostSource = "estimated" | "actual";
+/** The single row of management's fuel inputs. */
+export interface OperatingCostsRow extends Record<string, unknown> {
+  id: boolean;
+  /** Where every route starts and ends; null means the company address. */
+  yard_address: string | null;
+  diesel_cents_per_gallon: number | null;
+  updated_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface CostDefaultRow extends Record<string, unknown> {
+  id: string;
+  dumpster_size: "10 Yard" | "20 Yard" | "30 Yard" | "40 Yard";
+  labor_cents: number | null;
+  dump_fee_cents: number | null;
+  updated_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+/** One per completed job; inputs are copied in at completion. */
+export interface JobCostRow extends Record<string, unknown> {
+  id: string;
+  job_id: string;
+  route_miles: number | null;
+  mpg: number | null;
+  diesel_cents_per_gallon: number | null;
+  fuel_override_cents: number | null;
+  labor_cents: number | null;
+  labor_source: CostSource | null;
+  default_dump_fee_cents: number | null;
+  dump_fee_override_cents: number | null;
+  other_cents: number;
+  notes: string;
+  updated_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+/** A row of `profitability_rows()`; amounts in cents. */
+export interface ProfitabilityResultRow extends Record<string, unknown> {
+  job_id: string;
+  reference: string;
+  completed_at: string;
+  invoiced_at: string | null;
+  customer_id: string;
+  customer_name: string;
+  dumpster_size: string;
+  service_type: string;
+  dumpster_code: string | null;
+  revenue_cents: number;
+  received_cents: number;
+  invoiced: boolean;
+  dump_fee_cents: number | null;
+  dump_source: CostSource | null;
+  route_miles: number | null;
+  fuel_cents: number | null;
+  fuel_source: CostSource | null;
+  labor_cents: number | null;
+  labor_source: CostSource | null;
+  other_cents: number;
 }
 export interface ContainerPlacementRow extends Record<string, unknown> {
   id: string;
@@ -611,6 +679,9 @@ export interface Database {
       container_placements: Table<ContainerPlacementRow>;
       vehicle_inspections: Table<VehicleInspectionRow>;
       vehicle_inspection_photos: Table<VehicleInspectionPhotoRow>;
+      operating_costs: Table<OperatingCostsRow>;
+      cost_defaults: Table<CostDefaultRow>;
+      job_costs: Table<JobCostRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -704,6 +775,10 @@ export interface Database {
       set_job_pickup_plan: {
         Args: { target_job_id: string; pickup_at?: string | null };
         Returns: JobRow;
+      };
+      profitability_rows: {
+        Args: { from_date: string; through_date: string };
+        Returns: ProfitabilityResultRow[];
       };
       create_team_message_channel: {
         Args: { channel_name: string; channel_label: string; channel_description: string; member_ids: string[] };
@@ -929,6 +1004,7 @@ export interface Database {
       invoice_lifecycle_status: InvoiceRow["status"];
       invoice_billing_mode: InvoiceRow["billing_mode"];
       invoice_payment_terms: InvoiceRow["payment_terms"];
+      cost_source: CostSource;
     };
     CompositeTypes: Record<string, never>;
   };
