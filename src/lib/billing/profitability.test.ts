@@ -12,9 +12,11 @@ const row = (overrides: Partial<ProfitRow>): ProfitRow => ({
   serviceType: "Pick-Up",
   dumpsterCode: "120",
   revenueCents: 0,
+  receivedCents: 0,
   invoiced: true,
   dumpFeeCents: 0,
   dumpSource: "estimated",
+  routeMiles: null,
   fuelCents: 0,
   fuelSource: "estimated",
   laborCents: 0,
@@ -59,6 +61,14 @@ describe("totals", () => {
     expect(totals([row({ revenueCents: 10000, otherCents: 2500 })]).profitCents).toBe(7500);
   });
 
+  it("splits revenue into received and still owed", () => {
+    const sum = totals([
+      row({ revenueCents: 62500, receivedCents: 31250 }),
+      row({ revenueCents: 40000, receivedCents: 40000 }),
+    ]);
+    expect(sum).toMatchObject({ revenueCents: 102500, receivedCents: 71250, outstandingCents: 31250 });
+  });
+
   it("counts unbilled jobs", () => {
     expect(totals([row({ invoiced: false }), row({})]).unbilledJobs).toBe(1);
   });
@@ -80,8 +90,8 @@ describe("byMonth", () => {
     expect(months.get("2026-09")?.revenueCents).toBe(257500);
   });
 
-  it("can group by invoice date instead, leaving unbilled jobs out", () => {
-    const months = byMonth([late, unbilled, ...penta], "invoiced");
+  it("groups by invoice date by default, leaving unbilled jobs out", () => {
+    const months = byMonth([late, unbilled, ...penta]);
     expect([...months.keys()]).toEqual(["2026-09", "2026-10"]);
     expect(months.get("2026-10")?.jobs).toBe(1);
     expect([...months.values()].reduce((n, t) => n + t.jobs, 0)).toBe(4);

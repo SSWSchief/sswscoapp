@@ -23,9 +23,13 @@ export interface ProfitRow {
   serviceType: string;
   dumpsterCode: string | null;
   revenueCents: number;
+  /** The job's share of what the customer has paid so far, pre-tax. */
+  receivedCents: number;
   invoiced: boolean;
   dumpFeeCents: number | null;
   dumpSource: CostSource | null;
+  /** Yard to job to dump or yard; fuel is these miles / mpg x diesel. */
+  routeMiles: number | null;
   fuelCents: number | null;
   fuelSource: CostSource | null;
   laborCents: number | null;
@@ -34,14 +38,18 @@ export interface ProfitRow {
 }
 
 /**
- * Which date places a job in a month. Austin has not said yet whether revenue
- * counts when the job is done or when it is billed, so both are kept.
+ * Which date places a job in a month. Austin counts revenue when it is
+ * invoiced (2026-09-30), so that is the default; the completion date stays
+ * available for an operational view.
  */
 type DateBasis = "completed" | "invoiced";
 
 interface Totals {
   jobs: number;
   revenueCents: number;
+  /** Collected so far; the rest of revenue is still owed (Net-30 and the like). */
+  receivedCents: number;
+  outstandingCents: number;
   expensesCents: number;
   profitCents: number;
   /** Profit over revenue; 0 with no revenue, as the workbook does. */
@@ -61,11 +69,14 @@ const isIncomplete = (row: ProfitRow) =>
 /** Revenue, expenses, profit and margin over any set of jobs. */
 export function totals(rows: readonly ProfitRow[]): Totals {
   const revenueCents = rows.reduce((sum, row) => sum + row.revenueCents, 0);
+  const receivedCents = rows.reduce((sum, row) => sum + row.receivedCents, 0);
   const expensesCents = rows.reduce((sum, row) => sum + expensesOf(row), 0);
   const profitCents = revenueCents - expensesCents;
   return {
     jobs: rows.length,
     revenueCents,
+    receivedCents,
+    outstandingCents: revenueCents - receivedCents,
     expensesCents,
     profitCents,
     margin: revenueCents === 0 ? 0 : profitCents / revenueCents,
@@ -94,7 +105,7 @@ function groupTotals(
  */
 export function byMonth(
   rows: readonly ProfitRow[],
-  basis: DateBasis,
+  basis: DateBasis = "invoiced",
 ): Map<string, Totals> {
   const grouped = groupTotals(rows, (row) => {
     const at = basis === "completed" ? row.completedAt : row.invoicedAt;
