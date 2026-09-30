@@ -9,7 +9,22 @@ import { useToast } from "@/components/system/ToastProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { AddTruckModal } from "@/components/dispatcher/AssetModals";
 import { truckStatusLabel } from "@/lib/utils";
+import {
+  DEFAULT_JOB_TIME as DEFAULT_TIME,
+  joinLocalDateTime as joinLocal,
+  localDateTimeParts as toLocalParts,
+} from "@/lib/job-dates";
 import type { DumpsterSize, Job, ServiceType } from "@/lib/types";
+
+/**
+ * Services that act on a can already standing at the customer's site. Their
+ * container has to be the one out there: a pick-up booked against a can from
+ * the yard retrieved nothing and left the real one "on site" for weeks.
+ */
+const ON_SITE_SERVICES = new Set(["Pick-Up", "Dump & Return", "Relocation"]);
+
+const sameAddress = (left: string, right: string) =>
+  left.trim().toLowerCase() === right.trim().toLowerCase();
 
 // Screen 3 — Create / Edit Job. Grouped into sections with client-side
 // validation and availability-aware asset pickers.
@@ -23,8 +38,10 @@ type Form = {
   driver: string;
   truck: string;
   dumpster: string;
-  scheduledFor: string;
-  expectedPickupAt: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  pickupDate: string;
+  pickupTime: string;
   trafficInstructions: string;
   notes: string;
 };
@@ -38,8 +55,10 @@ const empty: Form = {
   driver: "",
   truck: "",
   dumpster: "",
-  scheduledFor: "",
-  expectedPickupAt: "",
+  scheduledDate: "",
+  scheduledTime: DEFAULT_TIME,
+  pickupDate: "",
+  pickupTime: DEFAULT_TIME,
   trafficInstructions: "",
   notes: "",
 };
@@ -60,6 +79,8 @@ export function CreateJobModal({
     setJobPickupPlan,
     customers,
     dumpsters,
+    openPlacements,
+    jobs,
     trucks,
     users,
     canMutate,
@@ -78,6 +99,66 @@ export function CreateJobModal({
   const initializedFor = React.useRef<string | null>(null);
 
   const selectedTruck = trucks.find((truck) => truck.id === form.truck);
+
+  const customerId = customers.find(
+    (item) => item.name.toLowerCase() === form.customer.trim().toLowerCase(),
+  )?.id;
+  const onSiteService = ON_SITE_SERVICES.has(form.serviceType);
+  // A can on rental still points at its completed delivery, so only a job
+  // that is actually under way makes a container unavailable.
+  const heldBy = React.useMemo(() => {
+    const underWay = new Set(
+      jobs
+        .filter((item) => item.status === "en_route" || item.status === "arrived")
+        .map((item) => item.id),
+    );
+    return (dumpsterJobId: string | null | undefined) =>
+      Boolean(dumpsterJobId && dumpsterJobId !== job?.id && underWay.has(dumpsterJobId));
+  }, [jobs, job?.id]);
+  const placementByDumpster = React.useMemo(
+    () => new Map(openPlacements.map((item) => [item.dumpsterId, item])),
+    [openPlacements],
+  );
+  const onSiteHere = React.useMemo(
+    () =>
+      onSiteService && customerId
+        ? openPlacements.filter((item) => item.customerId === customerId)
+        : [],
+    [onSiteService, customerId, openPlacements],
+  );
+
+  // Pre-fill the can that is out there: the one at this address, or the only
+  // one this customer has. A selection that is not on site is dropped.
+  React.useEffect(() => {
+    if (!open || !onSiteService) return;
+    setForm((current) => {
+      if (onSiteHere.some((item) => item.dumpsterId === current.dumpster))
+        return current;
+      const match =
+        onSiteHere.find((item) => sameAddress(item.address, current.address)) ??
+        (onSiteHere.length === 1 ? onSiteHere[0] : undefined);
+      const dumpster = match?.dumpsterId ?? "";
+      const address = current.address.trim() ? current.address : (match?.address ?? "");
+      return dumpster === current.dumpster && address === current.address
+        ? current
+        : { ...current, dumpster, address };
+    });
+  }, [open, onSiteService, onSiteHere]);
+
+  const dumpsterOptions = onSiteService
+    ? dumpsters.filter(
+        (item) =>
+          onSiteHere.some((placement) => placement.dumpsterId === item.id) ||
+          item.id === job?.assignedDumpsterId,
+      )
+    : dumpsters;
+  const dumpsterHint = !onSiteService
+    ? undefined
+    : !customerId
+      ? "Pick the customer to see what is on site."
+      : onSiteHere.length
+        ? "Only containers on site for this customer are listed."
+        : "No containers are on site for this customer.";
 
   React.useEffect(() => {
     if (!open) {
@@ -102,15 +183,14 @@ export function CreateJobModal({
             driver: job.assignedDriverId ?? "",
             truck: job.assignedTruckId ?? "",
             dumpster: job.assignedDumpsterId ?? "",
-            scheduledFor: new Date(
-              new Date(job.scheduledFor).getTime() -
-                new Date(job.scheduledFor).getTimezoneOffset() * 60000,
-            )
-              .toISOString()
-              .slice(0, 16),
-            expectedPickupAt: job.expectedPickupAt
-              ? new Date(new Date(job.expectedPickupAt).getTime() - new Date(job.expectedPickupAt).getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+            scheduledDate: toLocalParts(job.scheduledFor).date,
+            scheduledTime: toLocalParts(job.scheduledFor).time,
+            pickupDate: job.expectedPickupAt
+              ? toLocalParts(job.expectedPickupAt).date
               : "",
+            pickupTime: job.expectedPickupAt
+              ? toLocalParts(job.expectedPickupAt).time
+              : DEFAULT_TIME,
             trafficInstructions: job.trafficInstructions ?? "",
             notes: job.notes,
           }
@@ -135,7 +215,7 @@ export function CreateJobModal({
     if (!form.address.trim()) next.address = "Enter a job address.";
     if (!form.serviceType) next.serviceType = "Choose a service type.";
     if (!form.dumpsterSize) next.dumpsterSize = "Choose a dumpster size.";
-    if (!form.scheduledFor) next.scheduledFor = "Pick a date and time.";
+    if (!form.scheduledDate) next.scheduledDate = "Pick a date.";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -151,6 +231,8 @@ export function CreateJobModal({
     const customer = customers.find(
       (item) => item.name.toLowerCase() === typed.toLowerCase(),
     );
+    const scheduledFor = joinLocal(form.scheduledDate, form.scheduledTime);
+    const expectedPickupAt = joinLocal(form.pickupDate, form.pickupTime);
     const input = {
       customerId: customer?.id ?? "",
       customerName: customer ? "" : typed,
@@ -162,8 +244,8 @@ export function CreateJobModal({
       assignedDriverId: form.driver || null,
       assignedTruckId: form.truck || null,
       assignedDumpsterId: form.dumpster || null,
-      scheduledFor: form.scheduledFor,
-      expectedPickupAt: form.expectedPickupAt,
+      scheduledFor,
+      expectedPickupAt,
       trafficInstructions: form.trafficInstructions.trim(),
       notes: form.notes.trim(),
     };
@@ -174,8 +256,8 @@ export function CreateJobModal({
         toast(result.error.message, { tone: "error" });
         return;
       }
-      if (form.expectedPickupAt !== (job.expectedPickupAt ?? "")) {
-        const pickup = await setJobPickupPlan(job.id, form.expectedPickupAt ? new Date(form.expectedPickupAt).toISOString() : null);
+      if (expectedPickupAt !== (job.expectedPickupAt ?? "")) {
+        const pickup = await setJobPickupPlan(job.id, expectedPickupAt ? new Date(expectedPickupAt).toISOString() : null);
         if (!pickup.ok) { setSaving(false); toast(pickup.error.message, { tone: "error" }); return; }
       }
       toast(`${job.reference} updated`, { tone: "success" });
@@ -186,8 +268,8 @@ export function CreateJobModal({
         toast(result.error.message, { tone: "error" });
         return;
       }
-      if (form.expectedPickupAt) {
-        const pickup = await setJobPickupPlan(result.data.id, new Date(form.expectedPickupAt).toISOString());
+      if (expectedPickupAt) {
+        const pickup = await setJobPickupPlan(result.data.id, new Date(expectedPickupAt).toISOString());
         if (!pickup.ok) { setSaving(false); toast(pickup.error.message, { tone: "error" }); return; }
       }
       toast(
@@ -333,18 +415,28 @@ export function CreateJobModal({
 
         <Section title="Schedule & Assignment">
           <div className="grid gap-5 sm:grid-cols-2">
-            <FormField
-              label="Scheduled Date"
-              required
-              error={errors.scheduledFor}
-            >
-              <Input
-                type="datetime-local"
-                autoComplete="off"
-                value={form.scheduledFor}
-                onChange={set("scheduledFor")}
-              />
-            </FormField>
+            <div className="grid grid-cols-[3fr_2fr] gap-3">
+              <FormField
+                label="Scheduled Date"
+                required
+                error={errors.scheduledDate}
+              >
+                <Input
+                  type="date"
+                  autoComplete="off"
+                  value={form.scheduledDate}
+                  onChange={set("scheduledDate")}
+                />
+              </FormField>
+              <FormField label="Time">
+                <Input
+                  type="time"
+                  autoComplete="off"
+                  value={form.scheduledTime}
+                  onChange={set("scheduledTime")}
+                />
+              </FormField>
+            </div>
             <FormField
               label="Assign Driver"
               hint="Optional; unassigned jobs remain in the dispatch queue."
@@ -358,17 +450,27 @@ export function CreateJobModal({
                 ))}
               </Select>
             </FormField>
-            <FormField
-              label="Expected Pickup Date"
-              hint="Optional; the dumpster remains onsite until a pickup is completed."
-            >
-              <Input
-                type="datetime-local"
-                autoComplete="off"
-                value={form.expectedPickupAt}
-                onChange={set("expectedPickupAt")}
-              />
-            </FormField>
+            <div className="grid grid-cols-[3fr_2fr] gap-3">
+              <FormField
+                label="Expected Pickup Date"
+                hint="Optional; the dumpster remains onsite until a pickup is completed."
+              >
+                <Input
+                  type="date"
+                  autoComplete="off"
+                  value={form.pickupDate}
+                  onChange={set("pickupDate")}
+                />
+              </FormField>
+              <FormField label="Pickup Time">
+                <Input
+                  type="time"
+                  autoComplete="off"
+                  value={form.pickupTime}
+                  onChange={set("pickupTime")}
+                />
+              </FormField>
+            </div>
             <FormField
               label="Assign Truck"
               hint={
@@ -411,26 +513,31 @@ export function CreateJobModal({
                 </Button>
               </div>
             )}
-            <FormField label="Assign Dumpster">
+            <FormField label="Assign Dumpster" hint={dumpsterHint}>
               <Select value={form.dumpster} onChange={set("dumpster")}>
                 <option value="">No dumpster</option>
-                {dumpsters.map((d) => (
-                  <option
-                    key={d.id}
-                    value={d.id}
-                    disabled={
-                      d.status === "in_shop" ||
-                      Boolean(d.currentJobId && d.currentJobId !== job?.id)
-                    }
-                  >
-                    {d.code} · {d.size}
-                    {d.status === "in_shop"
+                {dumpsterOptions.map((d) => {
+                  const placement = placementByDumpster.get(d.id);
+                  // Delivering or swapping in a can that is standing at another
+                  // customer would silently end that rental.
+                  const elsewhere =
+                    !onSiteService && placement && d.id !== job?.assignedDumpsterId;
+                  const reason =
+                    d.status === "in_shop"
                       ? " (In Shop)"
-                      : d.currentJobId && d.currentJobId !== job?.id
+                      : heldBy(d.currentJobId)
                         ? " (Active job)"
-                        : ""}
-                  </option>
-                ))}
+                        : elsewhere
+                          ? " (On site)"
+                          : "";
+                  return (
+                    <option key={d.id} value={d.id} disabled={Boolean(reason)}>
+                      {d.code} · {d.size}
+                      {onSiteService && placement ? ` at ${placement.address}` : ""}
+                      {reason}
+                    </option>
+                  );
+                })}
               </Select>
             </FormField>
           </div>

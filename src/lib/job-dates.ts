@@ -60,3 +60,25 @@ export function driverJobsForWindow(
         a.reference.localeCompare(b.reference),
     );
 }
+
+/**
+ * Job forms take a date and a time as separate controls. Chrome's combined
+ * datetime picker on Windows ignores its time column until a date has been
+ * chosen, which dispatch read as a broken time bar; a separate time field with
+ * a working default does not.
+ */
+export const DEFAULT_JOB_TIME = "08:00";
+
+/** An ISO instant as the browser-local date and time the two controls show. */
+export function localDateTimeParts(iso: string) {
+  const at = new Date(iso);
+  const local = new Date(at.getTime() - at.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+  return { date: local.slice(0, 10), time: local.slice(11, 16) };
+}
+
+/** The two controls back as a local "YYYY-MM-DDTHH:mm", or "" with no date. */
+export function joinLocalDateTime(date: string, time: string) {
+  return date ? `${date}T${time || DEFAULT_JOB_TIME}` : "";
+}

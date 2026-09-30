@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   driverJobsForWindow,
   jobsForPacificDay,
+  joinLocalDateTime,
   loadedJobWindow,
+  localDateTimeParts,
 } from "./job-dates";
 import type { Job } from "./types";
 const job = (
@@ -80,5 +82,26 @@ describe("the loaded job window", () => {
     const december = loadedJobWindow("2026-12-16T12:00:00-07:00");
     expect(Date.parse(december.start)).toBeGreaterThan(Date.parse(august.start));
     expect(Date.parse(december.end)).toBeGreaterThan(Date.parse(august.end));
+  });
+});
+
+describe("job date and time controls", () => {
+  it("books a date with no time at the default hour", () => {
+    expect(joinLocalDateTime("2026-10-02", "")).toBe("2026-10-02T08:00");
+  });
+
+  it("keeps a chosen time", () => {
+    expect(joinLocalDateTime("2026-10-02", "13:30")).toBe("2026-10-02T13:30");
+  });
+
+  it("is empty without a date, whatever the time says", () => {
+    expect(joinLocalDateTime("", "13:30")).toBe("");
+  });
+
+  it("round-trips a stored instant through the two controls", () => {
+    const { date, time } = localDateTimeParts(
+      new Date("2026-10-02T13:30").toISOString(),
+    );
+    expect(joinLocalDateTime(date, time)).toBe("2026-10-02T13:30");
   });
 });
