@@ -3,7 +3,14 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CreateJobModal } from "./CreateJobModal";
-import type { Customer, Truck, User } from "@/lib/types";
+import type {
+  ContainerPlacement,
+  Customer,
+  Dumpster,
+  Job,
+  Truck,
+  User,
+} from "@/lib/types";
 
 const state = {
   created: [] as Record<string, unknown>[],
@@ -29,12 +36,40 @@ const trucks = [
     notes: "",
   },
 ] as Truck[];
+const dumpster = (id: string, code: string, currentJobId: string | null = null) =>
+  ({ id, code, size: "20 Yard", status: "in_yard", type: "Roll-off", currentJobId, currentLocation: "Yard", airTagId: null, notes: "" }) as unknown as Dumpster;
+// 20001 is out at Vegas GC on a completed delivery; 20002 and 40001 are home,
+// and 40001 is still loaded on a job that is under way.
+const dumpsters = [
+  dumpster("can-1", "20001", "job-delivered"),
+  dumpster("can-2", "20002"),
+  dumpster("can-3", "40001", "job-rolling"),
+];
+const openPlacements = [
+  {
+    id: "placement-1",
+    customerId: "cust-1",
+    dumpsterId: "can-1",
+    address: "1 A St",
+    deliveredJobId: "job-delivered",
+    retrievedJobId: null,
+    deliveredAt: "2026-09-17T17:37:00Z",
+    retrievedAt: null,
+    notes: "",
+  },
+] as ContainerPlacement[];
+const jobs = [
+  { id: "job-delivered", status: "complete" },
+  { id: "job-rolling", status: "en_route" },
+] as Job[];
 
 vi.mock("@/components/system/OperationsProvider", () => ({
   useOperations: () => ({
     customers: state.customers,
     users,
-    dumpsters: [],
+    dumpsters,
+    openPlacements,
+    jobs,
     trucks,
     canMutate: true,
     createJob: async (input: Record<string, unknown>) => {
@@ -53,7 +88,7 @@ const fillRequired = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(screen.getByPlaceholderText(/Enter address/i), "500 Sahara Ave");
   await user.selectOptions(screen.getByLabelText(/Service Type/i), "Delivery");
   await user.selectOptions(screen.getByLabelText(/Dumpster Size/i), "20 Yard");
-  await user.type(screen.getByLabelText(/Scheduled/i), "2026-09-10T09:00");
+  await user.type(screen.getByLabelText(/Scheduled Date/i), "2026-09-10");
 };
 
 describe("CreateJobModal — booking a customer who is not on the list", () => {
@@ -156,5 +191,79 @@ describe("CreateJobModal — booking a customer who is not on the list", () => {
     expect(screen.getByPlaceholderText(/Enter address/i)).toHaveValue(
       "500 Sahara Ave",
     );
+  });
+});
+
+describe("CreateJobModal — schedule time", () => {
+  afterEach(cleanup);
+  beforeEach(() => {
+    state.created = [];
+    state.customers = customers;
+  });
+
+  it("books a date alone at the default time", async () => {
+    render(<CreateJobModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/^Customer/i), "Vegas GC");
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: /Save Job/i }));
+
+    await waitFor(() => expect(state.created).toHaveLength(1));
+    expect(state.created[0]).toMatchObject({ scheduledFor: "2026-09-10T08:00" });
+  });
+
+  it("takes a time set before or after the date", async () => {
+    render(<CreateJobModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/^Customer/i), "Vegas GC");
+    const time = screen.getByLabelText(/^Time/);
+    await user.clear(time);
+    await user.type(time, "13:30");
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: /Save Job/i }));
+
+    await waitFor(() => expect(state.created).toHaveLength(1));
+    expect(state.created[0]).toMatchObject({ scheduledFor: "2026-09-10T13:30" });
+  });
+});
+
+describe("CreateJobModal — which dumpster", () => {
+  afterEach(cleanup);
+  beforeEach(() => {
+    state.created = [];
+    state.customers = customers;
+  });
+
+  const optionLabels = () =>
+    Array.from(
+      (screen.getByLabelText(/Assign Dumpster/i) as HTMLSelectElement).options,
+    ).map((option) => ({ label: option.textContent, disabled: option.disabled }));
+
+  it("offers a pick-up only the can on site for that customer, pre-filled", async () => {
+    render(<CreateJobModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/^Customer/i), "Vegas GC");
+    await user.selectOptions(screen.getByLabelText(/Service Type/i), "Pick-Up");
+
+    expect(optionLabels().map((option) => option.label)).toEqual([
+      "No dumpster",
+      "20001 · 20 Yard at 1 A St",
+    ]);
+    expect(screen.getByLabelText(/Assign Dumpster/i)).toHaveValue("can-1");
+    // The site address comes along when none was typed.
+    expect(screen.getByPlaceholderText(/Enter address/i)).toHaveValue("1 A St");
+  });
+
+  it("keeps a can that is out on a rental off a delivery", async () => {
+    render(<CreateJobModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText(/Service Type/i), "Delivery");
+
+    expect(optionLabels()).toEqual([
+      { label: "No dumpster", disabled: false },
+      { label: "20001 · 20 Yard (On site)", disabled: true },
+      { label: "20002 · 20 Yard", disabled: false },
+      { label: "40001 · 20 Yard (Active job)", disabled: true },
+    ]);
   });
 });

@@ -146,7 +146,7 @@ export function AddDumpsterModal({
   dumpster?: Dumpster;
 }) {
   const { toast } = useToast();
-  const { saveDumpster, canMutate } = useOperations();
+  const { saveDumpster, canMutate, openPlacements, customers } = useOperations();
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState({
     code: "",
@@ -169,6 +169,16 @@ export function AddDumpsterModal({
         notes: dumpster?.notes ?? "",
       });
   }, [open, dumpster]);
+  // Taking a can off "Out" by hand ends its rental in the database, so say so
+  // before it happens rather than let the On Site panel change underneath.
+  const rental = dumpster
+    ? openPlacements.find((item) => item.dumpsterId === dumpster.id)
+    : undefined;
+  const endsRental = Boolean(rental && form.status !== "out");
+  const rentalCustomer = rental
+    ? (customers.find((item) => item.id === rental.customerId)?.name ??
+      "the customer")
+    : "";
   const save = async () => {
     if (!form.code.trim()) {
       toast("Dumpster ID is required.", { tone: "error" });
@@ -221,12 +231,27 @@ export function AddDumpsterModal({
             ))}
           </Select>
         </FormField>
-        <FormField label="Status">
+        <FormField
+          label="Status"
+          hint={
+            endsRental && rental
+              ? `Saving ends the rental for ${rentalCustomer} at ${rental.address} and removes it from On Site.`
+              : undefined
+          }
+        >
           <Select
             value={form.status}
-            onChange={(e) =>
-              setForm({ ...form, status: e.target.value as DumpsterStatus })
-            }
+            onChange={(e) => {
+              const status = e.target.value as DumpsterStatus;
+              setForm({
+                ...form,
+                status,
+                currentLocation:
+                  status === "in_yard" && rental && form.currentLocation === rental.address
+                    ? "Yard"
+                    : form.currentLocation,
+              });
+            }}
           >
             <option value="out">Out</option>
             <option value="in_yard">In Yard</option>
