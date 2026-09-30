@@ -14,6 +14,11 @@ import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { useExpandedOperations } from "@/components/system/ExpandedOperationsProvider";
 import { formatDateTime, formatTime } from "@/lib/utils";
+import {
+  DEFAULT_JOB_TIME,
+  joinLocalDateTime,
+  localDateTimeParts,
+} from "@/lib/job-dates";
 import type { AcknowledgementEntry, JobEvent } from "@/lib/types";
 import { CreateJobModal } from "@/components/dispatcher/CreateJobModal";
 import { useToast } from "@/components/system/ToastProvider";
@@ -53,7 +58,9 @@ export default function JobDetailsPage({
   const [correctionOpen, setCorrectionOpen] = React.useState(false);
   const [correctedDumpsterId, setCorrectedDumpsterId] = React.useState("");
   const [correctionReason, setCorrectionReason] = React.useState("");
-  const [correctedPickupAt, setCorrectedPickupAt] = React.useState("");
+  const [correctedPickupDate, setCorrectedPickupDate] = React.useState("");
+  const [correctedPickupTime, setCorrectedPickupTime] =
+    React.useState(DEFAULT_JOB_TIME);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = React.useState<string | null>(null);
   const fileInput = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -108,11 +115,12 @@ export default function JobDetailsPage({
   const correctAssignment = async () => {
     if (!correctedDumpsterId || correctionReason.trim().length < 3 || busy) return;
     setBusy(true);
+    const pickupAt = joinLocalDateTime(correctedPickupDate, correctedPickupTime);
     const result = await correctCompletedJob(
       job.id,
       correctedDumpsterId,
       correctionReason,
-      correctedPickupAt ? new Date(correctedPickupAt).toISOString() : null,
+      pickupAt ? new Date(pickupAt).toISOString() : null,
     );
     setBusy(false);
     toast(result.ok ? "Completed job corrected" : result.error.message, {
@@ -180,6 +188,13 @@ export default function JobDetailsPage({
                   variant="secondary"
                   onClick={() => {
                     setCorrectedDumpsterId(job.assignedDumpsterId ?? "");
+                    // The correction saves the pickup date as shown, so it
+                    // starts from the one on file rather than blanking it.
+                    const pickup = job.expectedPickupAt
+                      ? localDateTimeParts(job.expectedPickupAt)
+                      : { date: "", time: DEFAULT_JOB_TIME };
+                    setCorrectedPickupDate(pickup.date);
+                    setCorrectedPickupTime(pickup.time);
                     setCorrectionOpen((open) => !open);
                   }}
                 >
@@ -297,9 +312,14 @@ export default function JobDetailsPage({
                   {dumpsters.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.size}</option>)}
                 </Select>
               </label>
-              <label className="text-sm font-medium">Expected pickup
-                <Input type="datetime-local" value={correctedPickupAt} onChange={(event) => setCorrectedPickupAt(event.target.value)} />
-              </label>
+              <div className="grid grid-cols-[3fr_2fr] gap-2">
+                <label className="text-sm font-medium">Expected pickup
+                  <Input type="date" value={correctedPickupDate} onChange={(event) => setCorrectedPickupDate(event.target.value)} />
+                </label>
+                <label className="text-sm font-medium">Time
+                  <Input type="time" value={correctedPickupTime} onChange={(event) => setCorrectedPickupTime(event.target.value)} />
+                </label>
+              </div>
               <label className="text-sm font-medium">Reason
                 <Input value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} placeholder="Wrong dumpster selected" />
               </label>

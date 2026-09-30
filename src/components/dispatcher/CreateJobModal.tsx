@@ -9,6 +9,11 @@ import { useToast } from "@/components/system/ToastProvider";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { AddTruckModal } from "@/components/dispatcher/AssetModals";
 import { truckStatusLabel } from "@/lib/utils";
+import {
+  DEFAULT_JOB_TIME as DEFAULT_TIME,
+  joinLocalDateTime as joinLocal,
+  localDateTimeParts as toLocalParts,
+} from "@/lib/job-dates";
 import type { DumpsterSize, Job, ServiceType } from "@/lib/types";
 
 /**
@@ -17,25 +22,6 @@ import type { DumpsterSize, Job, ServiceType } from "@/lib/types";
  * the yard retrieved nothing and left the real one "on site" for weeks.
  */
 const ON_SITE_SERVICES = new Set(["Pick-Up", "Dump & Return", "Relocation"]);
-
-/**
- * Date and time are separate controls. Chrome's combined datetime picker on
- * Windows ignores the time column until a date has been chosen, which read as
- * a broken time bar; a separate time field with a working default does not.
- */
-const DEFAULT_TIME = "08:00";
-
-const toLocalParts = (iso: string) => {
-  const local = new Date(
-    new Date(iso).getTime() - new Date(iso).getTimezoneOffset() * 60000,
-  )
-    .toISOString()
-    .slice(0, 16);
-  return { date: local.slice(0, 10), time: local.slice(11, 16) };
-};
-
-const joinLocal = (date: string, time: string) =>
-  date ? `${date}T${time || DEFAULT_TIME}` : "";
 
 const sameAddress = (left: string, right: string) =>
   left.trim().toLowerCase() === right.trim().toLowerCase();
