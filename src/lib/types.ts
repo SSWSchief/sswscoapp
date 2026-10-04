@@ -24,6 +24,7 @@ export type PermissionKey =
   | "time_clock"
   | "absence"
   | "invoices"
+  | "profitability"
   | "messages"
   | "map"
   | "reports"
@@ -435,6 +436,9 @@ export interface DisposalTicket {
   storagePath: string | null;
   notes: string;
   recordedById: string | null;
+  /** What the landfill charged, from the ticket; null when not recorded. */
+  disposalFeeCents: number | null;
+  disposalSiteId: string | null;
   createdAt: string;
 }
 

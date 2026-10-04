@@ -259,6 +259,8 @@ interface Value extends State {
       tareWeightLbs?: number | null;
       weighedAt?: string | null;
       notes?: string;
+      disposalFeeCents?: number | null;
+      disposalSiteId?: string | null;
     },
   ) => Promise<MutationResult<DisposalTicket>>;
   assignDriver: (
@@ -954,6 +956,8 @@ export function OperationsProvider({
             tare_lbs: input.tareWeightLbs ?? null,
             weighed: input.weighedAt ?? null,
             ticket_notes: input.notes ?? "",
+            fee_cents: input.disposalFeeCents ?? null,
+            site_id: input.disposalSiteId ?? null,
           });
           return {
             data: r.data ? mapDisposalTicket(r.data as DisposalTicketRow) : null,
