@@ -3,6 +3,7 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { changesCustomerDetails, confirmJobInBackground } from "@/lib/job-confirmations/client";
 import {
   mapAbsence,
   mapActivity,
@@ -848,9 +849,12 @@ export function OperationsProvider({
             customer_name: input.customerName || null,
             rep_id: input.salesRepId,
           });
+          // The customer hears about the booking straight away (2026-10-01).
+          if (r.data && !r.error) confirmJobInBackground(r.data.id);
           return { data: r.data ? mapJob(r.data) : null, error: r.error };
         })),
       updateJob: async (id, input) => {
+        const before = state.jobs.find((job) => job.id === id);
         const r = await notifying(run(() =>
           createClient().rpc("edit_job", {
             target_job_id: id,
@@ -869,6 +873,8 @@ export function OperationsProvider({
             rep_id: input.salesRepId,
           }),
         ));
+        // A new time or place replaces the confirmation the customer holds.
+        if (r.ok && before && changesCustomerDetails(before, input)) confirmJobInBackground(id);
         return r.ok ? { ok: true, data: undefined } : r;
       },
       updateJobStatus: async (id, status) => {

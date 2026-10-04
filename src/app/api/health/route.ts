@@ -7,6 +7,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveAppUrl } from "@/lib/app-url";
 import { emailDeliveryEnabled } from "@/lib/email-delivery";
+import { customerEmailConfigured } from "@/lib/email/resend";
 import { pushConfigurationStatus } from "@/lib/push/env";
 import { stripeConfigurationStatus } from "@/lib/stripe/env";
 
@@ -41,6 +42,8 @@ export async function GET(request: Request) {
         appUrl: appUrl.url,
         source: appUrl.source,
         emailDeliveryEnabled: emailDeliveryEnabled(),
+        // Customer job confirmations send with the app's own Resend key.
+        customerEmailConfigured: customerEmailConfigured(),
       },
       // Booleans only — never the keys themselves. Push failing because a
       // deployment never received its VAPID keys is invisible from the app

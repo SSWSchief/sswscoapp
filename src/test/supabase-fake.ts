@@ -75,20 +75,23 @@ export function fakeAdminClient(tables: Tables, options: Options = {}) {
   const from = (table: string) => {
     const filters: Filter[] = [];
     let operation: "select" | "insert" | "update" | "delete" = "select";
-    let payload: Row = {};
+    let payload: Row | Row[] = {};
     const rows = () => (store[table] ??= []);
     const settle = () => {
       if (operation === "insert") {
         if (options.insertError) return { data: null, error: options.insertError };
-        const row = { id: `generated-${rows().length + 1}`, ...payload };
-        rows().push(row);
-        inserted.push(row);
-        return { data: row, error: null };
+        const created = (Array.isArray(payload) ? payload : [payload]).map((values) => {
+          const row = { id: `generated-${rows().length + 1}`, ...values };
+          rows().push(row);
+          inserted.push(row);
+          return row;
+        });
+        return { data: Array.isArray(payload) ? created : created[0], error: null };
       }
       if (operation === "update") {
         if (options.updateError) return { data: null, error: options.updateError };
         const target = rows().find((row) => matches(row, filters));
-        if (target) Object.assign(target, payload);
+        if (target) Object.assign(target, payload as Row);
         return { data: target ?? null, error: null };
       }
       if (operation === "delete") {
@@ -106,7 +109,7 @@ export function fakeAdminClient(tables: Tables, options: Options = {}) {
     };
     const chain = {
       select: () => chain,
-      insert: (values: Row) => ((operation = "insert"), (payload = values), chain),
+      insert: (values: Row | Row[]) => ((operation = "insert"), (payload = values), chain),
       update: (values: Row) => ((operation = "update"), (payload = values), chain),
       delete: () => ((operation = "delete"), chain),
       eq: (column: string, value: unknown) => (filters.push(["eq", column, value]), chain),
