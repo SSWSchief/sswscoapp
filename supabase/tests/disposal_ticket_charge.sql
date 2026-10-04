@@ -44,8 +44,10 @@ select is(
 reset role;
 
 select is((select count(*) from public.disposal_tickets where job_id = 'ticket-job'), 1::bigint, 'one ticket per job');
+-- Every activity in this transaction shares one timestamp, so look for the
+-- line rather than trusting an order.
 select ok(
-  (select body from public.job_activities where job_id = 'ticket-job' order by created_at desc, id desc limit 1) like '%$312.90 at Apex Landfill%',
+  exists(select 1 from public.job_activities where job_id = 'ticket-job' and body = 'Disposal ticket recorded: 4.67 tons, $312.90 at Apex Landfill'),
   'dispatch sees the charge and the site in the job activity');
 
 select * from finish();
