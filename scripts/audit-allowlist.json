@@ -1,0 +1,9 @@
+[
+  {
+    "advisory": "GHSA-vfj7-8cjw-p6xm",
+    "package": "braces",
+    "reason": "Stack exhaustion on deeply nested brace patterns. No patched release exists (every version through 3.0.3 is affected). braces reaches this project only through build and lint tooling (tailwindcss, knip, eslint-config-next), which expand patterns written in this repository, never input from users, and none of it ships in the application.",
+    "accepted": "2026-10-04",
+    "review_by": "2026-12-31"
+  }
+]
