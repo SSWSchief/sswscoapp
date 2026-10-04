@@ -3,6 +3,7 @@ import { apiFailure, logRequest, requestId } from "@/lib/api-response";
 import { toCsv } from "@/lib/csv";
 import { createReportPdf } from "@/lib/report-pdf";
 import { createReportXlsx } from "@/lib/report-xlsx";
+import { salesTaxExportRows, salesTaxHeaders } from "@/lib/billing/sales-tax-report";
 import { createClient } from "@/lib/supabase/server";
 import {
   applyTimeCorrections,
@@ -15,7 +16,7 @@ import {
 } from "@/lib/time-clock";
 import { exportQuerySchema } from "@/lib/validation";
 
-const allowed = new Set(["jobs", "invoices", "time", "assets"]);
+const allowed = new Set(["jobs", "invoices", "time", "assets", "sales-tax"]);
 const punchLabels: Record<string, string> = {
   clock_in: "In",
   break_start: "Break",
@@ -53,6 +54,13 @@ export async function GET(
   });
   if (permission.data !== true)
     return fail("forbidden", "Reports permission required.", 403);
+  // The tax return shows what the company took in, so it follows invoices
+  // access (management by default), not general reporting.
+  if (type === "sales-tax") {
+    const finance = await db.rpc("has_permission", { permission_key: "invoices" });
+    if (finance.data !== true)
+      return fail("forbidden", "Invoices permission required.", 403);
+  }
   const profile = await db
     .from("users")
     .select("id")
@@ -151,6 +159,11 @@ export async function GET(
         invoice.po_number,
         invoice.notes,
       ]);
+    } else if (type === "sales-tax") {
+      const result = await db.rpc("sales_tax_rows", { from_date: from, through_date: to });
+      if (result.error) throw result.error;
+      headers = salesTaxHeaders;
+      rows = salesTaxExportRows(result.data ?? []);
     } else if (type === "time") {
       // Filtered in the query rather than after it. Taking the oldest
       // `maximumRows` and then narrowing in JS returns steadily less of the

@@ -36,6 +36,7 @@ const defaults: CompanySettings = {
   taxPolicyStatus: "pending",
   taxPolicyApprovedAt: null,
   taxPolicyNote: "",
+  salesTaxRate: 8.375,
 };
 const tabs = [
   "company",
@@ -515,7 +516,7 @@ export default function Page() {
                   </Select>
                 </FormField>
                 <div className="rounded border border-brand-ice p-3 text-sm text-brand-steel">
-                  Live tax gate: <strong className="text-brand-charcoal">{form.taxPolicyStatus.replaceAll("_", " ")}</strong>. Stripe automatic tax must be configured and approved before live invoices can be sent.
+                  Sales tax: <strong className="text-brand-charcoal">{form.salesTaxRate}%</strong> on every invoice line (Clark County, NV), added by Stripe when the invoice is sent. Policy: <strong className="text-brand-charcoal">{form.taxPolicyStatus.replaceAll("_", " ")}</strong>.
                 </div>
                 <Button
                   disabled={disabled || !settings}

@@ -3,7 +3,7 @@ import { PDFDocument } from "pdf-lib";
 import { strFromU8, unzipSync } from "fflate";
 import { fakeAdminClient, type Row } from "@/test/supabase-fake";
 
-const state = { tables: {} as Record<string, Row[]> };
+const state = { tables: {} as Record<string, Row[]>, permissions: new Set(["reports", "invoices"]), salesTaxRows: [] as Row[] };
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => {
@@ -11,7 +11,14 @@ vi.mock("@/lib/supabase/server", () => ({
     return {
       ...fake.client,
       auth: { getUser: async () => ({ data: { user: { id: "auth-admin" } } }) },
-      rpc: async (name: string) => ({ data: name === "has_permission" || name === "consume_api_rate_limit", error: null }),
+      rpc: async (name: string, args: { permission_key?: string } = {}) => ({
+        data: name === "sales_tax_rows"
+          ? state.salesTaxRows
+          : name === "has_permission"
+            ? state.permissions.has(args.permission_key ?? "")
+            : name === "consume_api_rate_limit",
+        error: null,
+      }),
     };
   },
 }));
@@ -23,6 +30,10 @@ const get = (type: string, format = "csv") => GET(
 );
 
 beforeEach(() => {
+  state.permissions = new Set(["reports", "invoices"]);
+  state.salesTaxRows = [
+    { payment_id: "p1", received_at: "2026-09-29T16:02:34Z", invoice_id: "i12", invoice_number: "INV-000012", customer_name: "Owner test", billing_mode: "one_off", invoice_status: "paid", tax_rate: null, received_cents: 100, sale_cents: 100, tax_cents: 0, untaxed_cents: 8 },
+  ];
   state.tables = {
     users: [
       { id: "admin", auth_user_id: "auth-admin", employee_id: "001", full_name: "Admin", role: "management" },
@@ -43,7 +54,7 @@ beforeEach(() => {
 });
 
 describe("report downloads", () => {
-  it.each(["jobs", "invoices", "time", "assets"])("returns a real %s PDF attachment", async (type) => {
+  it.each(["jobs", "invoices", "time", "assets", "sales-tax"])("returns a real %s PDF attachment", async (type) => {
     const response = await get(type, "pdf");
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/pdf");
@@ -84,6 +95,20 @@ describe("report downloads", () => {
       expect(sheet).toContain("Minimum and meeting");
     }
     if (type === "invoices") expect(strFromU8(files["xl/worksheets/sheet1.xml"])).toContain('s="2"><v>400.00</v>');
+  });
+
+  it("writes the sales tax return with its totals row", async () => {
+    const text = await (await get("sales-tax")).text();
+    expect(text).toContain("Date Paid,Invoice,Customer");
+    expect(text).toContain("2026-09-29,INV-000012,Owner test,paid,None charged,1.00,1.00,1.00,0.00,0.08");
+    expect(text).toContain("Total,1 payment,,,,1.00,1.00,1.00,0.00,0.08");
+  });
+
+  it("keeps the sales tax return from staff without invoices access", async () => {
+    state.permissions = new Set(["reports"]);
+    const response = await get("sales-tax");
+    expect(response.status).toBe(403);
+    expect(state.tables.export_audit).toHaveLength(0);
   });
 
   it("rejects an unknown format", async () => {

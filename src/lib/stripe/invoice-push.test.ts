@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
-import { createStripeInvoiceDraft, findStripeInvoiceByLocalMetadata, replaceStripeInvoiceItems, syncStripeCustomer } from "./invoice-push";
+import { applyStripeInvoiceTax, createStripeInvoiceDraft, ensureSalesTaxRate, findStripeInvoiceByLocalMetadata, replaceStripeInvoiceItems, syncStripeCustomer } from "./invoice-push";
 
 interface Call { params: Record<string, unknown>; options?: { idempotencyKey?: string } }
 /**
@@ -8,7 +8,12 @@ interface Call { params: Record<string, unknown>; options?: { idempotencyKey?: s
  * iterable rather than one page. `existingLines` stands in for every page.
  */
 const fakeStripe = (existingLines: Array<{ invoice_item: string }> = []) => {
-  const calls: Record<string, Call[]> = { createInvoice: [], createItem: [], createCustomer: [], updateCustomer: [], searchInvoice: [] };
+  const calls: Record<string, Call[]> = { createInvoice: [], updateInvoice: [], createItem: [], createCustomer: [], updateCustomer: [], searchInvoice: [], createTaxRate: [] };
+  const taxRates: Record<string, { id: string; active: boolean; inclusive: boolean; percentage: number }> = {
+    txr_old: { id: "txr_old", active: true, inclusive: false, percentage: 8.25 },
+    txr_current: { id: "txr_current", active: true, inclusive: false, percentage: 8.375 },
+    txr_archived: { id: "txr_archived", active: false, inclusive: false, percentage: 8.375 },
+  };
   const deletedItems: string[] = [];
   const stripe = {
     customers: {
@@ -17,6 +22,7 @@ const fakeStripe = (existingLines: Array<{ invoice_item: string }> = []) => {
     },
     invoices: {
       create: async (params: Record<string, unknown>, options?: Call["options"]) => { calls.createInvoice.push({ params, options }); return { id: "in_1" }; },
+      update: async (id: string, params: Record<string, unknown>, options?: Call["options"]) => { calls.updateInvoice.push({ params: { id, ...params }, options }); return { id }; },
       search: async (params: Record<string, unknown>) => { calls.searchInvoice.push({ params }); return { data: [] }; },
       listLineItems: () => ({
         async *[Symbol.asyncIterator]() {
@@ -24,6 +30,10 @@ const fakeStripe = (existingLines: Array<{ invoice_item: string }> = []) => {
             yield { parent: { invoice_item_details: { invoice_item: item.invoice_item } } };
         },
       }),
+    },
+    taxRates: {
+      retrieve: async (id: string) => { if (!taxRates[id]) throw new Error("No such tax rate"); return taxRates[id]; },
+      create: async (params: Record<string, unknown>, options?: Call["options"]) => { calls.createTaxRate.push({ params, options }); return { id: "txr_new" }; },
     },
     invoiceItems: {
       create: async (params: Record<string, unknown>, options?: Call["options"]) => { calls.createItem.push({ params, options }); return { id: "ii_1" }; },
@@ -41,10 +51,11 @@ const invoice = (terms = "Rental terms") => ({
 describe("Stripe invoice drafts", () => {
   it("pins card and ACH, terms, number, metadata, and idempotency", async () => {
     const { stripe, calls } = fakeStripe();
-    await createStripeInvoiceDraft(stripe, invoice(), "cus_1");
+    await createStripeInvoiceDraft(stripe, invoice(), "cus_1", null, ["txr_current"]);
     expect(calls.createInvoice[0].params).toMatchObject({
       number: "INV-000001", footer: "Rental terms", days_until_due: 30,
-      automatic_tax: { enabled: true },
+      automatic_tax: { enabled: false },
+      default_tax_rates: ["txr_current"],
       payment_settings: { payment_method_types: ["card", "us_bank_account"] },
       metadata: { sswsco_invoice_id: "inv-1", sswsco_invoice_number: "INV-000001" },
     });
@@ -53,7 +64,10 @@ describe("Stripe invoice drafts", () => {
   it("writes durable line items with stable keys", async () => {
     const { stripe, calls } = fakeStripe();
     await replaceStripeInvoiceItems(stripe, invoice(), "cus_1", "in_1");
-    expect(calls.createItem[0].params).toMatchObject({ amount: 40000, invoice: "in_1", description: "20 yard delivery", tax_behavior: "exclusive", tax_code: "txcd_20030000" });
+    expect(calls.createItem[0].params).toMatchObject({ amount: 40000, invoice: "in_1", description: "20 yard delivery" });
+    // Nevada taxes the rental, so no line may carry Stripe's "services" code,
+    // which is what made automatic tax charge 0%.
+    expect(calls.createItem[0].params).not.toHaveProperty("tax_code");
     expect(calls.createItem[0].options?.idempotencyKey).toBe("invoice:inv-1:item:line-1");
   });
   /**
@@ -72,6 +86,34 @@ describe("Stripe invoice drafts", () => {
     const { stripe } = fakeStripe();
     vi.spyOn(stripe.invoices, "search").mockResolvedValue({ data: [{ id: "in_recovered", currency: "usd", status: "draft", metadata: { sswsco_invoice_id: "inv-1", sswsco_invoice_number: "INV-000001" } }] } as unknown as Awaited<ReturnType<typeof stripe.invoices.search>>);
     expect((await findStripeInvoiceByLocalMetadata(stripe, invoice()))?.id).toBe("in_recovered");
+  });
+});
+
+describe("Nevada sales tax rate", () => {
+  it("reuses the saved rate while it still carries the same percentage", async () => {
+    const { stripe, calls } = fakeStripe();
+    expect(await ensureSalesTaxRate(stripe, 8.375, "txr_current")).toBe("txr_current");
+    expect(calls.createTaxRate).toHaveLength(0);
+  });
+  it("creates an exclusive Nevada rate when none is saved, or the saved one changed or was archived", async () => {
+    for (const existing of [null, "txr_old", "txr_archived", "txr_missing"]) {
+      const { stripe, calls } = fakeStripe();
+      expect(await ensureSalesTaxRate(stripe, 8.375, existing)).toBe("txr_new");
+      expect(calls.createTaxRate[0].params).toMatchObject({ percentage: 8.375, inclusive: false, country: "US", state: "NV", tax_type: "sales_tax" });
+      expect(calls.createTaxRate[0].options?.idempotencyKey).toBe("sales-tax-rate:NV:8.375");
+    }
+  });
+  it("moves a draft off automatic tax and onto the fixed rate, or clears it", async () => {
+    const { stripe, calls } = fakeStripe();
+    await applyStripeInvoiceTax(stripe, "inv-1", "in_1", ["txr_current"]);
+    expect(calls.updateInvoice[0].params).toEqual({ id: "in_1", automatic_tax: { enabled: false }, default_tax_rates: ["txr_current"] });
+    await applyStripeInvoiceTax(stripe, "inv-1", "in_1", []);
+    expect(calls.updateInvoice[1].params).toMatchObject({ default_tax_rates: "" });
+  });
+  it("leaves the rate list off a draft that carries no tax", async () => {
+    const { stripe, calls } = fakeStripe();
+    await createStripeInvoiceDraft(stripe, invoice(), "cus_1", null, []);
+    expect(calls.createInvoice[0].params).not.toHaveProperty("default_tax_rates");
   });
 });
 

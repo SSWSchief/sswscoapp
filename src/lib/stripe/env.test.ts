@@ -7,7 +7,6 @@ const keys = [
   "STRIPE_ACCOUNT_ID",
   "STRIPE_EXPECTED_MODE",
   "STRIPE_INVOICING_ENABLED",
-  "STRIPE_AUTOMATIC_TAX_ENABLED",
 ] as const;
 const original = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
 
@@ -31,12 +30,10 @@ describe("stripeConfigurationStatus", () => {
       STRIPE_ACCOUNT_ID: "acct_example",
       STRIPE_EXPECTED_MODE: "test",
       STRIPE_INVOICING_ENABLED: "true",
-      STRIPE_AUTOMATIC_TAX_ENABLED: "true",
     });
     expect(stripeConfigurationStatus()).toEqual({
       configured: true,
       invoicingEnabled: true,
-      automaticTaxEnabled: true,
       secretKey: true,
       webhookSecret: true,
       accountId: true,
@@ -96,16 +93,6 @@ describe("stripeConfigurationStatus", () => {
     }
     configure({ STRIPE_INVOICING_ENABLED: "true" });
     expect(stripeConfigurationStatus().invoicingEnabled).toBe(true);
-  });
-
-  it("reports automatic tax separately from invoice sending", () => {
-    configure({ STRIPE_INVOICING_ENABLED: "true" });
-    expect(stripeConfigurationStatus()).toMatchObject({
-      invoicingEnabled: true,
-      automaticTaxEnabled: false,
-    });
-    configure({ STRIPE_AUTOMATIC_TAX_ENABLED: "true" });
-    expect(stripeConfigurationStatus().automaticTaxEnabled).toBe(true);
   });
 });
 

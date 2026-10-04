@@ -120,7 +120,15 @@ wrong money on a customer's invoice.
 - **Per-haul vs monthly statement billing.**
 - **Prepay vs net terms** for residential and one-off commercial.
 - **Payment terms** — due on receipt, Net 15, Net 30.
-- **Nevada sales tax treatment** — a question for the client's CPA, not for us.
+- **Nevada sales tax treatment** — answered. LVB Services (the client's tax
+  accountant) confirmed on 2026-10-02 that sales tax applies; Austin set the
+  terms on 2026-10-03: **8.375% (Clark County) on every invoice line**, a sale
+  counts in the quarter it is **paid**, no tax-exempt customers and no jobs
+  outside Clark County yet. Invoices carry a fixed-rate Stripe tax rate
+  (`company_settings.sales_tax_rate`); Stripe automatic tax is off, because it
+  classified every line as a non-taxable service and charged 0%. Reports →
+  Sales Tax Return gives each quarter's total and taxable sales by payment
+  date, for LVB's filing (due the 20th after the quarter closes).
 
 ## Verified against production
 

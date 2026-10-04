@@ -231,6 +231,8 @@ export interface InvoiceRow extends Record<string, unknown> {
   job_id: string | null;
   amount_cents: number;
   tax_cents: number;
+  /** Percentage the invoice was sent with; null before fixed-rate tax. */
+  sales_tax_rate?: number | null;
   status: "draft" | "open" | "paid" | "uncollectible" | "void";
   billing_mode: "per_job" | "statement" | "one_off";
   payment_terms: "due_on_receipt" | "net_15" | "net_30";
@@ -265,6 +267,27 @@ export interface InvoiceRow extends Record<string, unknown> {
   created_by_id: string | null;
   created_at: string;
   updated_at: string;
+}
+export interface InvoicePaymentRow extends Record<string, unknown> {
+  id: string;
+  invoice_id: string;
+  amount_cents: number;
+  received_at: string;
+  created_at: string;
+}
+export interface SalesTaxResultRow extends Record<string, unknown> {
+  payment_id: string;
+  received_at: string;
+  invoice_id: string;
+  invoice_number: string;
+  customer_name: string;
+  billing_mode: string;
+  invoice_status: string;
+  tax_rate: number | null;
+  received_cents: number;
+  sale_cents: number;
+  tax_cents: number;
+  untaxed_cents: number;
 }
 export interface InvoiceLineItemRow extends Record<string, unknown> {
   id: string;
@@ -392,9 +415,11 @@ export interface CompanySettingsRow extends Record<string, unknown> {
   invoice_prefix: string;
   invoice_terms: string;
   default_payment_terms: "due_on_receipt" | "net_15" | "net_30";
-  tax_policy_status: "pending" | "automatic_tax_approved" | "non_taxable_approved" | "follow_up_required";
+  tax_policy_status: "pending" | "fixed_rate_approved" | "non_taxable_approved" | "follow_up_required";
   tax_policy_approved_at: string | null;
   tax_policy_note: string;
+  sales_tax_rate?: number;
+  stripe_sales_tax_rate_id?: string | null;
   updated_at: string;
 }
 export interface PriceListRow extends Record<string, unknown> {
@@ -643,6 +668,7 @@ export interface Database {
       audit_log: Table<AuditRow>;
       invoices: Table<InvoiceRow>;
       invoice_line_items: Table<InvoiceLineItemRow>;
+      invoice_payments: Table<InvoicePaymentRow>;
       invoice_jobs: Table<InvoiceJobRow>;
       invoice_number_counters: Table<InvoiceNumberCounterRow>;
       stripe_webhook_events: Table<StripeWebhookEventRow>;
@@ -779,6 +805,10 @@ export interface Database {
       profitability_rows: {
         Args: { from_date: string; through_date: string };
         Returns: ProfitabilityResultRow[];
+      };
+      sales_tax_rows: {
+        Args: { from_date: string; through_date: string };
+        Returns: SalesTaxResultRow[];
       };
       create_team_message_channel: {
         Args: { channel_name: string; channel_label: string; channel_description: string; member_ids: string[] };

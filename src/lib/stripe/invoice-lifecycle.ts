@@ -1,14 +1,14 @@
 import "server-only";
+import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, InvoiceLineItemRow, InvoiceRow } from "@/lib/supabase/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { salesTaxPercent } from "@/lib/invoices/sales-tax";
+import { requireStripeInvoicing, stripeKeyMode } from "./client";
 import {
-  requireStripeInvoicing,
-  stripeAutomaticTaxEnabled,
-  stripeKeyMode,
-} from "./client";
-import {
+  applyStripeInvoiceTax,
   createStripeInvoiceDraft,
+  ensureSalesTaxRate,
   findStripeInvoiceByLocalMetadata,
   finalizeAndSendStripeInvoice,
   replaceStripeInvoiceItems,
@@ -24,7 +24,7 @@ async function loadInvoice(db: Db, id: string) {
     db.from("invoices").select("*").eq("id", id).maybeSingle(),
     db.from("invoice_line_items").select("*").eq("invoice_id", id).order("position"),
     db.from("invoice_jobs").select("job_id").eq("invoice_id", id),
-    db.from("company_settings").select("invoice_terms,tax_policy_status").maybeSingle(),
+    db.from("company_settings").select("invoice_terms,tax_policy_status,sales_tax_rate,stripe_sales_tax_rate_id").maybeSingle(),
   ]);
   const error = invoice.error ?? lines.error ?? links.error ?? settings.error;
   if (error) throw error;
@@ -39,11 +39,24 @@ async function loadInvoice(db: Db, id: string) {
     lines: (lines.data ?? []) as InvoiceLineItemRow[],
     terms: String(settings.data?.invoice_terms ?? ""),
     taxPolicy: String(settings.data?.tax_policy_status ?? "pending"),
+    salesTaxRate: Number(settings.data?.sales_tax_rate ?? 0),
+    stripeSalesTaxRateId: settings.data?.stripe_sales_tax_rate_id ?? null,
     jobs: jobs.data ?? [],
   };
 }
 
-function validateForSend(invoice: InvoiceRow, lines: InvoiceLineItemRow[], jobs: Array<{ customer_id: string; status: string; deleted_at: string | null }>, terms: string, taxPolicy: string) {
+/** The Stripe tax rate ids for `percent`, saving a newly created rate's id. */
+async function salesTaxRateIds(db: Db, stripe: Stripe, percent: number, existingId: string | null) {
+  if (!percent) return [];
+  const id = await ensureSalesTaxRate(stripe, percent, existingId);
+  if (id !== existingId) {
+    const saved = await db.from("company_settings").update({ stripe_sales_tax_rate_id: id }).eq("id", true);
+    if (saved.error) throw saved.error;
+  }
+  return [id];
+}
+
+function validateForSend(invoice: InvoiceRow, lines: InvoiceLineItemRow[], jobs: Array<{ customer_id: string; status: string; deleted_at: string | null }>, terms: string, taxPolicy: string, salesTaxRate: number) {
   if (invoice.status !== "draft") throw new Error("Only a draft can be sent.");
   if (!lines.length || invoice.amount_cents <= 0) throw new Error("Add at least one positive line item.");
   const lineTotal = lines.reduce((sum, line) => sum + Number(line.amount_cents), 0);
@@ -60,8 +73,8 @@ function validateForSend(invoice: InvoiceRow, lines: InvoiceLineItemRow[], jobs:
   if (invoice.invoice_number.length > 26) throw new Error("Invoice number exceeds Stripe's 26-character limit.");
   if (!terms.trim()) throw new Error("Company invoice terms are required before sending.");
   if (stripeKeyMode() === "live" &&
-      (!["automatic_tax_approved", "non_taxable_approved"].includes(taxPolicy) || !stripeAutomaticTaxEnabled()))
-    throw new Error("Live sending is blocked until Stripe automatic tax is configured and approved.");
+      !(taxPolicy === "non_taxable_approved" || (taxPolicy === "fixed_rate_approved" && salesTaxRate > 0)))
+    throw new Error("Live sending is blocked until the sales tax policy is approved.");
 }
 
 export async function sendInvoice(id: string, db: Db = createAdminClient()) {
@@ -70,11 +83,13 @@ export async function sendInvoice(id: string, db: Db = createAdminClient()) {
     const stripe = await requireStripeInvoicing();
     return applyStripeInvoiceSnapshot(db, await stripe.invoices.retrieve(loaded.invoice.stripe_invoice_id));
   }
-  validateForSend(loaded.invoice, loaded.lines, loaded.jobs, loaded.terms, loaded.taxPolicy);
+  validateForSend(loaded.invoice, loaded.lines, loaded.jobs, loaded.terms, loaded.taxPolicy, loaded.salesTaxRate);
   const stripe = await requireStripeInvoicing();
+  const taxPercent = salesTaxPercent(loaded.taxPolicy, loaded.salesTaxRate);
   const processing = await db.from("invoices").update({ stripe_sync_state: "processing", stripe_sync_error: null }).eq("id", id);
   if (processing.error) throw processing.error;
   try {
+    const taxRateIds = await salesTaxRateIds(db, stripe, taxPercent, loaded.stripeSalesTaxRateId);
     const customer = await db.from("customers").select("*").eq("id", loaded.invoice.customer_id).single();
     if (customer.error) throw customer.error;
     const stripeCustomerId = await syncStripeCustomer(stripe, {
@@ -121,7 +136,7 @@ export async function sendInvoice(id: string, db: Db = createAdminClient()) {
       };
       const remoteDraft =
         (await findStripeInvoiceByLocalMetadata(stripe, pushableDraft)) ??
-        (await createStripeInvoiceDraft(stripe, pushableDraft, stripeCustomerId, revisedStripeInvoiceId));
+        (await createStripeInvoiceDraft(stripe, pushableDraft, stripeCustomerId, revisedStripeInvoiceId, taxRateIds));
       stripeInvoiceId = remoteDraft.id;
       const linked = await db.from("invoices").update({ stripe_invoice_id: stripeInvoiceId, stripe_customer_id_snapshot: stripeCustomerId }).eq("id", id);
       if (linked.error) throw linked.error;
@@ -136,8 +151,14 @@ export async function sendInvoice(id: string, db: Db = createAdminClient()) {
       lineItems: loaded.lines.map((line) => ({ id: line.id, description: line.description, amountCents: Number(line.amount_cents), jobId: line.job_id, category: line.category })),
     };
     const currentRemote = await stripe.invoices.retrieve(stripeInvoiceId);
+    if (currentRemote.status === "draft") {
+      await applyStripeInvoiceTax(stripe, id, stripeInvoiceId, taxRateIds);
+      await replaceStripeInvoiceItems(stripe, pushable, stripeCustomerId, stripeInvoiceId);
+      const rated = await db.from("invoices").update({ sales_tax_rate: taxPercent }).eq("id", id);
+      if (rated.error) throw rated.error;
+    }
     const sent = currentRemote.status === "draft"
-      ? (await replaceStripeInvoiceItems(stripe, pushable, stripeCustomerId, stripeInvoiceId), await finalizeAndSendStripeInvoice(stripe, id, stripeInvoiceId))
+      ? await finalizeAndSendStripeInvoice(stripe, id, stripeInvoiceId)
       : currentRemote.status === "open"
         ? { invoice: await stripe.invoices.sendInvoice(stripeInvoiceId, undefined, { idempotencyKey: `invoice:${id}:send` }) }
         : { invoice: currentRemote };

@@ -36,7 +36,7 @@ async function findLocalInvoice(db: Db, remote: Stripe.Invoice) {
     candidate.data.stripe_invoice_id ||
     candidate.data.status !== "draft" ||
     remote.currency !== "usd" ||
-    Number(remote.amount_due) !== Number(candidate.data.amount_cents)
+    Number(remote.subtotal) !== Number(candidate.data.amount_cents)
   ) return null;
   const linkedBack = await db
     .from("invoices")
