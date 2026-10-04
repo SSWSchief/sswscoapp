@@ -475,4 +475,5 @@ export const mapCompanySettings = (
   taxPolicyStatus: row.tax_policy_status ?? "pending",
   taxPolicyApprovedAt: row.tax_policy_approved_at ?? null,
   taxPolicyNote: row.tax_policy_note ?? "",
+  salesTaxRate: Number(row.sales_tax_rate ?? 0),
 });

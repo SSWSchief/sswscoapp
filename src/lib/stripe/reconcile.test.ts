@@ -49,6 +49,7 @@ function remoteInvoice(overrides: Partial<Stripe.Invoice> = {}) {
     id: "in_1",
     status: "open",
     currency: "usd",
+    subtotal: 40000,
     amount_due: 40000,
     amount_paid: 0,
     amount_remaining: 40000,
@@ -164,7 +165,7 @@ describe("applyStripeInvoiceSnapshot", () => {
 
     it("refuses to adopt a remote invoice whose amount disagrees", async () => {
       const { fake, client } = db({ invoices: [orphan()] });
-      const saved = await applyStripeInvoiceSnapshot(client, withMetadata({ amount_due: 999 }));
+      const saved = await applyStripeInvoiceSnapshot(client, withMetadata({ subtotal: 999 }));
       expect(saved).toBeNull();
       expect(fake.tables.invoices[0].stripe_invoice_id).toBeNull();
     });

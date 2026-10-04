@@ -10,6 +10,7 @@ import { useOperations } from "@/components/system/OperationsProvider";
 import { useToast } from "@/components/system/ToastProvider";
 import type { Customer, InvoiceBillingInput, InvoiceBillingMode, InvoiceDraftItem, InvoiceLineCategory, InvoicePaymentTerms, InvoiceRecord } from "@/lib/types";
 import { parseUsAddress } from "@/lib/invoices/address";
+import { estimateSalesTax, formatTaxPercent, salesTaxPercent } from "@/lib/invoices/sales-tax";
 import { formatCurrency } from "@/lib/utils";
 
 const categories: InvoiceLineCategory[] = ["service", "rental", "tonnage", "fee", "surcharge", "adjustment"];
@@ -63,14 +64,6 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   const [items, setItems] = React.useState<EditorItem[]>([blankItem()]);
   const [catalogItemId, setCatalogItemId] = React.useState("");
   const [remoteJobs, setRemoteJobs] = React.useState<EligibleJob[] | null>(null);
-  const [taxPreview, setTaxPreview] = React.useState<{
-    taxCents: number;
-    totalCents: number;
-    rate?: number | null;
-    ratePercent?: number | null;
-    taxabilityReason?: string;
-  } | null>(null);
-  const [taxPreviewState, setTaxPreviewState] = React.useState<"idle" | "loading" | "error">("idle");
   const editable = !invoice || invoice.status === "draft";
   const jobSelectionEditable = editable && !invoice?.revisedFromId;
 
@@ -116,67 +109,13 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
 
   const selectedCustomer = customers.find((customer) => customer.id === customerId);
 
-  React.useEffect(() => {
-    if (!open || !editable) {
-      setTaxPreview(null);
-      setTaxPreviewState("idle");
-      return;
-    }
-    const previewItems = items
-      .map((item) => ({ id: item.key, amountCents: Math.round(Number(item.amount) * 100) }))
-      .filter((item) => Number.isSafeInteger(item.amountCents) && item.amountCents > 0);
-    if (!billing.addressLine1.trim() || !billing.city.trim() || !/^[A-Za-z]{2}$/.test(billing.state.trim()) || !/^\d{5}(-\d{4})?$/.test(billing.postalCode.trim()) || !previewItems.length) {
-      setTaxPreview(null);
-      setTaxPreviewState("idle");
-      return;
-    }
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      setTaxPreviewState("loading");
-      void fetch("/api/invoices/tax-preview", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          address: {
-            line1: billing.addressLine1.trim(),
-            line2: billing.addressLine2.trim(),
-            city: billing.city.trim(),
-            state: billing.state.trim().toUpperCase(),
-            postalCode: billing.postalCode.trim(),
-            country: "US",
-          },
-          items: previewItems,
-        }),
-      })
-        .then(async (response) => {
-          if (!response.ok) throw new Error("Tax preview unavailable");
-          const body = (await response.json()) as {
-            data: { taxCents: number; totalCents: number; rate?: number | null; ratePercent?: number | null; taxabilityReason?: string };
-          };
-          setTaxPreview(body.data);
-          setTaxPreviewState("idle");
-        })
-        .catch((error) => {
-          if ((error as Error).name !== "AbortError") {
-            setTaxPreview(null);
-            setTaxPreviewState("error");
-          }
-        });
-    }, 350);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [editable, items, open, billing.addressLine1, billing.addressLine2, billing.city, billing.state, billing.postalCode]);
   // Derived rather than stored, so an existing invoice shows its customer
   // without the setup effect having to read the customer list.
   const customerFieldValue = selectedCustomer?.name ?? customerName;
-  const taxRateLabelValue = taxPreview == null ? null : (taxPreview.ratePercent ?? taxPreview.rate ?? null);
-  const taxRateLabel = taxRateLabelValue === null || taxRateLabelValue === undefined
-    ? null
-    : `${Number(taxRateLabelValue).toFixed(2).replace(/\.00$/, "")}%`;
-  const taxabilityReasonLabel = taxPreview?.taxabilityReason?.replaceAll("_", " ");
+  // Every line is taxed at the company's fixed rate; Stripe adds the same tax
+  // at send, and its figure is the one stored.
+  const taxPercent = salesTaxPercent(settings?.taxPolicyStatus ?? "pending", settings?.salesTaxRate ?? 0);
+  const taxEstimate = estimateSalesTax(items.map((item) => Math.round(Number(item.amount) * 100) || 0), taxPercent);
 
   const matchCustomer = (name: string) =>
     customers.find((candidate) => candidate.name.trim().toLowerCase() === name.trim().toLowerCase());
@@ -497,15 +436,11 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
           </div>
           {editable && (
             <div className="mt-2 flex items-center justify-between text-sm">
-              <span className="text-brand-steel">Estimated sales tax</span>
+              <span className="text-brand-steel">Sales tax</span>
               <span className="font-medium text-brand-charcoal">
-                {taxPreviewState === "loading"
-                  ? "Calculating…"
-                  : taxPreview
-                    ? `${taxRateLabel ?? "Tax"} · ${formatCurrency(taxPreview.taxCents)} · Total ${formatCurrency(taxPreview.totalCents)}${taxabilityReasonLabel ? ` · ${taxabilityReasonLabel}` : ""}`
-                    : taxPreviewState === "error"
-                      ? "Unavailable — Stripe calculates at send"
-                      : "Enter billing details to calculate"}
+                {settings
+                  ? `${formatTaxPercent(taxPercent)} · ${formatCurrency(taxEstimate.taxCents)} · Total ${formatCurrency(taxEstimate.totalCents)}`
+                  : "Loading tax rate…"}
               </span>
             </div>
           )}

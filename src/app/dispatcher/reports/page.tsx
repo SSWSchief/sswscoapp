@@ -11,6 +11,8 @@ import { useExpandedOperations } from "@/components/system/ExpandedOperationsPro
 import { downloadCsv, downloadPdf, downloadXlsx } from "@/lib/client-download";
 import { pacificDate } from "@/lib/time-clock";
 import { loadedJobWindow } from "@/lib/job-dates";
+import { effectivePermissions } from "@/lib/permissions";
+import { SalesTaxPanel } from "@/components/dispatcher/SalesTaxPanel";
 
 const reportCards = [
   [
@@ -36,7 +38,8 @@ const reportCards = [
 ] as const;
 
 export default function Page() {
-  const { jobs, trucks, dumpsters, canMutate } = useOperations();
+  const { jobs, trucks, dumpsters, canMutate, currentUser } = useOperations();
+  const seesFinance = currentUser ? effectivePermissions(currentUser).invoices : false;
   const { invoices } = useExpandedOperations();
   const { toast } = useToast();
   const [from, setFrom] = React.useState(() =>
@@ -132,6 +135,7 @@ export default function Page() {
           />
           <Metric label="Assets" value={trucks.length + dumpsters.length} />
         </div>
+        {seesFinance && <SalesTaxPanel />}
         <div className="grid gap-4 md:grid-cols-2">
           {reportCards.map(([title, description, type]) => (
             <Card key={type} className="p-5">

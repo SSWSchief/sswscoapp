@@ -9,7 +9,6 @@ const stripeSendInvoice = vi.fn();
 const stripeVoid = vi.fn();
 const stripeMarkUncollectible = vi.fn();
 const keyMode = vi.fn(() => "test" as "test" | "live");
-const automaticTaxEnabled = vi.fn(() => false);
 
 vi.mock("./client", () => ({
   requireStripeInvoicing: async () => ({
@@ -21,7 +20,6 @@ vi.mock("./client", () => ({
     },
   }),
   stripeKeyMode: () => keyMode(),
-  stripeAutomaticTaxEnabled: () => automaticTaxEnabled(),
 }));
 
 const syncStripeCustomer = vi.fn(async () => "cus_1");
@@ -32,6 +30,8 @@ const finalizeAndSendStripeInvoice = vi.fn(async () => ({
   invoice: { id: "in_created", status: "open" } as unknown as Stripe.Invoice,
 }));
 const resendStripeInvoice = vi.fn(async () => ({ id: "in_1", status: "open" } as unknown as Stripe.Invoice));
+const ensureSalesTaxRate = vi.fn(async () => "txr_nv");
+const applyStripeInvoiceTax = vi.fn(async () => undefined);
 
 vi.mock("./invoice-push", () => ({
   syncStripeCustomer: (...a: unknown[]) => syncStripeCustomer(...(a as [])),
@@ -40,6 +40,8 @@ vi.mock("./invoice-push", () => ({
   replaceStripeInvoiceItems: (...a: unknown[]) => replaceStripeInvoiceItems(...(a as [])),
   finalizeAndSendStripeInvoice: (...a: unknown[]) => finalizeAndSendStripeInvoice(...(a as [])),
   resendStripeInvoice: (...a: unknown[]) => resendStripeInvoice(...(a as [])),
+  ensureSalesTaxRate: (...a: unknown[]) => ensureSalesTaxRate(...(a as [])),
+  applyStripeInvoiceTax: (...a: unknown[]) => applyStripeInvoiceTax(...(a as [])),
 }));
 
 const applySnapshot = vi.fn(async (_db: unknown, remote: Stripe.Invoice) => ({ id: "inv-1", status: remote.status }));
@@ -85,7 +87,7 @@ const world = (overrides: { invoice?: Row; settings?: Row; job?: Row; lines?: Ro
     invoice_jobs: [{ invoice_id: "inv-1", job_id: "job-1", active: true }],
     jobs: [{ id: "job-1", customer_id: "cust-1", status: "complete", deleted_at: null, ...overrides.job }],
     customers: [{ id: "cust-1", phone: "555-0100", stripe_customer_id: null }],
-    company_settings: [{ invoice_terms: "Rental terms apply.", tax_policy_status: "pending", ...overrides.settings }],
+    company_settings: [{ id: true, invoice_terms: "Rental terms apply.", tax_policy_status: "pending", sales_tax_rate: 8.375, stripe_sales_tax_rate_id: null, ...overrides.settings }],
   });
   return { fake, client: fake.client as unknown as SupabaseClient<Database> };
 };
@@ -93,7 +95,7 @@ const world = (overrides: { invoice?: Row; settings?: Row; job?: Row; lines?: Ro
 beforeEach(() => {
   vi.clearAllMocks();
   keyMode.mockReturnValue("test");
-  automaticTaxEnabled.mockReturnValue(false);
+  ensureSalesTaxRate.mockResolvedValue("txr_nv");
   createStripeInvoiceDraft.mockResolvedValue({ id: "in_created" });
   findStripeInvoiceByLocalMetadata.mockResolvedValue(null);
   finalizeAndSendStripeInvoice.mockResolvedValue({ invoice: { id: "in_created", status: "open" } as unknown as Stripe.Invoice });
@@ -175,17 +177,44 @@ describe("sendInvoice", () => {
     });
   });
 
-  it("blocks live sending until automatic tax is configured and approved", async () => {
+  it("blocks live sending until the sales tax policy is approved", async () => {
     keyMode.mockReturnValue("live");
     const pending = world({ settings: { tax_policy_status: "pending" } });
-    await expect(sendInvoice("inv-1", pending.client)).rejects.toThrow(/automatic tax is configured and approved/);
+    await expect(sendInvoice("inv-1", pending.client)).rejects.toThrow(/sales tax policy is approved/);
 
-    const approved = world({ settings: { tax_policy_status: "automatic_tax_approved" } });
-    automaticTaxEnabled.mockReturnValue(true);
+    const noRate = world({ settings: { tax_policy_status: "fixed_rate_approved", sales_tax_rate: 0 } });
+    await expect(sendInvoice("inv-1", noRate.client)).rejects.toThrow(/sales tax policy is approved/);
+
+    const approved = world({ settings: { tax_policy_status: "fixed_rate_approved" } });
     await expect(sendInvoice("inv-1", approved.client)).resolves.toBeTruthy();
 
     const nonTaxable = world({ settings: { tax_policy_status: "non_taxable_approved" } });
     await expect(sendInvoice("inv-1", nonTaxable.client)).resolves.toBeTruthy();
+  });
+
+  it("taxes the whole invoice at the company's fixed rate and records it", async () => {
+    const { fake, client } = world({ settings: { tax_policy_status: "fixed_rate_approved" } });
+    await sendInvoice("inv-1", client);
+    expect(ensureSalesTaxRate).toHaveBeenCalledWith(expect.anything(), 8.375, null);
+    expect((createStripeInvoiceDraft.mock.calls[0] as unknown as unknown[])[4]).toEqual(["txr_nv"]);
+    expect(applyStripeInvoiceTax).toHaveBeenCalledWith(expect.anything(), "inv-1", "in_created", ["txr_nv"]);
+    // The new Stripe rate is kept, so the next invoice reuses it.
+    expect(fake.tables.company_settings[0].stripe_sales_tax_rate_id).toBe("txr_nv");
+    expect(fake.tables.invoices[0].sales_tax_rate).toBe(8.375);
+  });
+
+  it("reuses the saved Stripe rate rather than creating another", async () => {
+    const { client } = world({ settings: { tax_policy_status: "fixed_rate_approved", stripe_sales_tax_rate_id: "txr_nv" } });
+    await sendInvoice("inv-1", client);
+    expect(ensureSalesTaxRate).toHaveBeenCalledWith(expect.anything(), 8.375, "txr_nv");
+  });
+
+  it("sends without tax once sales are ruled non-taxable", async () => {
+    const { fake, client } = world({ settings: { tax_policy_status: "non_taxable_approved" } });
+    await sendInvoice("inv-1", client);
+    expect(ensureSalesTaxRate).not.toHaveBeenCalled();
+    expect(applyStripeInvoiceTax).toHaveBeenCalledWith(expect.anything(), "inv-1", "in_created", []);
+    expect(fake.tables.invoices[0].sales_tax_rate).toBe(0);
   });
 
   it("reactivates the revision's job links and reconciles the original it replaces", async () => {
@@ -198,7 +227,7 @@ describe("sendInvoice", () => {
       invoice_jobs: [{ invoice_id: "inv-1", job_id: "job-1", active: false }],
       jobs: [{ id: "job-1", customer_id: "cust-1", status: "complete", deleted_at: null }],
       customers: [{ id: "cust-1", phone: "555-0100", stripe_customer_id: "cus_1" }],
-      company_settings: [{ invoice_terms: "Rental terms apply.", tax_policy_status: "pending" }],
+      company_settings: [{ id: true, invoice_terms: "Rental terms apply.", tax_policy_status: "pending", sales_tax_rate: 8.375 }],
     });
     stripeRetrieve.mockImplementation(async (id: string) => ({ id, status: id === "in_original" ? "void" : "draft" }));
 

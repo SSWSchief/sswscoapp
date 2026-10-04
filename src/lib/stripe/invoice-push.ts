@@ -2,9 +2,6 @@ import "server-only";
 import type Stripe from "stripe";
 import type { InvoiceLineCategory, InvoicePaymentTerms } from "@/lib/types";
 
-/** Stripe's verified general-services code for the app's service line items. */
-export const STRIPE_SERVICE_TAX_CODE = "txcd_20030000";
-
 interface PushableCustomer {
   id: string;
   name: string;
@@ -83,19 +80,64 @@ function invoiceMemo(invoice: PushableInvoice) {
     .join(" — ");
 }
 
+/**
+ * The Stripe tax rate for `percent`, reusing `existingId` while it still says
+ * exactly that. Stripe never lets a rate's percentage change, so a new rate
+ * means a new object; the caller saves whichever id comes back.
+ */
+export async function ensureSalesTaxRate(
+  stripe: Stripe,
+  percent: number,
+  existingId: string | null,
+): Promise<string> {
+  if (existingId) {
+    const existing = await stripe.taxRates.retrieve(existingId).catch(() => null);
+    if (existing?.active && !existing.inclusive && Number(existing.percentage) === percent)
+      return existing.id;
+  }
+  const created = await stripe.taxRates.create(
+    {
+      display_name: "Sales Tax",
+      description: "Nevada sales tax, Clark County",
+      percentage: percent,
+      inclusive: false,
+      country: "US",
+      state: "NV",
+      jurisdiction: "Clark County, NV",
+      tax_type: "sales_tax",
+      metadata: { sswsco_sales_tax_rate: String(percent) },
+    },
+    { idempotencyKey: `sales-tax-rate:NV:${percent}` },
+  );
+  return created.id;
+}
+
+/**
+ * Sales tax is a fixed Nevada rate on the whole invoice, never Stripe's
+ * automatic tax: that classified every line as a general service, which
+ * Nevada does not tax, and charged 0%. An empty list means no tax.
+ */
+function salesTaxSettings(taxRateIds: string[]) {
+  return {
+    automatic_tax: { enabled: false },
+    ...(taxRateIds.length ? { default_tax_rates: taxRateIds } : {}),
+  };
+}
+
 /** Create the remote draft only. The caller persists its id before continuing. */
 export async function createStripeInvoiceDraft(
   stripe: Stripe,
   invoice: PushableInvoice,
   stripeCustomerId: string,
-  revisedStripeInvoiceId?: string | null,
+  revisedStripeInvoiceId: string | null,
+  taxRateIds: string[],
 ) {
   const customFields: Stripe.InvoiceCreateParams.CustomField[] = [];
   if (invoice.poNumber)
     customFields.push({ name: "PO Number", value: invoice.poNumber });
   const common = {
     collection_method: "send_invoice" as const,
-    automatic_tax: { enabled: true },
+    ...salesTaxSettings(taxRateIds),
     days_until_due: termsDays[invoice.paymentTerms],
     description: invoiceMemo(invoice) || undefined,
     footer: invoice.terms || undefined,
@@ -124,6 +166,28 @@ export async function createStripeInvoiceDraft(
   );
 }
 
+/**
+ * Put the draft on the current tax settings before its lines are written. A
+ * draft recovered from an earlier attempt, or a revision cloned from an
+ * original, may still carry automatic tax or an older rate. Stripe clears a
+ * list given as an empty string.
+ */
+export async function applyStripeInvoiceTax(
+  stripe: Stripe,
+  localInvoiceId: string,
+  stripeInvoiceId: string,
+  taxRateIds: string[],
+) {
+  return stripe.invoices.update(
+    stripeInvoiceId,
+    {
+      automatic_tax: { enabled: false },
+      default_tax_rates: taxRateIds.length ? taxRateIds : "",
+    },
+    { idempotencyKey: `invoice:${localInvoiceId}:tax:${taxRateIds.join(",") || "none"}` },
+  );
+}
+
 /** Recover a remote draft whose id could not be persisted locally. */
 export async function findStripeInvoiceByLocalMetadata(
   stripe: Stripe,
@@ -143,8 +207,10 @@ export async function findStripeInvoiceByLocalMetadata(
   if (trusted.length > 1)
     throw new Error("Multiple Stripe invoices match this local draft. Reconcile before retrying.");
   const recovered = trusted[0];
+  // Compared before tax: the lines are the local record, and the amount due
+  // also carries whatever tax Stripe added on top of them.
   const expectedAmount = invoice.lineItems.reduce((sum, item) => sum + item.amountCents, 0);
-  if (recovered && recovered.status !== "draft" && recovered.amount_due !== expectedAmount)
+  if (recovered && recovered.status !== "draft" && recovered.subtotal !== expectedAmount)
     throw new Error("The recovered Stripe invoice amount does not match this draft. Reconcile before retrying.");
   return recovered ?? null;
 }
@@ -177,8 +243,6 @@ export async function replaceStripeInvoiceItems(
         amount: item.amountCents,
         currency: "usd",
         description: item.description,
-        tax_behavior: "exclusive",
-        tax_code: STRIPE_SERVICE_TAX_CODE,
         metadata: {
           sswsco_line_item_id: item.id,
           sswsco_category: item.category,

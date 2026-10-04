@@ -28,11 +28,14 @@ jobs:
       # for reasons that had nothing to do with this repository. Retry only the
       # transport failure; a genuine finding still fails on the first attempt,
       # and an endpoint that never recovers still fails the job.
+      # scripts/audit-high.mjs is npm audit at the high level, less the
+      # advisories accepted, with a reason and a review date, in
+      # scripts/audit-allowlist.json -- for advisories with no patched release.
       - name: Audit dependencies
         shell: bash
         run: |
           for attempt in 1 2 3; do
-            if output="$(npm audit --audit-level=high 2>&1)"; then
+            if output="$(node scripts/audit-high.mjs 2>&1)"; then
               printf '%s\n' "$output"
               exit 0
             fi

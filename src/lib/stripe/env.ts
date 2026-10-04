@@ -31,7 +31,6 @@ export function stripeConfigurationStatus() {
   return {
     configured: secretKey && webhookSecret && accountId,
     invoicingEnabled: process.env.STRIPE_INVOICING_ENABLED === "true",
-    automaticTaxEnabled: process.env.STRIPE_AUTOMATIC_TAX_ENABLED === "true",
     secretKey,
     webhookSecret,
     accountId,
