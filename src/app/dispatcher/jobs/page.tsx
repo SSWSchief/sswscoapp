@@ -17,6 +17,7 @@ import type { JobStatus } from "@/lib/types";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { jobsForPacificDay } from "@/lib/job-dates";
 import { ListFooter } from "@/components/ui/ListFooter";
+import { JobConfirmationBadge, useJobConfirmationStates } from "@/components/dispatcher/JobConfirmation";
 
 const filters: { label: string; value: JobStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -57,6 +58,7 @@ function JobsPageContent() {
     users,
     totals,
   } = useOperations();
+  const confirmations = useJobConfirmationStates();
   const todayOnly =
     searchParams.get("window") === "today" ||
     searchParams.get("queue") === "unassigned";
@@ -263,6 +265,7 @@ function JobsPageContent() {
                           <TD>{dumpster?.code ?? "—"}</TD>
                           <TD>
                             <JobStatusBadge status={job.status} />
+                            <JobConfirmationBadge state={confirmations.get(job.id)} />
                           </TD>
                           <TD>
                             <Link
@@ -313,7 +316,10 @@ function JobsPageContent() {
                             {driver?.fullName ?? "Unassigned"}
                           </div>
                         </div>
-                        <JobStatusBadge status={job.status} />
+                        <div className="shrink-0 text-right">
+                          <JobStatusBadge status={job.status} />
+                          <JobConfirmationBadge state={confirmations.get(job.id)} />
+                        </div>
                       </Link>
                     </li>
                   );

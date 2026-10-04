@@ -268,6 +268,22 @@ export interface InvoiceRow extends Record<string, unknown> {
   created_at: string;
   updated_at: string;
 }
+export interface JobConfirmationRow extends Record<string, unknown> {
+  id: string;
+  job_id: string;
+  token_hash: string;
+  recipient_email: string;
+  scheduled_for: string;
+  sent_at: string | null;
+  send_error: string | null;
+  provider_message_id: string | null;
+  response: "confirmed" | "change_requested" | null;
+  response_note: string;
+  responded_at: string | null;
+  superseded_at: string | null;
+  requested_by_id: string | null;
+  created_at: string;
+}
 export interface InvoicePaymentRow extends Record<string, unknown> {
   id: string;
   invoice_id: string;
@@ -708,6 +724,7 @@ export interface Database {
       operating_costs: Table<OperatingCostsRow>;
       cost_defaults: Table<CostDefaultRow>;
       job_costs: Table<JobCostRow>;
+      job_confirmations: Table<JobConfirmationRow>;
     };
     Views: Record<string, never>;
     Functions: {

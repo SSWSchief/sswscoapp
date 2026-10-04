@@ -21,6 +21,7 @@ import {
 } from "@/lib/job-dates";
 import type { AcknowledgementEntry, JobEvent } from "@/lib/types";
 import { CreateJobModal } from "@/components/dispatcher/CreateJobModal";
+import { JobConfirmationCard } from "@/components/dispatcher/JobConfirmation";
 import { useToast } from "@/components/system/ToastProvider";
 import { useConfirm } from "@/components/system/ConfirmProvider";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
@@ -401,6 +402,13 @@ export default function JobDetailsPage({
             </ol>
           </Card>
         </div>
+
+        <JobConfirmationCard
+          jobId={job.id}
+          scheduledFor={job.scheduledFor}
+          customerEmail={customer?.email || customer?.billingEmail || ""}
+          closed={job.status === "complete" || job.status === "cancelled"}
+        />
 
         <div className="grid gap-5 lg:grid-cols-2">
           {/* Photos */}
