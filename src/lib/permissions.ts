@@ -12,6 +12,7 @@ export const permissionLabels: Record<PermissionKey, string> = {
   time_clock: "Time clock",
   absence: "Absence calendar",
   invoices: "Invoices",
+  profitability: "Profitability (management only)",
   messages: "Messages",
   map: "Map",
   reports: "Reports",
@@ -44,7 +45,7 @@ export const permissionGroups: { label: string; keys: PermissionKey[] }[] = [
     keys: ["customers", "trucks", "dumpsters", "vendors"],
   },
   { label: "Team", keys: ["employees", "time_clock", "absence", "pretrip_review"] },
-  { label: "Finance & Reporting", keys: ["invoices", "reports"] },
+  { label: "Finance & Reporting", keys: ["invoices", "profitability", "reports"] },
   { label: "Driver", keys: ["driver_jobs", "pre_trip", "sops", "profile"] },
   { label: "Admin", keys: ["management", "settings"] },
 ];

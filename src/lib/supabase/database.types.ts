@@ -747,6 +747,8 @@ export interface Database {
           weighed?: string | null;
           ticket_storage_path?: string | null;
           ticket_notes?: string;
+          fee_cents?: number | null;
+          site_id?: string | null;
         };
         Returns: DisposalTicketRow;
       };

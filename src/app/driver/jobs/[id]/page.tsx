@@ -479,6 +479,8 @@ export default function DriverJobDetailsPage({
             grossWeightLbs: ticket.grossWeightLbs,
             tareWeightLbs: ticket.tareWeightLbs,
             notes: ticket.notes,
+            disposalFeeCents: ticket.disposalFeeCents,
+            disposalSiteId: ticket.disposalSiteId,
           }
         }
       />

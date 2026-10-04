@@ -2,8 +2,9 @@
 import * as React from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { FormField, Input, Textarea } from "@/components/ui/Field";
+import { FormField, Input, Select, Textarea } from "@/components/ui/Field";
 import { netTons } from "@/lib/billing/measures";
+import { createClient } from "@/lib/supabase/client";
 
 export interface DisposalTicketDraft {
   netWeightLbs: number;
@@ -11,7 +12,18 @@ export interface DisposalTicketDraft {
   grossWeightLbs: number | null;
   tareWeightLbs: number | null;
   notes: string;
+  /** What the landfill charged, in cents; null when the ticket shows none. */
+  disposalFeeCents: number | null;
+  disposalSiteId: string | null;
 }
+
+/** "$268.40" or "268.4" as cents; blank means not recorded. */
+const toCents = (value: string): number | null | "invalid" => {
+  const trimmed = value.trim().replace(/[$,\s]/g, "");
+  if (!trimmed) return null;
+  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return "invalid";
+  return Math.round(Number(trimmed) * 100);
+};
 
 const toPounds = (value: string): number | null => {
   const trimmed = value.trim();
@@ -29,8 +41,10 @@ const toPounds = (value: string): number | null => {
  * a net, and asking for three numbers in a truck cab to capture one is how
  * data entry stops happening.
  *
- * The disposal site is deliberately absent: vendors are not loaded on this
- * route, and dispatch can attach it later without holding up the driver.
+ * The landfill's charge and the site are asked for too (Austin, 2026-09-30),
+ * because they are what a job's dump cost really was. Both stay optional so
+ * a missing figure never holds up the driver; management can fill it in on
+ * the Profitability page.
  */
 export function DisposalTicketDialog({
   open,
@@ -50,7 +64,26 @@ export function DisposalTicketDialog({
   const [gross, setGross] = React.useState("");
   const [tare, setTare] = React.useState("");
   const [notes, setNotes] = React.useState("");
+  const [charge, setCharge] = React.useState("");
+  const [siteId, setSiteId] = React.useState("");
+  const [sites, setSites] = React.useState<Array<{ id: string; name: string }>>([]);
   const [error, setError] = React.useState("");
+
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void createClient()
+      .from("disposal_sites")
+      .select("id,name")
+      .eq("is_active", true)
+      .order("name")
+      .then(({ data }) => {
+        if (!cancelled && data) setSites(data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -60,6 +93,8 @@ export function DisposalTicketDialog({
     setGross(existing?.grossWeightLbs ? String(existing.grossWeightLbs) : "");
     setTare(existing?.tareWeightLbs ? String(existing.tareWeightLbs) : "");
     setNotes(existing?.notes ?? "");
+    setCharge(existing?.disposalFeeCents != null ? (existing.disposalFeeCents / 100).toFixed(2) : "");
+    setSiteId(existing?.disposalSiteId ?? "");
   }, [open, existing]);
 
   // Filling gross and tare implies the net, so compute it rather than asking
@@ -84,7 +119,14 @@ export function DisposalTicketDialog({
       setError("Gross weight cannot be less than tare weight.");
       return;
     }
+    const fee = toCents(charge);
+    if (fee === "invalid") {
+      setError("Enter the landfill charge in dollars, like 268.40.");
+      return;
+    }
     void onSubmit({
+      disposalFeeCents: fee,
+      disposalSiteId: siteId || null,
       netWeightLbs: netLbs,
       ticketNumber: ticket.trim(),
       grossWeightLbs: g,
@@ -129,6 +171,28 @@ export function DisposalTicketDialog({
             That&rsquo;s <span className="font-semibold">{tons} tons</span>.
           </p>
         )}
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Landfill Charge ($)">
+            <Input
+              type="text"
+              inputMode="decimal"
+              placeholder="e.g. 268.40"
+              value={charge}
+              onChange={(event) => {
+                setError("");
+                setCharge(event.target.value);
+              }}
+            />
+          </FormField>
+          <FormField label="Disposal Site">
+            <Select value={siteId} onChange={(event) => setSiteId(event.target.value)}>
+              <option value="">Choose site</option>
+              {sites.map((site) => (
+                <option key={site.id} value={site.id}>{site.name}</option>
+              ))}
+            </Select>
+          </FormField>
+        </div>
         <FormField label="Ticket Number">
           <Input
             type="text"

@@ -138,6 +138,13 @@ export const staffNavSections: AppNavSection[] = [
         keywords: "billing receivables",
       },
       {
+        href: "/dispatcher/profitability",
+        label: "Profitability",
+        icon: "credit-card",
+        permission: "profitability",
+        keywords: "profit margin costs revenue dump fuel labor",
+      },
+      {
         href: "/dispatcher/reports",
         label: "Reports",
         icon: "reports",

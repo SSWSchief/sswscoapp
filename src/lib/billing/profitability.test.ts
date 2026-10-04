@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byCustomer, byMonth, bySize, totals, type ProfitRow } from "./profitability";
+import { byCustomer, byMonth, bySize, fromResultRow, inPeriod, profitabilityExportRows, totals, unbilledInPeriod, type ProfitRow } from "./profitability";
 
 const row = (overrides: Partial<ProfitRow>): ProfitRow => ({
   jobId: "job",
@@ -112,5 +112,52 @@ describe("byCustomer and bySize", () => {
     const sizes = bySize([...penta, row({ dumpsterSize: "10 Yard" })]);
     expect([...sizes.keys()]).toEqual(["10 Yard", "20 Yard", "30 Yard", "40 Yard"]);
     expect(sizes.get("40 Yard")?.profitCents).toBe(26000);
+  });
+});
+
+describe("periods", () => {
+  const september = row({ jobId: "sep", completedAt: "2026-09-29T18:00:00Z", invoicedAt: "2026-10-01T06:30:00Z" });
+  const unbilled = row({ jobId: "open", completedAt: "2026-10-02T18:00:00Z", invoicedAt: null, invoiced: false });
+
+  it("places a job by its invoice date or its completion date, in Las Vegas time", () => {
+    // Invoiced at 11:30 PM on Sept 30 in Las Vegas.
+    expect(inPeriod([september], "2026-09-01", "2026-09-30", "invoiced")).toHaveLength(1);
+    expect(inPeriod([september], "2026-10-01", "2026-10-31", "invoiced")).toHaveLength(0);
+    expect(inPeriod([september, unbilled], "2026-10-01", "2026-10-31", "completed").map((r) => r.jobId)).toEqual(["open"]);
+  });
+
+  it("finds completed jobs still waiting on an invoice", () => {
+    expect(unbilledInPeriod([september, unbilled], "2026-10-01", "2026-10-31").map((r) => r.jobId)).toEqual(["open"]);
+    expect(inPeriod([unbilled], "2026-10-01", "2026-10-31", "invoiced")).toHaveLength(0);
+  });
+});
+
+describe("database rows", () => {
+  it("reads numbers and missing costs as the report needs them", () => {
+    const mapped = fromResultRow({
+      job_id: "j", reference: "#1062", completed_at: "2026-09-17T15:00:00Z", invoiced_at: null,
+      customer_id: "c", customer_name: "John Evans", dumpster_size: "20 Yard", service_type: "Delivery",
+      dumpster_code: "120", revenue_cents: 40000, received_cents: 40000, invoiced: true,
+      dump_fee_cents: null, dump_source: null, route_miles: 26 as unknown as number, fuel_cents: 1836,
+      fuel_source: "estimated", labor_cents: 8800, labor_source: "estimated", other_cents: 0,
+    });
+    expect(mapped).toMatchObject({ reference: "#1062", dumpFeeCents: null, routeMiles: 26, fuelCents: 1836, laborCents: 8800 });
+  });
+});
+
+describe("export", () => {
+  it("writes the job log with a totals row", () => {
+    const rows = profitabilityExportRows(penta);
+    expect(rows).toHaveLength(4);
+    expect(rows[0].slice(0, 7)).toEqual(["#1", "2026-09-15", "2026-09-16", "Penta", "40 Yard", "Pick-Up", "825.00"]);
+    expect(rows[0].slice(-3)).toEqual(["565.00", "260.00", "31.5%"]);
+    expect(rows.at(-1)?.slice(-3)).toEqual(["1494.00", "681.00", "31.3%"]);
+  });
+
+  it("flags a missing cost rather than printing zero", () => {
+    const [line] = profitabilityExportRows([row({ dumpFeeCents: null, dumpSource: null, invoicedAt: null })]);
+    expect(line[2]).toBe("Not invoiced");
+    expect(line[9]).toBe("");
+    expect(line[10]).toBe("missing");
   });
 });

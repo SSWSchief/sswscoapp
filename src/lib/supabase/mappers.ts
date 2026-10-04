@@ -361,6 +361,8 @@ export const mapDisposalTicket = (row: DisposalTicketRow): DisposalTicket => ({
   storagePath: row.storage_path,
   notes: row.notes,
   recordedById: row.recorded_by_id,
+  disposalFeeCents: row.disposal_fee_cents === null || row.disposal_fee_cents === undefined ? null : Number(row.disposal_fee_cents),
+  disposalSiteId: row.disposal_site_id ?? null,
   createdAt: row.created_at,
 });
 export const mapContainerPlacement = (

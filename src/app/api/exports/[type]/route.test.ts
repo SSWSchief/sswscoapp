@@ -3,7 +3,7 @@ import { PDFDocument } from "pdf-lib";
 import { strFromU8, unzipSync } from "fflate";
 import { fakeAdminClient, type Row } from "@/test/supabase-fake";
 
-const state = { tables: {} as Record<string, Row[]>, permissions: new Set(["reports", "invoices"]), salesTaxRows: [] as Row[] };
+const state = { tables: {} as Record<string, Row[]>, permissions: new Set(["reports", "invoices", "profitability"]), salesTaxRows: [] as Row[], profitRows: [] as Row[] };
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => {
@@ -14,6 +14,8 @@ vi.mock("@/lib/supabase/server", () => ({
       rpc: async (name: string, args: { permission_key?: string } = {}) => ({
         data: name === "sales_tax_rows"
           ? state.salesTaxRows
+          : name === "profitability_rows"
+            ? state.profitRows
           : name === "has_permission"
             ? state.permissions.has(args.permission_key ?? "")
             : name === "consume_api_rate_limit",
@@ -30,7 +32,10 @@ const get = (type: string, format = "csv") => GET(
 );
 
 beforeEach(() => {
-  state.permissions = new Set(["reports", "invoices"]);
+  state.permissions = new Set(["reports", "invoices", "profitability"]);
+  state.profitRows = [
+    { job_id: "j1", reference: "#1062", completed_at: "2026-09-17T15:00:00Z", invoiced_at: "2026-09-18T15:00:00Z", customer_id: "c", customer_name: "John Evans", dumpster_size: "20 Yard", service_type: "Delivery", dumpster_code: "120", revenue_cents: 40000, received_cents: 40000, invoiced: true, dump_fee_cents: 26840, dump_source: "actual", route_miles: 26, fuel_cents: 1836, fuel_source: "estimated", labor_cents: 8800, labor_source: "estimated", other_cents: 0 },
+  ];
   state.salesTaxRows = [
     { payment_id: "p1", received_at: "2026-09-29T16:02:34Z", invoice_id: "i12", invoice_number: "INV-000012", customer_name: "Owner test", billing_mode: "one_off", invoice_status: "paid", tax_rate: null, received_cents: 100, sale_cents: 100, tax_cents: 0, untaxed_cents: 8 },
   ];
@@ -54,7 +59,7 @@ beforeEach(() => {
 });
 
 describe("report downloads", () => {
-  it.each(["jobs", "invoices", "time", "assets", "sales-tax"])("returns a real %s PDF attachment", async (type) => {
+  it.each(["jobs", "invoices", "time", "assets", "sales-tax", "profitability"])("returns a real %s PDF attachment", async (type) => {
     const response = await get(type, "pdf");
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/pdf");
@@ -102,6 +107,17 @@ describe("report downloads", () => {
     expect(text).toContain("Date Paid,Invoice,Customer");
     expect(text).toContain("2026-09-29,INV-000012,Owner test,paid,None charged,1.00,1.00,1.00,0.00,0.08");
     expect(text).toContain("Total,1 payment,,,,1.00,1.00,1.00,0.00,0.08");
+  });
+
+  it("writes the profitability job log for management", async () => {
+    const text = await (await get("profitability")).text();
+    expect(text).toContain("#1062,2026-09-17,2026-09-18,John Evans,20 Yard,Delivery,400.00,400.00,0.00,268.40,actual,26,18.36,estimated,88.00,0.00,374.76,25.24,6.3%");
+    expect(text).toContain("Total,1 job");
+  });
+
+  it("keeps profitability from staff without that permission", async () => {
+    state.permissions = new Set(["reports", "invoices"]);
+    expect((await get("profitability")).status).toBe(403);
   });
 
   it("keeps the sales tax return from staff without invoices access", async () => {

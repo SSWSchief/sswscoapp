@@ -4,6 +4,7 @@ import { toCsv } from "@/lib/csv";
 import { createReportPdf } from "@/lib/report-pdf";
 import { createReportXlsx } from "@/lib/report-xlsx";
 import { salesTaxExportRows, salesTaxHeaders } from "@/lib/billing/sales-tax-report";
+import { fromResultRow, inPeriod, profitabilityExportRows, profitabilityHeaders } from "@/lib/billing/profitability";
 import { createClient } from "@/lib/supabase/server";
 import {
   applyTimeCorrections,
@@ -16,7 +17,13 @@ import {
 } from "@/lib/time-clock";
 import { exportQuerySchema } from "@/lib/validation";
 
-const allowed = new Set(["jobs", "invoices", "time", "assets", "sales-tax"]);
+const allowed = new Set(["jobs", "invoices", "time", "assets", "sales-tax", "profitability"]);
+// Exports that show what the company earns follow the finance permissions
+// (management by default), not general reporting.
+const financePermission: Record<string, string> = {
+  "sales-tax": "invoices",
+  profitability: "profitability",
+};
 const punchLabels: Record<string, string> = {
   clock_in: "In",
   break_start: "Break",
@@ -54,12 +61,11 @@ export async function GET(
   });
   if (permission.data !== true)
     return fail("forbidden", "Reports permission required.", 403);
-  // The tax return shows what the company took in, so it follows invoices
-  // access (management by default), not general reporting.
-  if (type === "sales-tax") {
-    const finance = await db.rpc("has_permission", { permission_key: "invoices" });
+  const financeKey = financePermission[type];
+  if (financeKey) {
+    const finance = await db.rpc("has_permission", { permission_key: financeKey });
     if (finance.data !== true)
-      return fail("forbidden", "Invoices permission required.", 403);
+      return fail("forbidden", `${financeKey === "invoices" ? "Invoices" : "Profitability"} permission required.`, 403);
   }
   const profile = await db
     .from("users")
@@ -164,6 +170,12 @@ export async function GET(
       if (result.error) throw result.error;
       headers = salesTaxHeaders;
       rows = salesTaxExportRows(result.data ?? []);
+    } else if (type === "profitability") {
+      const result = await db.rpc("profitability_rows", { from_date: from, through_date: to });
+      if (result.error) throw result.error;
+      const basis = url.searchParams.get("basis") === "completed" ? "completed" : "invoiced";
+      headers = profitabilityHeaders;
+      rows = profitabilityExportRows(inPeriod((result.data ?? []).map(fromResultRow), from, to, basis));
     } else if (type === "time") {
       // Filtered in the query rather than after it. Taking the oldest
       // `maximumRows` and then narrowing in JS returns steadily less of the
