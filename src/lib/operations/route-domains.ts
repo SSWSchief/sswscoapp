@@ -90,6 +90,9 @@ export function expandedDomainsForPath(pathname: string): Set<ExpandedDomain> {
     pathname.startsWith("/dispatcher/reports")
   )
     domains.add("finance");
+  // The invoice form reads the sales tax rate and default payment terms from
+  // company settings; without them it showed "Loading tax rate…" forever.
+  if (pathname.startsWith("/dispatcher/invoices")) domains.add("settings");
   if (
     pathname.startsWith("/driver/pre-trip") ||
     pathname.startsWith("/driver/sops")
