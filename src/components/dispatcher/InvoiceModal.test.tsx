@@ -3,7 +3,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InvoiceModal } from "./InvoiceModal";
-import type { Customer, Job } from "@/lib/types";
+import type { Customer, InvoiceRecord, Job } from "@/lib/types";
 
 const customers = [
   { id: "cust-1", name: "Vegas GC", phone: "", email: "", address: "", billingContactName: "Pat", billingEmail: "pat@x.com", billingAddressLine1: "", billingAddressLine2: "", billingCity: "", billingState: "", billingPostalCode: "" },
@@ -36,7 +36,7 @@ vi.mock("@/components/system/ConfirmProvider", () => ({
   },
 }));
 
-const settings = { defaultPaymentTerms: "net_30" };
+const settings: Record<string, unknown> = { defaultPaymentTerms: "net_30" };
 // Only Delivery · 20 Yard is priced — Dry Run has no rate on file, mirroring
 // production where several service types are seeded for one size only.
 const priceList = [{ id: "p1", serviceType: "Delivery", dumpsterSize: "20 Yard", priceCents: 40000 }];
@@ -245,5 +245,75 @@ describe("InvoiceModal — multi-job statement", () => {
     await user.type(screen.getByLabelText(/Line 1 amount/i), "100");
     await user.click(screen.getByRole("button", { name: /Save draft/i }));
     expect(saved).toHaveLength(0);
+  });
+});
+
+// Austin, 2026-10-07: a GC is quoted an all-in $525 for a 40-yard and is
+// invoiced exactly that plus the fuel fee he chooses; sales tax is a button he
+// clicks only for the customers he wants to charge it, like the fuel fee.
+describe("InvoiceModal — sales tax is a per-invoice choice", () => {
+  const rental = { id: "p40", serviceType: "Delivery", dumpsterSize: "40 Yard", priceCents: 52500 };
+  const taxSettings = { taxPolicyStatus: "fixed_rate_approved", salesTaxRate: 8.375 };
+
+  afterEach(() => {
+    cleanup();
+    saved.length = 0;
+    priceList.splice(priceList.indexOf(rental), 1);
+    for (const key of Object.keys(taxSettings)) delete settings[key];
+  });
+
+  const startOneOff = async (name: string) => {
+    priceList.push(rental);
+    Object.assign(settings, taxSettings);
+    const view = render(<InvoiceModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/Customer/i), name);
+    await user.selectOptions(screen.getByLabelText(/Billing mode/i), "one_off");
+    await user.selectOptions(screen.getByLabelText(/Add priced catalog line/i), "p40");
+    return { user, view };
+  };
+
+  it("bills a GC's all-in price plus the fuel fee, with no tax added", async () => {
+    const { user } = await startOneOff("Vegas GC");
+    await user.click(screen.getByRole("button", { name: "Add 5% fuel fee" }));
+
+    expect(screen.getByText("Not charged · Total $551.25")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add 8.375% sales tax" })).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(screen.getByRole("button", { name: /Save draft/i }));
+    expect(saved[0]).toMatchObject({
+      chargeSalesTax: false,
+      items: [
+        { description: "40 Yard Delivery", amountCents: 52500 },
+        { description: "Fuel & Environmental Recovery Fee (5% of $525.00)", amountCents: 2625 },
+      ],
+    });
+  });
+
+  it("adds 8.375% only when the office clicks the button, and takes it off again", async () => {
+    const { user } = await startOneOff("Maria Lopez");
+    await user.click(screen.getByRole("button", { name: "Add 8.375% sales tax" }));
+    // $525 × 8.375% = $43.97 (43.96875, rounded per line as Stripe does).
+    expect(screen.getByText("8.375% · $43.97 · Total $568.97")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Remove sales tax" }));
+    expect(screen.getByText("Not charged · Total $525.00")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Add 8.375% sales tax" }));
+    await user.click(screen.getByRole("button", { name: /Save draft/i }));
+    expect(saved[0]).toMatchObject({ chargeSalesTax: true });
+  });
+
+  it("reopens a saved draft with the choice it was saved with", async () => {
+    Object.assign(settings, taxSettings);
+    const draft = {
+      id: "inv-1", customerId: "cust-1", status: "draft", billingMode: "one_off", jobIds: [], paymentTerms: "net_30",
+      poNumber: "", notes: "", chargeSalesTax: true, revisedFromId: null,
+      billingContactName: "", billingEmail: "", billingAddressLine1: "", billingAddressLine2: "", billingCity: "", billingState: "", billingPostalCode: "",
+      lineItems: [{ id: "l1", description: "10 yard cleanup", amountCents: 40000, jobId: null, category: "service" }],
+    } as unknown as InvoiceRecord;
+    render(<InvoiceModal open onClose={() => {}} invoice={draft} />);
+    expect(screen.getByRole("button", { name: "Remove sales tax" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("8.375% · $33.50 · Total $433.50")).toBeInTheDocument();
   });
 });

@@ -516,7 +516,7 @@ export default function Page() {
                   </Select>
                 </FormField>
                 <div className="rounded border border-brand-ice p-3 text-sm text-brand-steel">
-                  Sales tax: <strong className="text-brand-charcoal">{form.salesTaxRate}%</strong> on every invoice line (Clark County, NV), added by Stripe when the invoice is sent. Policy: <strong className="text-brand-charcoal">{form.taxPolicyStatus.replaceAll("_", " ")}</strong>.
+                  Sales tax: <strong className="text-brand-charcoal">{form.salesTaxRate}%</strong> (Clark County, NV), added by Stripe to the invoices where you click &ldquo;Add sales tax&rdquo;. New invoices start without it. Policy: <strong className="text-brand-charcoal">{form.taxPolicyStatus.replaceAll("_", " ")}</strong>.
                 </div>
                 <Button
                   disabled={disabled || !settings}

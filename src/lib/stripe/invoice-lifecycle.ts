@@ -85,7 +85,11 @@ export async function sendInvoice(id: string, db: Db = createAdminClient()) {
   }
   validateForSend(loaded.invoice, loaded.lines, loaded.jobs, loaded.terms, loaded.taxPolicy, loaded.salesTaxRate);
   const stripe = await requireStripeInvoicing();
-  const taxPercent = salesTaxPercent(loaded.taxPolicy, loaded.salesTaxRate);
+  // Tax only when the office turned it on for this invoice; a GC's quoted
+  // price already includes it.
+  const taxPercent = loaded.invoice.charge_sales_tax
+    ? salesTaxPercent(loaded.taxPolicy, loaded.salesTaxRate)
+    : 0;
   const processing = await db.from("invoices").update({ stripe_sync_state: "processing", stripe_sync_error: null }).eq("id", id);
   if (processing.error) throw processing.error;
   try {

@@ -62,6 +62,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   const [poNumber, setPoNumber] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [items, setItems] = React.useState<EditorItem[]>([blankItem()]);
+  const [chargeSalesTax, setChargeSalesTax] = React.useState(false);
   const [catalogItemId, setCatalogItemId] = React.useState("");
   const [remoteJobs, setRemoteJobs] = React.useState<EligibleJob[] | null>(null);
   const editable = !invoice || invoice.status === "draft";
@@ -87,6 +88,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
     setPaymentTerms(invoice?.paymentTerms ?? settings?.defaultPaymentTerms ?? "net_30");
     setPoNumber(invoice?.poNumber ?? "");
     setNotes(invoice?.notes ?? "");
+    setChargeSalesTax(invoice?.chargeSalesTax ?? false);
     setItems(invoice?.lineItems.length
       ? invoice.lineItems.map((item) => ({ description: item.description, amountCents: item.amountCents, amount: (item.amountCents / 100).toFixed(2), jobId: item.jobId, category: item.category, key: item.id }))
       : [blankItem()]);
@@ -112,9 +114,12 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
   // Derived rather than stored, so an existing invoice shows its customer
   // without the setup effect having to read the customer list.
   const customerFieldValue = selectedCustomer?.name ?? customerName;
-  // Every line is taxed at the company's fixed rate; Stripe adds the same tax
-  // at send, and its figure is the one stored.
-  const taxPercent = salesTaxPercent(settings?.taxPolicyStatus ?? "pending", settings?.salesTaxRate ?? 0);
+  // Sales tax is the office's choice per invoice, like the fuel fee: a GC's
+  // quoted price already includes it. When on, every line is taxed at the
+  // company's fixed rate; Stripe adds the same tax at send, and its figure is
+  // the one stored.
+  const companyTaxPercent = salesTaxPercent(settings?.taxPolicyStatus ?? "pending", settings?.salesTaxRate ?? 0);
+  const taxPercent = chargeSalesTax ? companyTaxPercent : 0;
   const taxEstimate = estimateSalesTax(items.map((item) => Math.round(Number(item.amount) * 100) || 0), taxPercent);
 
   const matchCustomer = (name: string) =>
@@ -288,6 +293,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
       ...(customerId ? {} : { customerName: customerName.trim() }),
       billing,
       saveBillingToCustomer: Boolean(customerId) && saveToProfile,
+      chargeSalesTax,
       billingMode, jobIds, paymentTerms, poNumber, notes, items: normalized,
     }, invoice?.id);
     setBusy(false);
@@ -435,12 +441,19 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
             <span className="font-heading text-lg font-semibold">{formatCurrency(items.reduce((sum, item) => sum + (Math.round(Number(item.amount) * 100) || 0), 0))}</span>
           </div>
           {editable && (
-            <div className="mt-2 flex items-center justify-between text-sm">
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
               <span className="text-brand-steel">Sales tax</span>
-              <span className="font-medium text-brand-charcoal">
-                {settings
-                  ? `${formatTaxPercent(taxPercent)} · ${formatCurrency(taxEstimate.taxCents)} · Total ${formatCurrency(taxEstimate.totalCents)}`
-                  : "Loading tax rate…"}
+              <span className="flex flex-wrap items-center justify-end gap-2 font-medium text-brand-charcoal">
+                {!settings
+                  ? "Loading tax rate…"
+                  : chargeSalesTax
+                    ? `${formatTaxPercent(taxPercent)} · ${formatCurrency(taxEstimate.taxCents)} · Total ${formatCurrency(taxEstimate.totalCents)}`
+                    : `Not charged · Total ${formatCurrency(taxEstimate.totalCents)}`}
+                {settings && companyTaxPercent > 0 && (
+                  <Button type="button" variant="secondary" aria-pressed={chargeSalesTax} onClick={() => setChargeSalesTax((on) => !on)}>
+                    {chargeSalesTax ? "Remove sales tax" : `Add ${formatTaxPercent(companyTaxPercent)} sales tax`}
+                  </Button>
+                )}
               </span>
             </div>
           )}

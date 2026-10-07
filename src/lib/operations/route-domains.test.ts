@@ -36,7 +36,8 @@ describe("route domain selection", () => {
     ["/management", ["finance", "messaging", "compliance", "settings"]],
     ["/dispatcher/messages", ["messaging"]],
     ["/driver/messages", ["messaging"]],
-    ["/dispatcher/invoices", ["messaging", "finance"]],
+    // The invoice form needs the sales tax rate and default payment terms.
+    ["/dispatcher/invoices", ["messaging", "finance", "settings"]],
     ["/dispatcher/reports", ["messaging", "finance"]],
     ["/driver/pre-trip", ["messaging", "compliance"]],
     ["/driver/sops", ["messaging", "compliance"]],

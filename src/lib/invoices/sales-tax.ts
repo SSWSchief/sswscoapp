@@ -1,8 +1,10 @@
 /**
- * Nevada sales tax at a fixed rate on every invoice line (8.375%, Clark
- * County), as SSWS's accountant directed on 2026-10-02. Stripe adds the tax
- * when the invoice is sent and its figure is the one stored; this is the
- * office's estimate before sending, and the rule for which rate applies.
+ * Nevada sales tax at a fixed rate (8.375%, Clark County), as SSWS's
+ * accountant directed on 2026-10-02. Since 2026-10-07 it is added only to the
+ * invoices the office turns it on for: a GC's quoted price already includes
+ * it. Stripe adds the tax when the invoice is sent and its figure is the one
+ * stored; this is the office's estimate before sending, and the rule for
+ * which rate applies.
  */
 
 /** The percentage an invoice is sent with: none once sales are ruled non-taxable. */

@@ -192,8 +192,17 @@ describe("sendInvoice", () => {
     await expect(sendInvoice("inv-1", nonTaxable.client)).resolves.toBeTruthy();
   });
 
-  it("taxes the whole invoice at the company's fixed rate and records it", async () => {
+  it("leaves tax off unless the office turned it on for the invoice", async () => {
     const { fake, client } = world({ settings: { tax_policy_status: "fixed_rate_approved" } });
+    await sendInvoice("inv-1", client);
+    expect(ensureSalesTaxRate).not.toHaveBeenCalled();
+    expect((createStripeInvoiceDraft.mock.calls[0] as unknown as unknown[])[4]).toEqual([]);
+    expect(applyStripeInvoiceTax).toHaveBeenCalledWith(expect.anything(), "inv-1", "in_created", []);
+    expect(fake.tables.invoices[0].sales_tax_rate).toBe(0);
+  });
+
+  it("taxes the whole invoice at the company's fixed rate and records it", async () => {
+    const { fake, client } = world({ invoice: { charge_sales_tax: true }, settings: { tax_policy_status: "fixed_rate_approved" } });
     await sendInvoice("inv-1", client);
     expect(ensureSalesTaxRate).toHaveBeenCalledWith(expect.anything(), 8.375, null);
     expect((createStripeInvoiceDraft.mock.calls[0] as unknown as unknown[])[4]).toEqual(["txr_nv"]);
@@ -204,13 +213,13 @@ describe("sendInvoice", () => {
   });
 
   it("reuses the saved Stripe rate rather than creating another", async () => {
-    const { client } = world({ settings: { tax_policy_status: "fixed_rate_approved", stripe_sales_tax_rate_id: "txr_nv" } });
+    const { client } = world({ invoice: { charge_sales_tax: true }, settings: { tax_policy_status: "fixed_rate_approved", stripe_sales_tax_rate_id: "txr_nv" } });
     await sendInvoice("inv-1", client);
     expect(ensureSalesTaxRate).toHaveBeenCalledWith(expect.anything(), 8.375, "txr_nv");
   });
 
   it("sends without tax once sales are ruled non-taxable", async () => {
-    const { fake, client } = world({ settings: { tax_policy_status: "non_taxable_approved" } });
+    const { fake, client } = world({ invoice: { charge_sales_tax: true }, settings: { tax_policy_status: "non_taxable_approved" } });
     await sendInvoice("inv-1", client);
     expect(ensureSalesTaxRate).not.toHaveBeenCalled();
     expect(applyStripeInvoiceTax).toHaveBeenCalledWith(expect.anything(), "inv-1", "in_created", []);

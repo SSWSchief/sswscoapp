@@ -15,7 +15,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // The revision carries the original's billing snapshot, so details typed on
     // that invoice for a one-off customer are not swapped for the profile's.
     const billing = { contactName: invoice.data.billing_contact_name, email: invoice.data.billing_email, phone: "", addressLine1: invoice.data.billing_address_line1, addressLine2: invoice.data.billing_address_line2, city: invoice.data.billing_city, state: invoice.data.billing_state, postalCode: invoice.data.billing_postal_code };
-    const payload = { customerId: invoice.data.customer_id, billing, billingMode: invoice.data.billing_mode, jobIds: (jobs.data ?? []).map((job) => job.job_id), paymentTerms: invoice.data.payment_terms, poNumber: invoice.data.po_number, notes: invoice.data.notes, revisedFromId: id, items: (lines.data ?? []).map((line, position) => ({ description: line.description, amountCents: line.amount_cents, jobId: line.job_id, category: line.category, position })) };
+    const payload = { customerId: invoice.data.customer_id, billing, chargeSalesTax: invoice.data.charge_sales_tax ?? false, billingMode: invoice.data.billing_mode, jobIds: (jobs.data ?? []).map((job) => job.job_id), paymentTerms: invoice.data.payment_terms, poNumber: invoice.data.po_number, notes: invoice.data.notes, revisedFromId: id, items: (lines.data ?? []).map((line, position) => ({ description: line.description, amountCents: line.amount_cents, jobId: line.job_id, category: line.category, position })) };
     const created = await api.access.db.rpc("create_invoice_draft", { payload: payload as unknown as Json });
     if (created.error) throw created.error;
     return api.success(created.data, 201);
