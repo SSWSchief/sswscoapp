@@ -294,6 +294,7 @@ export const mapInvoice = (
   lineItems,
   subtotalCents: Number(row.amount_cents),
   taxCents: Number(row.tax_cents ?? 0),
+  chargeSalesTax: row.charge_sales_tax ?? false,
   amountCents: Number(row.amount_cents) + Number(row.tax_cents ?? 0),
   status: row.status,
   displayStatus: invoiceDisplayStatus(row),

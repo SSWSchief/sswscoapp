@@ -7,9 +7,10 @@ import { pacificDate } from "@/lib/time-clock";
  * SSWS's accountant files each quarter from two figures: total sales and
  * taxable sales. A sale counts in the quarter it was paid (Austin, 2026-10-03),
  * so every row is a receipt, not an invoice. Every line is taxable, so taxable
- * sales equal total sales. Invoices sent before fixed-rate tax collected
- * nothing, and the return still has to account for them, so that tax is shown
- * separately rather than hidden.
+ * sales equal total sales. Invoices sent before fixed-rate tax, and invoices
+ * sent with tax left off (a GC's all-in price, since 2026-10-07), collected
+ * nothing, and the return still has to account for them, so that tax is
+ * shown separately rather than hidden.
  */
 export interface SalesTaxTotals {
   receipts: number;
@@ -59,14 +60,16 @@ export function salesTaxExportRows(rows: SalesTaxResultRow[]): unknown[][] {
       row.invoice_number,
       row.customer_name,
       row.invoice_status,
-      row.tax_rate === null ? "None charged" : `${Number(row.tax_rate)}%`,
+      row.tax_rate === null || Number(row.tax_rate) === 0 ? "None charged" : `${Number(row.tax_rate)}%`,
       dollars(Number(row.received_cents)),
       dollars(Number(row.sale_cents)),
       dollars(Number(row.sale_cents)),
       dollars(Number(row.tax_cents)),
       dollars(Number(row.untaxed_cents)),
       Number(row.untaxed_cents) > 0
-        ? "Sent before sales tax was added; no tax was collected."
+        ? row.tax_rate === null
+          ? "Sent before sales tax was added; no tax was collected."
+          : "Sales tax was left off this invoice; no tax was collected."
         : "",
     ]),
     [

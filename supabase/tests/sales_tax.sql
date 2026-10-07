@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(24);
 
 create function pg_temp.sqlstate_of(command text) returns text language plpgsql as $$
 begin
@@ -36,7 +36,8 @@ select is(
 insert into public.invoices(id,invoice_number,customer_id,amount_cents) values
   ('taxed','T-100','tax-cust',40000),
   ('before-tax','T-099','tax-cust',40000),
-  ('late-night','T-098','tax-cust',40000);
+  ('late-night','T-098','tax-cust',40000),
+  ('all-in','T-101','tax-cust',52500);
 update public.invoices set status='open', issued_at='2026-10-05 17:00+00', tax_cents=3350, sales_tax_rate=8.375 where id='taxed';
 select is((select count(*) from public.invoice_payments where invoice_id='taxed'), 0::bigint, 'nothing is received until Stripe says so');
 select is(
@@ -58,20 +59,36 @@ select is((select received_at from public.invoice_payments where invoice_id='tax
 update public.invoices set status='paid', issued_at='2026-10-01 15:00+00', amount_paid_cents=40000, paid_at='2026-10-02 17:45+00' where id='before-tax';
 -- Paid at 10:30 PM on September 30 in Las Vegas, which is October 1 in UTC.
 update public.invoices set status='paid', issued_at='2026-09-30 15:00+00', amount_paid_cents=40000, paid_at='2026-10-01 05:30+00' where id='late-night';
+-- A GC's all-in $525, sent after this change with tax left off.
+update public.invoices set status='paid', issued_at='2026-10-08 15:00+00', tax_cents=0, sales_tax_rate=0, amount_paid_cents=52500, paid_at='2026-10-09 17:00+00' where id='all-in';
 
 select pg_temp.as_user('60000000-0000-0000-0000-000000000001');
 set local role authenticated;
 create temporary table q4 as select * from public.sales_tax_rows('2026-10-01','2026-12-31');
 create temporary table q3 as select * from public.sales_tax_rows('2026-07-01','2026-09-30');
 
-select is((select count(*) from q4), 3::bigint, 'the quarter lists each payment received in it');
+select is((select count(*) from q4), 4::bigint, 'the quarter lists each payment received in it');
 select is((select sum(tax_cents) from q4 where invoice_id='taxed'), 3350::numeric, 'part payments carry exactly the invoice''s tax between them');
 select is((select sum(sale_cents) from q4 where invoice_id='taxed'), 40000::numeric, 'and exactly its sales');
 select is((select tax_cents from q4 where invoice_id='taxed' order by received_at limit 1), 1546::bigint, 'each part carries tax in proportion');
 select is((select untaxed_cents from q4 where invoice_id='before-tax'), 3350::bigint, 'tax an older invoice never collected is shown at today''s rate');
 select is((select tax_rate from q4 where invoice_id='before-tax'), null, 'an older invoice shows no rate');
+select is((select tax_cents from q4 where invoice_id='all-in'), 0::bigint, 'an invoice sent with tax off collected none');
+select is((select untaxed_cents from q4 where invoice_id='all-in'), 4397::bigint, 'and its tax still shows on the return as not collected');
 select is((select invoice_id from q3), 'late-night', 'a payment counts on its Las Vegas date');
-select is((select count(*) from public.invoice_payments), 4::bigint, 'management can read the ledger');
+select is((select count(*) from public.invoice_payments), 5::bigint, 'management can read the ledger');
+reset role;
+
+-- Tax is a choice made on each draft, off unless asked for.
+select pg_temp.as_user('60000000-0000-0000-0000-000000000001');
+set local role authenticated;
+create temporary table untaxed_draft as
+  select * from public.create_invoice_draft('{"customerId":"tax-cust","billingMode":"one_off","jobIds":[],"paymentTerms":"net_30","poNumber":"","notes":"","items":[{"description":"40 yard rental","amountCents":52500,"category":"rental","position":0}]}'::jsonb);
+select is((select charge_sales_tax from untaxed_draft), false, 'a new draft does not charge sales tax');
+create temporary table taxed_draft as
+  select * from public.create_invoice_draft('{"customerId":"tax-cust","billingMode":"one_off","jobIds":[],"paymentTerms":"net_30","poNumber":"","notes":"","chargeSalesTax":true,"items":[{"description":"10 yard rental","amountCents":40000,"category":"rental","position":0}]}'::jsonb);
+select is((select charge_sales_tax from taxed_draft), true, 'the office can turn tax on for a draft');
+select is((public.update_invoice_draft((select id from taxed_draft),'{"customerId":"tax-cust","billingMode":"one_off","jobIds":[],"paymentTerms":"net_30","poNumber":"","notes":"","items":[{"description":"10 yard rental","amountCents":40000,"category":"rental","position":0}]}'::jsonb)).charge_sales_tax, false, 'and off again by saving without it');
 reset role;
 
 select pg_temp.as_user('60000000-0000-0000-0000-000000000002');

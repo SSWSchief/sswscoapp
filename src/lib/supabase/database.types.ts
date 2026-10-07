@@ -233,6 +233,7 @@ export interface InvoiceRow extends Record<string, unknown> {
   tax_cents: number;
   /** Percentage the invoice was sent with; null before fixed-rate tax. */
   sales_tax_rate?: number | null;
+  charge_sales_tax?: boolean;
   status: "draft" | "open" | "paid" | "uncollectible" | "void";
   billing_mode: "per_job" | "statement" | "one_off";
   payment_terms: "due_on_receipt" | "net_15" | "net_30";

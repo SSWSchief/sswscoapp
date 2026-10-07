@@ -48,6 +48,7 @@ export const invoiceDraftSchema = z
     customerName: z.string().trim().max(200).optional(),
     billing: invoiceBillingSchema.optional(),
     saveBillingToCustomer: z.boolean().optional(),
+    chargeSalesTax: z.boolean().optional(),
     billingMode: z.enum(["per_job", "statement", "one_off"]),
     // Emptiness is decided per billing mode below, not here.
     jobIds: z.array(z.string().trim().min(1)).max(100),

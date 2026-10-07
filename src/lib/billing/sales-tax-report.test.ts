@@ -52,6 +52,16 @@ describe("sales tax export", () => {
     expect(rows[1][10]).toMatch(/no tax was collected/);
     expect(rows.at(-1)).toEqual(["Total", "2 payments", "", "", "", "833.50", "800.00", "800.00", "33.50", "33.50", ""]);
   });
+
+  it("says which untaxed invoices had tax left off rather than predating it", () => {
+    const rows = salesTaxExportRows([
+      receipt({ tax_rate: null, tax_cents: 0, sale_cents: 40000, received_cents: 40000, untaxed_cents: 3350 }),
+      receipt({ payment_id: "p2", tax_rate: 0, tax_cents: 0, sale_cents: 52500, received_cents: 52500, untaxed_cents: 4397 }),
+    ]);
+    expect(rows[0][10]).toMatch(/^Sent before sales tax was added/);
+    expect(rows[1][4]).toBe("None charged");
+    expect(rows[1][10]).toMatch(/^Sales tax was left off this invoice/);
+  });
 });
 
 describe("quarters", () => {
