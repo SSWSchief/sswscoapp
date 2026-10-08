@@ -7,6 +7,7 @@ import type { Customer, InvoiceRecord, Job } from "@/lib/types";
 
 const customers = [
   { id: "cust-1", name: "Vegas GC", phone: "", email: "", address: "", billingContactName: "Pat", billingEmail: "pat@x.com", billingAddressLine1: "", billingAddressLine2: "", billingCity: "", billingState: "", billingPostalCode: "" },
+  { id: "cust-2", name: "John Evans", phone: "7025283364", email: "jevans@example.com", address: "", billingContactName: "John Evans", billingEmail: "jevans@example.com", billingAddressLine1: "3005 Contract Avenue", billingAddressLine2: "", billingCity: "Las Vegas", billingState: "NV", billingPostalCode: "89101" },
 ] as Customer[];
 
 const jobs = [
@@ -48,7 +49,10 @@ const expandedOperationsValue = {
 vi.mock("@/components/system/ExpandedOperationsProvider", () => ({
   useExpandedOperations: () => expandedOperationsValue,
 }));
-vi.mock("@/components/system/ToastProvider", () => ({ useToast: () => ({ toast: () => {} }) }));
+const toasts: string[] = [];
+const toast = (message: string) => { toasts.push(message); };
+const toastValue = { toast };
+vi.mock("@/components/system/ToastProvider", () => ({ useToast: () => toastValue }));
 
 global.fetch = vi.fn(() => Promise.reject(new Error("no network in test"))) as unknown as typeof fetch;
 
@@ -315,5 +319,58 @@ describe("InvoiceModal — sales tax is a per-invoice choice", () => {
     render(<InvoiceModal open onClose={() => {}} invoice={draft} />);
     expect(screen.getByRole("button", { name: "Remove sales tax" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("8.375% · $33.50 · Total $433.50")).toBeInTheDocument();
+  });
+});
+
+// Austin, 2026-10-08: John Evans needed a one-week rental extension. He has no
+// uninvoiced completed job, the modal defaulted to "Per job", and Save draft
+// answered with a message that never said to switch to a one-off invoice.
+describe("InvoiceModal — an extension for a customer with no job to bill", () => {
+  afterEach(() => {
+    cleanup();
+    saved.length = 0;
+    toasts.length = 0;
+  });
+
+  const startExtension = async () => {
+    render(<InvoiceModal open onClose={() => {}} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/Customer/i), "John Evans");
+    await user.click(screen.getByRole("button", { name: "Add extended rental" }));
+    return user;
+  };
+
+  it("adds an extended rental line with the amount left for the office to enter", async () => {
+    await startExtension();
+    expect(screen.getByLabelText(/Line 1 description/i)).toHaveValue("Extended Rental - 1 week");
+    expect(screen.getByLabelText(/Line 1 category/i)).toHaveValue("rental");
+    expect(screen.getByLabelText(/Line 1 amount/i)).toHaveValue(null);
+    expect(screen.getByText(/No rate on file — enter an amount/)).toBeInTheDocument();
+  });
+
+  it("says what to do instead of asking for completed work that does not exist", async () => {
+    const user = await startExtension();
+    await user.type(screen.getByLabelText(/Line 1 amount/i), "100");
+    await user.click(screen.getByRole("button", { name: /Save draft/i }));
+
+    expect(saved).toHaveLength(0);
+    expect(toasts.at(-1)).toMatch(/switch Billing mode to "One-off \(no job\)"/);
+  });
+
+  it("switches to a one-off invoice in one click and saves it with the PO number", async () => {
+    const user = await startExtension();
+    await user.type(screen.getByLabelText(/Line 1 amount/i), "100");
+    await user.type(screen.getByLabelText(/PO number/i), "PO-7731");
+    await user.click(screen.getByRole("button", { name: /Bill without a job/i }));
+    expect(screen.getByLabelText(/Billing mode/i)).toHaveValue("one_off");
+
+    await user.click(screen.getByRole("button", { name: /Save draft/i }));
+    expect(saved[0]).toMatchObject({
+      customerId: "cust-2",
+      billingMode: "one_off",
+      jobIds: [],
+      poNumber: "PO-7731",
+      items: [{ description: "Extended Rental - 1 week", amountCents: 10000, category: "rental", jobId: null }],
+    });
   });
 });
