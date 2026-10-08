@@ -213,6 +213,14 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
       : [...current, line]);
   };
 
+  // The weekly extension rate is not on the rate card (it is quoted per
+  // customer), so the line arrives with its amount blank for the office to fill.
+  const addExtendedRental = () => {
+    const line: EditorItem = { description: "Extended Rental - 1 week", amount: "", amountCents: 0, category: "rental", jobId: null, key: crypto.randomUUID(), needsRate: true };
+    const firstBlank = items.findIndex((item) => !item.description.trim() && !item.amount.trim());
+    setItems((current) => firstBlank >= 0 ? current.map((item, index) => index === firstBlank ? line : item) : [...current, line]);
+  };
+
   const addFuelSurcharge = () => {
     const eligible = items.filter((item) => item.fuelSurchargeEligible);
     const basisCents = eligible.reduce((sum, item) => sum + (Math.round(Number(item.amount) * 100) || 0), 0);
@@ -265,10 +273,12 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
       category: item.category,
     }));
     const total = normalized.reduce((sum, item) => sum + item.amountCents, 0);
-    if ((billingMode !== "one_off" && !jobIds.length) || total <= 0 || !Number.isSafeInteger(total) || normalized.some((item) => !item.description || !Number.isSafeInteger(item.amountCents) || item.amountCents === 0)) {
-      toast(billingMode === "one_off"
-      ? "Describe each line, use non-zero amounts, and keep the invoice total positive."
-      : "Select completed work, use non-zero line amounts, and keep the invoice total positive.", { tone: "error" }); return;
+    if (billingMode !== "one_off" && !jobIds.length) {
+      toast("Pick a completed job above, or switch Billing mode to \"One-off (no job)\" to bill without one.", { tone: "error" });
+      return;
+    }
+    if (total <= 0 || !Number.isSafeInteger(total) || normalized.some((item) => !item.description || !Number.isSafeInteger(item.amountCents) || item.amountCents === 0)) {
+      toast("Describe each line, use non-zero amounts, and keep the invoice total positive.", { tone: "error" }); return;
     }
     // Every attached job is retired from the eligible list once this saves,
     // whether or not anything billed it. A statement whose single line covers
@@ -330,6 +340,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
           <datalist id="invoice-customers">
             {customers.map((customer) => <option key={customer.id} value={customer.name} />)}
           </datalist>
+          <FormField label="PO number" hint="Optional. Prints on the invoice."><Input disabled={!editable} autoComplete="off" maxLength={140} value={poNumber} onChange={(event) => setPoNumber(event.target.value)} /></FormField>
           <FormField label="Payment terms"><Select disabled={!editable} value={paymentTerms} onChange={(event) => setPaymentTerms(event.target.value as InvoicePaymentTerms)}><option value="due_on_receipt">Due on receipt</option><option value="net_15">Net 15</option><option value="net_30">Net 30</option></Select></FormField>
         </div>
         {(selectedCustomer || isNewCustomer || invoice) && (
@@ -383,7 +394,12 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
               const rate = priceList.find((item) => item.serviceType === job.serviceType && item.dumpsterSize === job.dumpsterSize);
               return <label key={job.id} className="flex min-h-8 items-center gap-2"><input disabled={!jobSelectionEditable || financeLoading || !priceListReady} type={billingMode === "per_job" ? "radio" : "checkbox"} name="invoice-job" checked={jobIds.includes(job.id)} onChange={(event) => selectJob(job.id, event.target.checked)} /><span>{job.reference} · {job.serviceType} · {job.dumpsterSize} · {financeLoading ? "Loading rate…" : !priceListReady ? "Rates unavailable" : rate ? `${formatCurrency(rate.priceCents)} preset` : "No rate on file"}</span></label>;
             })}
-            {!eligibleJobs.length && <span className="text-sm text-brand-steel">No uninvoiced completed jobs for this customer. Switch to a one-off invoice to bill without one.</span>}
+            {!eligibleJobs.length && (
+              <div className="flex flex-wrap items-center gap-3 text-sm text-brand-steel">
+                <span>No uninvoiced completed jobs for this customer.</span>
+                {jobSelectionEditable && <Button type="button" variant="secondary" onClick={() => changeBillingMode("one_off")}>Bill without a job (one-off)</Button>}
+              </div>
+            )}
           </div>
         </FormField>
         )}
@@ -427,13 +443,18 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
               Add line
             </button>
           )}
-          {editable && priceList.length > 0 && (
+          {editable && (
             <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
-              <Select aria-label="Add priced catalog line" disabled={financeLoading || !priceListReady} value={catalogItemId} onChange={(event) => addCatalogLine(event.target.value)}>
-                <option value="">Add priced rental or transport line…</option>
-                {priceList.map((item) => <option key={item.id} value={item.id}>{item.dumpsterSize} {item.serviceType} · {formatCurrency(item.priceCents)}</option>)}
-              </Select>
-              <Button type="button" variant="secondary" onClick={addFuelSurcharge}>Add 5% fuel fee</Button>
+              {priceList.length > 0 ? (
+                <Select aria-label="Add priced catalog line" disabled={financeLoading || !priceListReady} value={catalogItemId} onChange={(event) => addCatalogLine(event.target.value)}>
+                  <option value="">Add priced rental or transport line…</option>
+                  {priceList.map((item) => <option key={item.id} value={item.id}>{item.dumpsterSize} {item.serviceType} · {formatCurrency(item.priceCents)}</option>)}
+                </Select>
+              ) : <span />}
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" onClick={addExtendedRental}>Add extended rental</Button>
+                <Button type="button" variant="secondary" onClick={addFuelSurcharge}>Add 5% fuel fee</Button>
+              </div>
             </div>
           )}
           <div className="mt-3 flex items-center justify-between border-t border-brand-ice pt-3">

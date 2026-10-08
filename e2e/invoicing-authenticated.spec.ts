@@ -176,7 +176,7 @@ test.describe("invoice drafting", () => {
     await page.getByRole("button", { name: /save draft/i }).click();
 
     await expect(
-      page.getByText(/Select completed work, use non-zero line amounts/i),
+      page.getByText(/Pick a completed job above, or switch Billing mode/i),
     ).toBeVisible();
   });
 
