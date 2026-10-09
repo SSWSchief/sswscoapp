@@ -19,8 +19,10 @@ const jobs = [
 // `settings`, so a mock that returns a fresh object every render would send
 // it into an infinite re-render loop instead of running once per open.
 const savedCustomers: unknown[] = [];
+const refreshed: boolean[] = [];
 const operationsValue = {
   customers, jobs, canMutate: true,
+  refresh: async () => { refreshed.push(true); },
   saveCustomer: async (input: unknown) => { savedCustomers.push(input); return { ok: true }; },
 };
 vi.mock("@/components/system/OperationsProvider", () => ({
@@ -330,6 +332,7 @@ describe("InvoiceModal — an extension for a customer with no job to bill", () 
     cleanup();
     saved.length = 0;
     toasts.length = 0;
+    refreshed.length = 0;
   });
 
   const startExtension = async () => {
@@ -372,5 +375,29 @@ describe("InvoiceModal — an extension for a customer with no job to bill", () 
       poNumber: "PO-7731",
       items: [{ description: "Extended Rental - 1 week", amountCents: 10000, category: "rental", jobId: null }],
     });
+  });
+
+  it("reloads customers after saving the phone to the profile, so Text invoice sees it", async () => {
+    const user = await startExtension();
+    await user.type(screen.getByLabelText(/Line 1 amount/i), "100");
+    await user.click(screen.getByRole("button", { name: /Bill without a job/i }));
+    await user.click(screen.getByLabelText(/Also save these details to John Evans/i));
+    await user.click(screen.getByRole("button", { name: /Save draft/i }));
+    expect(saved[0]).toMatchObject({ saveBillingToCustomer: true });
+    expect(refreshed).toHaveLength(1);
+  });
+
+  it("does not reload customers when nothing was saved to the profile", async () => {
+    const user = await startExtension();
+    await user.type(screen.getByLabelText(/Line 1 amount/i), "100");
+    await user.click(screen.getByRole("button", { name: /Bill without a job/i }));
+    await user.click(screen.getByRole("button", { name: /Save draft/i }));
+    expect(saved[0]).toMatchObject({ saveBillingToCustomer: false });
+    expect(refreshed).toHaveLength(0);
+  });
+
+  it("tells the office why a job still in progress is not listed", async () => {
+    await startExtension();
+    expect(screen.getByText(/still in progress, such as a dumpster still on site/)).toBeInTheDocument();
   });
 });
