@@ -42,7 +42,7 @@ const billingComplete = (billing: InvoiceBillingInput) =>
 
 export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClose: () => void; invoice?: InvoiceRecord }) {
   const { saveInvoice, settings, priceList, invoices, loading: financeLoading = false, priceListReady = true, refresh } = useExpandedOperations();
-  const { customers, jobs, canMutate } = useOperations();
+  const { customers, jobs, canMutate, refresh: refreshOperations } = useOperations();
   const { toast } = useToast();
   const confirm = useConfirm();
   const [busy, setBusy] = React.useState(false);
@@ -306,6 +306,10 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
       chargeSalesTax,
       billingMode, jobIds, paymentTerms, poNumber, notes, items: normalized,
     }, invoice?.id);
+    // Saving the billing details to the profile changes the customer row, which
+    // the invoice list reads the Text invoice number from. Without this reload
+    // it keeps the old profile and shows "No phone to text".
+    if (result.ok && customerId && saveToProfile) await refreshOperations();
     setBusy(false);
     toast(result.ok
       ? isNewCustomer ? `Invoice draft saved. ${customerName.trim()} was added as a One-off customer.` : "Invoice draft saved"
@@ -396,7 +400,7 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
             })}
             {!eligibleJobs.length && (
               <div className="flex flex-wrap items-center gap-3 text-sm text-brand-steel">
-                <span>No uninvoiced completed jobs for this customer.</span>
+                <span>No uninvoiced completed jobs for this customer. A job still in progress, such as a dumpster still on site, can be billed once it is complete.</span>
                 {jobSelectionEditable && <Button type="button" variant="secondary" onClick={() => changeBillingMode("one_off")}>Bill without a job (one-off)</Button>}
               </div>
             )}
