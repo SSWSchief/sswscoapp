@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(21);
 
 create function pg_temp.as_user(auth_id text) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', auth_id, 'role', 'authenticated', 'aal', 'aal1')::text, true);
@@ -47,6 +47,11 @@ select is((select status::text from public.jobs where id='closed-already'),'pend
 -- Only people with the jobs permission can do it.
 select pg_temp.as_user('50000000-0000-0000-0000-000000000002');
 select throws_ok($$select public.advance_job_as_dispatch('closed-already','complete','driver trying')$$,'Jobs permission required','a driver cannot use the dispatch function');
+
+-- Someone who is not signed in has no profile, so has_permission() is NULL.
+select pg_temp.as_user('50000000-0000-0000-0000-0000000000ff');
+select throws_ok($$select public.advance_job_as_dispatch('closed-already','complete','not signed in')$$,'Jobs permission required','a caller with no profile is refused');
+select is(has_function_privilege('anon','public.advance_job_as_dispatch(text,public.job_status,text)','execute'),false,'anon cannot execute it at all');
 
 reset role;
 select is((select status::text from public.jobs where id='closed-already'),'pending','the driver attempt changed nothing');
