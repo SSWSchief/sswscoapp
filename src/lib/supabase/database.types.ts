@@ -810,6 +810,10 @@ export interface Database {
         Args: { target_job_id: string; override_reason?: string | null };
         Returns: JobRow;
       };
+      advance_job_as_dispatch: {
+        Args: { target_job_id: string; next_status: JobStatus; advance_reason: string };
+        Returns: JobRow;
+      };
       correct_completed_job: {
         Args: { target_job_id: string; corrected_dumpster_id: string; correction_reason: string; corrected_pickup_at?: string | null };
         Returns: JobRow;

@@ -20,12 +20,15 @@ import {
   localDateTimeParts,
 } from "@/lib/job-dates";
 import type { AcknowledgementEntry, JobEvent } from "@/lib/types";
+import { manualAdvanceTargets, type ManualAdvanceTarget } from "@/lib/job-transitions";
 import { CreateJobModal } from "@/components/dispatcher/CreateJobModal";
 import { JobConfirmationCard } from "@/components/dispatcher/JobConfirmation";
 import { useToast } from "@/components/system/ToastProvider";
 import { useConfirm } from "@/components/system/ConfirmProvider";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { Modal } from "@/components/ui/Modal";
+
+const advanceLabels: Record<ManualAdvanceTarget, string> = { en_route: "En Route", arrived: "Arrived", complete: "Complete" };
 
 // Screen 4 — Job Details (dispatcher view).
 export default function JobDetailsPage({
@@ -44,6 +47,7 @@ export default function JobDetailsPage({
     users,
     hydrated,
     completeJobAsDispatcher,
+    advanceJobAsDispatcher,
     correctCompletedJob,
     cancelJob,
     archiveCancelledJob,
@@ -53,8 +57,9 @@ export default function JobDetailsPage({
   const [editOpen, setEditOpen] = React.useState(false);
   const [actionsOpen, setActionsOpen] = React.useState(false);
   const [reasonMode, setReasonMode] = React.useState<
-    "cancel" | "complete" | "archive" | null
+    "cancel" | "complete" | "archive" | "advance" | null
   >(null);
+  const [advanceTo, setAdvanceTo] = React.useState<ManualAdvanceTarget>("complete");
   const [busy, setBusy] = React.useState(false);
   const [correctionOpen, setCorrectionOpen] = React.useState(false);
   const [correctedDumpsterId, setCorrectedDumpsterId] = React.useState("");
@@ -99,6 +104,16 @@ export default function JobDetailsPage({
     const result = await completeJobAsDispatcher(job.id, reason);
     setBusy(false);
     toast(result.ok ? "Job completed" : result.error.message, {
+      tone: result.ok ? "success" : "error",
+    });
+    if (result.ok) setReasonMode(null);
+  };
+  const advance = async (reason: string) => {
+    if (busy) return;
+    setBusy(true);
+    const result = await advanceJobAsDispatcher(job.id, advanceTo, reason);
+    setBusy(false);
+    toast(result.ok ? `Job marked ${advanceLabels[advanceTo].toLowerCase()}` : result.error.message, {
       tone: result.ok ? "success" : "error",
     });
     if (result.ok) setReasonMode(null);
@@ -303,6 +318,29 @@ export default function JobDetailsPage({
           </h2>
           <JobStatusBadge status={job.status} />
         </div>
+        {manualAdvanceTargets(job.status).length > 0 && (
+          <Card>
+            <CardHeader title="Update status from the office" />
+            <div className="flex flex-wrap items-center gap-2 p-4">
+              <p className="mr-2 text-sm text-brand-steel">
+                Use this when the driver did not tap the status, or no driver went. It is recorded with your reason.
+              </p>
+              {manualAdvanceTargets(job.status).map((target) => (
+                <Button
+                  key={target}
+                  variant="secondary"
+                  disabled={!canMutate || busy}
+                  onClick={() => {
+                    setAdvanceTo(target);
+                    setReasonMode("advance");
+                  }}
+                >
+                  Mark {advanceLabels[target]}
+                </Button>
+              ))}
+            </div>
+          </Card>
+        )}
         {correctionOpen && job.status === "complete" && (
           <Card className="border-brand-blue/40">
             <CardHeader title="Correct completed assignment" />
@@ -539,6 +577,15 @@ export default function JobDetailsPage({
         title={`Archive ${job.reference}`}
         label="Archive reason"
         confirmLabel="Archive Job"
+      />
+      <ReasonDialog
+        open={reasonMode === "advance"}
+        onClose={() => setReasonMode(null)}
+        onSubmit={advance}
+        busy={busy}
+        title={`Mark ${job.reference} ${advanceLabels[advanceTo].toLowerCase()}`}
+        label="Reason, such as driver forgot to update"
+        confirmLabel={`Mark ${advanceLabels[advanceTo]}`}
       />
       <ReasonDialog
         open={reasonMode === "complete"}

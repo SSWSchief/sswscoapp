@@ -239,6 +239,12 @@ interface Value extends State {
     id: string,
     reason?: string,
   ) => Promise<MutationResult<Job>>;
+  /** Office override: steps a job forward to `status`, with a reason on record. */
+  advanceJobAsDispatcher: (
+    id: string,
+    status: "en_route" | "arrived" | "complete",
+    reason: string,
+  ) => Promise<MutationResult<Job>>;
   correctCompletedJob: (
     id: string,
     dumpsterId: string,
@@ -893,6 +899,15 @@ export function OperationsProvider({
           const r = await createClient().rpc("complete_job_as_dispatch", {
             target_job_id: id,
             override_reason: reason ?? null,
+          });
+          return { data: r.data ? mapJob(r.data) : null, error: r.error };
+        })),
+      advanceJobAsDispatcher: (id, status, reason) =>
+        notifying(run(async () => {
+          const r = await createClient().rpc("advance_job_as_dispatch", {
+            target_job_id: id,
+            next_status: status,
+            advance_reason: reason,
           });
           return { data: r.data ? mapJob(r.data) : null, error: r.error };
         })),

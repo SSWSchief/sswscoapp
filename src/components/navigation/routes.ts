@@ -34,6 +34,14 @@ export const staffNavSections: AppNavSection[] = [
         permission: "jobs",
       },
       {
+        href: "/dispatcher/pricing",
+        label: "Pricing & Terms",
+        shortLabel: "Pricing",
+        icon: "reports",
+        permission: "jobs",
+        keywords: "quote rates price rental days extension commercial residential",
+      },
+      {
         href: "/dispatcher/map",
         label: "Locations",
         icon: "map",
