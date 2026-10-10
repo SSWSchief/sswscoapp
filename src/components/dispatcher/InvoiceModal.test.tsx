@@ -248,6 +248,7 @@ describe("InvoiceModal — multi-job statement", () => {
     await user.type(screen.getByLabelText(/Billing email/i), "maria-at-example");
     await user.selectOptions(screen.getByLabelText(/Billing mode/i), "one_off");
     await user.type(screen.getByLabelText(/Line 1 description/i), "Cleanup");
+    await user.clear(screen.getByLabelText(/Line 1 amount/i));
     await user.type(screen.getByLabelText(/Line 1 amount/i), "100");
     await user.click(screen.getByRole("button", { name: /Save draft/i }));
     expect(saved).toHaveLength(0);
@@ -343,16 +344,17 @@ describe("InvoiceModal — an extension for a customer with no job to bill", () 
     return user;
   };
 
-  it("adds an extended rental line with the amount left for the office to enter", async () => {
+  it("adds an extended rental line at $75 a week that the office can change", async () => {
     await startExtension();
     expect(screen.getByLabelText(/Line 1 description/i)).toHaveValue("Extended Rental - 1 week");
     expect(screen.getByLabelText(/Line 1 category/i)).toHaveValue("rental");
-    expect(screen.getByLabelText(/Line 1 amount/i)).toHaveValue(null);
-    expect(screen.getByText(/No rate on file — enter an amount/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Line 1 amount/i)).toHaveValue(75);
+    expect(screen.queryByText(/No rate on file/)).not.toBeInTheDocument();
   });
 
   it("says what to do instead of asking for completed work that does not exist", async () => {
     const user = await startExtension();
+    await user.clear(screen.getByLabelText(/Line 1 amount/i));
     await user.type(screen.getByLabelText(/Line 1 amount/i), "100");
     await user.click(screen.getByRole("button", { name: /Save draft/i }));
 
@@ -362,7 +364,6 @@ describe("InvoiceModal — an extension for a customer with no job to bill", () 
 
   it("switches to a one-off invoice in one click and saves it with the PO number", async () => {
     const user = await startExtension();
-    await user.type(screen.getByLabelText(/Line 1 amount/i), "100");
     await user.type(screen.getByLabelText(/PO number/i), "PO-7731");
     await user.click(screen.getByRole("button", { name: /Bill without a job/i }));
     expect(screen.getByLabelText(/Billing mode/i)).toHaveValue("one_off");
@@ -373,12 +374,13 @@ describe("InvoiceModal — an extension for a customer with no job to bill", () 
       billingMode: "one_off",
       jobIds: [],
       poNumber: "PO-7731",
-      items: [{ description: "Extended Rental - 1 week", amountCents: 10000, category: "rental", jobId: null }],
+      items: [{ description: "Extended Rental - 1 week", amountCents: 7500, category: "rental", jobId: null }],
     });
   });
 
   it("reloads customers after saving the phone to the profile, so Text invoice sees it", async () => {
     const user = await startExtension();
+    await user.clear(screen.getByLabelText(/Line 1 amount/i));
     await user.type(screen.getByLabelText(/Line 1 amount/i), "100");
     await user.click(screen.getByRole("button", { name: /Bill without a job/i }));
     await user.click(screen.getByLabelText(/Also save these details to John Evans/i));
@@ -389,6 +391,7 @@ describe("InvoiceModal — an extension for a customer with no job to bill", () 
 
   it("does not reload customers when nothing was saved to the profile", async () => {
     const user = await startExtension();
+    await user.clear(screen.getByLabelText(/Line 1 amount/i));
     await user.type(screen.getByLabelText(/Line 1 amount/i), "100");
     await user.click(screen.getByRole("button", { name: /Bill without a job/i }));
     await user.click(screen.getByRole("button", { name: /Save draft/i }));

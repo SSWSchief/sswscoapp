@@ -11,6 +11,7 @@ import { useToast } from "@/components/system/ToastProvider";
 import type { Customer, InvoiceBillingInput, InvoiceBillingMode, InvoiceDraftItem, InvoiceLineCategory, InvoicePaymentTerms, InvoiceRecord } from "@/lib/types";
 import { parseUsAddress } from "@/lib/invoices/address";
 import { estimateSalesTax, formatTaxPercent, salesTaxPercent } from "@/lib/invoices/sales-tax";
+import { extendedRentalWeekCents } from "@/lib/pricing-terms";
 import { formatCurrency } from "@/lib/utils";
 
 const categories: InvoiceLineCategory[] = ["service", "rental", "tonnage", "fee", "surcharge", "adjustment"];
@@ -213,10 +214,11 @@ export function InvoiceModal({ open, onClose, invoice }: { open: boolean; onClos
       : [...current, line]);
   };
 
-  // The weekly extension rate is not on the rate card (it is quoted per
-  // customer), so the line arrives with its amount blank for the office to fill.
+  // Austin, 2026-10-09: extensions are $75 a week from now on, though he
+  // moves it with how close the other pickups are, so it is a starting amount
+  // the office can change rather than a rate on the card.
   const addExtendedRental = () => {
-    const line: EditorItem = { description: "Extended Rental - 1 week", amount: "", amountCents: 0, category: "rental", jobId: null, key: crypto.randomUUID(), needsRate: true };
+    const line: EditorItem = { description: "Extended Rental - 1 week", amount: (extendedRentalWeekCents / 100).toFixed(2), amountCents: extendedRentalWeekCents, category: "rental", jobId: null, key: crypto.randomUUID() };
     const firstBlank = items.findIndex((item) => !item.description.trim() && !item.amount.trim());
     setItems((current) => firstBlank >= 0 ? current.map((item, index) => index === firstBlank ? line : item) : [...current, line]);
   };
