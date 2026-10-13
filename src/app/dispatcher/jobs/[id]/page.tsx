@@ -19,6 +19,7 @@ import {
   joinLocalDateTime,
   localDateTimeParts,
 } from "@/lib/job-dates";
+import { openPlacementForJob, pickupTiming } from "@/lib/pickups";
 import type { AcknowledgementEntry, JobEvent } from "@/lib/types";
 import { manualAdvanceTargets, type ManualAdvanceTarget } from "@/lib/job-transitions";
 import { CreateJobModal } from "@/components/dispatcher/CreateJobModal";
@@ -53,6 +54,7 @@ export default function JobDetailsPage({
     archiveCancelledJob,
     uploadJobPhotos,
     canMutate,
+    openPlacements,
   } = useOperations();
   const [editOpen, setEditOpen] = React.useState(false);
   const [actionsOpen, setActionsOpen] = React.useState(false);
@@ -88,6 +90,7 @@ export default function JobDetailsPage({
   const dumpster = job.assignedDumpsterId
     ? dumpsters.find((item) => item.id === job.assignedDumpsterId)
     : null;
+  const rental = openPlacementForJob(job, openPlacements);
   const notes = jobNotes.filter((item) => item.jobId === job.id);
   const activities = allActivities.filter(
     (activity) => activity.jobId === job.id,
@@ -316,7 +319,7 @@ export default function JobDetailsPage({
           <h2 className="font-heading text-2xl font-bold uppercase tracking-wide text-brand-charcoal">
             Job {job.reference}
           </h2>
-          <JobStatusBadge status={job.status} />
+          <JobStatusBadge status={job.status} dropOff={Boolean(rental)} />
         </div>
         {manualAdvanceTargets(job.status).length > 0 && (
           <Card>
@@ -396,6 +399,22 @@ export default function JobDetailsPage({
                 value={job.trafficInstructions || "—"}
               />
               <Row label="Notes" value={job.notes || "—"} />
+              {rental && (
+                <Row
+                  label="Pickup"
+                  value={
+                    rental.expectedPickupAt
+                      ? `${formatDateTime(rental.expectedPickupAt)}${
+                          pickupTiming(rental) === "overdue"
+                            ? " · overdue"
+                            : pickupTiming(rental) === "today"
+                              ? " · needed today"
+                              : ""
+                        }`
+                      : "Needed · not scheduled"
+                  }
+                />
+              )}
             </dl>
           </Card>
 

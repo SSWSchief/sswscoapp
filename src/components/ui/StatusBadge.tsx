@@ -58,11 +58,22 @@ const jobIcon: Partial<Record<JobStatus, IconName>> = {
   cancelled: "close",
 };
 
-export function JobStatusBadge({ status }: { status: JobStatus }) {
+export function JobStatusBadge({
+  status,
+  dropOff,
+}: {
+  status: JobStatus;
+  /**
+   * A completed delivery whose can is still at the site. The job is done but
+   * the work is not -- the pickup is still owed -- so it reads "Drop-off
+   * complete" rather than a bare "Complete".
+   */
+  dropOff?: boolean;
+}) {
   return (
     <Pill
       tone={jobTone[status]}
-      label={jobStatusLabel[status]}
+      label={dropOff && status === "complete" ? "Drop-off complete" : jobStatusLabel[status]}
       icon={jobIcon[status]}
     />
   );

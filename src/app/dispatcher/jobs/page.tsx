@@ -16,6 +16,7 @@ import { cn, formatTime, jobStatusLabel } from "@/lib/utils";
 import type { JobStatus } from "@/lib/types";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { jobsForPacificDay } from "@/lib/job-dates";
+import { openPlacementForJob } from "@/lib/pickups";
 import { ListFooter } from "@/components/ui/ListFooter";
 import { JobConfirmationBadge, useJobConfirmationStates } from "@/components/dispatcher/JobConfirmation";
 
@@ -57,6 +58,7 @@ function JobsPageContent() {
     trucks,
     users,
     totals,
+    openPlacements,
   } = useOperations();
   const confirmations = useJobConfirmationStates();
   const todayOnly =
@@ -264,7 +266,7 @@ function JobsPageContent() {
                           <TD>{truck?.number ?? "—"}</TD>
                           <TD>{dumpster?.code ?? "—"}</TD>
                           <TD>
-                            <JobStatusBadge status={job.status} />
+                            <JobStatusBadge status={job.status} dropOff={Boolean(openPlacementForJob(job, openPlacements))} />
                             <JobConfirmationBadge state={confirmations.get(job.id)} />
                           </TD>
                           <TD>
@@ -317,7 +319,7 @@ function JobsPageContent() {
                           </div>
                         </div>
                         <div className="shrink-0 text-right">
-                          <JobStatusBadge status={job.status} />
+                          <JobStatusBadge status={job.status} dropOff={Boolean(openPlacementForJob(job, openPlacements))} />
                           <JobConfirmationBadge state={confirmations.get(job.id)} />
                         </div>
                       </Link>

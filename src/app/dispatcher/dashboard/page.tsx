@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Topbar } from "@/components/dispatcher/Topbar";
 import { CreateJobModal } from "@/components/dispatcher/CreateJobModal";
 import { TodaysJobs } from "@/components/dispatcher/TodaysJobs";
+import { PickupsDue } from "@/components/dispatcher/PickupsDue";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
@@ -126,6 +127,7 @@ export default function DashboardPage() {
           <TodaysJobs />
 
           <div className="space-y-6">
+            <PickupsDue />
             <Card>
               <CardHeader title="At a Glance" />
               <dl className="px-5 py-2 divide-y divide-gray-100">

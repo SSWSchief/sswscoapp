@@ -12,6 +12,7 @@ import { useOperations } from "@/components/system/OperationsProvider";
 import { formatTime } from "@/lib/utils";
 import type { Job } from "@/lib/types";
 import { jobsForPacificDay } from "@/lib/job-dates";
+import { openPlacementForJob } from "@/lib/pickups";
 
 /** Live operational jobs with transactional driver assignment. */
 export function TodaysJobs() {
@@ -21,6 +22,7 @@ export function TodaysJobs() {
     users,
     customers,
     trucks,
+    openPlacements,
     assignDriver: persistAssignment,
   } = useOperations();
   const todaysJobs = React.useMemo(() => jobsForPacificDay(jobs), [jobs]);
@@ -131,7 +133,7 @@ export function TodaysJobs() {
                       </TD>
                       <TD>{truck?.number ?? "—"}</TD>
                       <TD className="text-right pr-5">
-                        <JobStatusBadge status={job.status} />
+                        <JobStatusBadge status={job.status} dropOff={Boolean(openPlacementForJob(job, openPlacements))} />
                       </TD>
                     </TR>
                   );
@@ -163,7 +165,7 @@ export function TodaysJobs() {
                         {job.address}
                       </div>
                     </div>
-                    <JobStatusBadge status={job.status} />
+                    <JobStatusBadge status={job.status} dropOff={Boolean(openPlacementForJob(job, openPlacements))} />
                   </div>
                   <div className="mt-2">
                     <DriverSelect
