@@ -37,6 +37,16 @@ describe("API validation", () => {
     ).toBe(true);
   });
 
+  it("accepts a single permission override, as the toggle sends", () => {
+    expect(
+      employeePatchSchema.safeParse({ permissionOverrides: { invoices: true } })
+        .success,
+    ).toBe(true);
+    expect(
+      employeePatchSchema.safeParse({ permissionOverrides: {} }).success,
+    ).toBe(true);
+  });
+
   it("rejects unknown permission keys", () => {
     expect(
       employeePatchSchema.safeParse({

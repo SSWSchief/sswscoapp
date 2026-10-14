@@ -39,7 +39,7 @@ export const employeePatchSchema = z
     status: z.enum(["active", "inactive"]).optional(),
     accessRole: z.enum(["admin", "dispatcher", "driver"]).optional(),
     permissionOverrides: z
-      .record(z.enum(permissionKeys), z.boolean())
+      .partialRecord(z.enum(permissionKeys), z.boolean())
       .optional(),
     employeeId: z.string().trim().min(1).max(50).optional(),
     fullName: z.string().trim().min(2).max(120).optional(),
