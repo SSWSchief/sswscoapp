@@ -6,6 +6,7 @@ import {
   formatHoursDuration,
   formatPacificDayLabel,
   formatPacificTime,
+  missedClockOut,
   pacificClockValue,
   pacificDate,
   pacificDayEnd,
@@ -17,7 +18,7 @@ import {
   summarizeRange,
   summarizeTime,
 } from "./time-clock";
-import type { TimeEntry, TimeEntryCorrection, User } from "./types";
+import type { TimeEntry, TimeEntryCorrection, TimeRequest, User } from "./types";
 const entry = (id: string, type: TimeEntry["type"], at: string): TimeEntry => ({
   id,
   userId: "u1",
@@ -376,5 +377,49 @@ describe("Pacific clock conversions", () => {
   it("refuses input it cannot read rather than inventing a time", () => {
     expect(pacificInstant("not-a-day", "09:00")).toBeNull();
     expect(pacificInstant("2026-09-01", "9am")).toBeNull();
+  });
+});
+
+describe("missedClockOut", () => {
+  // Matthew's case: clocked in Wed 10/7 and never clocked out.
+  const now = new Date("2026-10-16T16:00:00Z");
+  const forgotten = [
+    entry("a", "clock_in", "2026-10-06T15:00:00Z"),
+    entry("b", "clock_out", "2026-10-06T22:00:00Z"),
+    entry("c", "clock_in", "2026-10-07T18:48:54Z"),
+  ];
+  const request = (status: TimeRequest["status"]): TimeRequest => ({
+    id: "r",
+    userId: "u1",
+    kind: "edit_time",
+    status,
+    requestedFor: "2026-10-07",
+    hours: 0,
+    reason: "Forgot",
+    requestedEntryType: "clock_out",
+    requestedAt: "2026-10-08T00:00:00Z",
+  });
+
+  it("finds the earlier day left on the clock", () => {
+    expect(missedClockOut("u1", forgotten, [], now)).toEqual({ day: "2026-10-07", pending: false });
+  });
+
+  it("does not report the shift running today", () => {
+    const today = [entry("d", "clock_in", "2026-10-16T15:00:00Z")];
+    expect(missedClockOut("u1", today, [], now)).toBeNull();
+  });
+
+  it("reports a correction waiting for review as pending", () => {
+    expect(missedClockOut("u1", forgotten, [request("pending")], now)).toEqual({ day: "2026-10-07", pending: true });
+  });
+
+  it("clears once the finish time is on the record", () => {
+    const fixed = [...forgotten, entry("e", "clock_out", "2026-10-08T00:30:00Z")];
+    // 5:30 p.m. Pacific on 10/7 closes that day.
+    expect(missedClockOut("u1", fixed, [request("approved")], now)).toBeNull();
+  });
+
+  it("ignores other people", () => {
+    expect(missedClockOut("u2", forgotten, [], now)).toBeNull();
   });
 });

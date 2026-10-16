@@ -10,6 +10,7 @@ import { useTimeClock } from "@/components/system/useTimeClock";
 import {
   describeTimeRequest,
   formatHoursDuration,
+  formatPacificDayLabel,
   formatPacificTime,
 } from "@/lib/time-clock";
 import { TimeRequestModal } from "@/components/time/TimeRequestModal";
@@ -24,6 +25,7 @@ export default function DriverTimeClockPage() {
   const { currentUser: driver, timeRequests } = useOperations();
   const {
     summary,
+    missed,
     phase,
     canMutate,
     hhmmss,
@@ -40,6 +42,11 @@ export default function DriverTimeClockPage() {
   const [requestKind, setRequestKind] = React.useState<
     "edit_time" | "pto" | null
   >(null);
+  const [requestDay, setRequestDay] = React.useState<string | undefined>();
+  const openRequest = (kind: "edit_time" | "pto", day?: string) => {
+    setRequestDay(day);
+    setRequestKind(kind);
+  };
   const entries = summary.entries.map((entry) => ({
     label: {
       clock_in: "Clock In",
@@ -74,6 +81,31 @@ export default function DriverTimeClockPage() {
       <MobileHeader title="Time Clock" />
 
       <div className="flex-1 overflow-y-auto bg-surface dark:bg-gray-950">
+        {missed && (
+          <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+            {missed.pending ? (
+              <p>
+                Your finish time for {formatPacificDayLabel(missed.day)} is
+                waiting for approval.
+              </p>
+            ) : (
+              <>
+                <p>
+                  You didn&apos;t clock out on{" "}
+                  {formatPacificDayLabel(missed.day)}. Add the time you
+                  finished so that day gets paid.
+                </p>
+                <button
+                  disabled={!canMutate}
+                  onClick={() => openRequest("edit_time", missed.day)}
+                  className="mt-2 min-h-11 w-full rounded bg-amber-600 px-3 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  Add Finish Time
+                </button>
+              </>
+            )}
+          </div>
+        )}
         <div className="bg-white dark:bg-gray-900 p-6 text-center border-b border-brand-ice/60 dark:border-white/10">
           <p className={cn("text-sm font-medium", statusColor)}>{statusText}</p>
           <div className="font-heading text-5xl font-bold tracking-tight text-brand-charcoal dark:text-white mt-2 tabular-nums">
@@ -164,14 +196,14 @@ export default function DriverTimeClockPage() {
           <div className="grid grid-cols-2 gap-3 mb-3">
             <button
               disabled={!canMutate}
-              onClick={() => setRequestKind("edit_time")}
+              onClick={() => openRequest("edit_time")}
               className="min-h-11 rounded border border-brand-ice text-brand-blue disabled:text-brand-silver text-sm font-medium"
             >
               Fix My Hours
             </button>
             <button
               disabled={!canMutate}
-              onClick={() => setRequestKind("pto")}
+              onClick={() => openRequest("pto")}
               className="min-h-11 rounded border border-brand-ice text-brand-blue disabled:text-brand-silver text-sm font-medium"
             >
               Request PTO
@@ -209,6 +241,7 @@ export default function DriverTimeClockPage() {
         <TimeRequestModal
           open
           kind={requestKind}
+          initialDay={requestDay}
           onClose={() => setRequestKind(null)}
         />
       )}

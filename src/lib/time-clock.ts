@@ -263,6 +263,41 @@ export function summarizeDay(
   };
 }
 
+/**
+ * The most recent earlier day this person left on the clock, or null.
+ *
+ * The clock only judges today, so a forgotten clock-out never blocks the next
+ * shift; it just leaves that day open, unpaid past its last punch, until a
+ * correction adds the finish time. This is what tells the person so. A day
+ * with a correction already waiting for review is reported as pending.
+ */
+export function missedClockOut(
+  userId: string,
+  entries: TimeEntry[],
+  requests: TimeRequest[],
+  now = new Date(),
+): { day: string; pending: boolean } | null {
+  const today = pacificDate(now);
+  const days = [
+    ...new Set(
+      entries
+        .filter((entry) => entry.userId === userId)
+        .map((entry) => pacificDate(entry.at))
+        .filter((day) => day < today),
+    ),
+  ].sort();
+  const day = days.reverse().find((candidate) => summarizeDay(userId, entries, candidate).open);
+  if (!day) return null;
+  const pending = requests.some(
+    (request) =>
+      request.userId === userId &&
+      request.kind === "edit_time" &&
+      request.status === "pending" &&
+      request.requestedFor === day,
+  );
+  return { day, pending };
+}
+
 /** Every Pacific calendar day from `from` to `to`, inclusive. */
 export function pacificDaysBetween(from: string, to: string): string[] {
   const days: string[] = [];

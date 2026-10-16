@@ -14,6 +14,7 @@ import { ManagementTimePanel } from "@/components/time/ManagementTimePanel";
 import {
   clocksIn,
   describeTimeRequest,
+  formatPacificDayLabel,
   formatPacificTime,
   pacificDate,
   reviewBlockedReason,
@@ -113,6 +114,7 @@ export default function TimeClockPage() {
 /** The signed-in staff member's own clock, for dispatch and office. */
 function MyTimeCard() {
   const {
+    missed,
     phase,
     canMutate,
     hhmmss,
@@ -127,9 +129,28 @@ function MyTimeCard() {
   const [requestKind, setRequestKind] = React.useState<
     "edit_time" | "pto" | null
   >(null);
+  const [requestDay, setRequestDay] = React.useState<string | undefined>();
+  const openRequest = (kind: "edit_time" | "pto", day?: string) => {
+    setRequestDay(day);
+    setRequestKind(kind);
+  };
 
   return (
     <Card className="p-5">
+      {missed && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span>
+            {missed.pending
+              ? `Your finish time for ${formatPacificDayLabel(missed.day)} is waiting for approval.`
+              : `You didn't clock out on ${formatPacificDayLabel(missed.day)}. Add the time you finished so that day gets paid.`}
+          </span>
+          {!missed.pending && (
+            <Button disabled={!canMutate} onClick={() => openRequest("edit_time", missed.day)}>
+              Add Finish Time
+            </Button>
+          )}
+        </div>
+      )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-brand-charcoal">
@@ -178,14 +199,14 @@ function MyTimeCard() {
         <Button
           variant="secondary"
           disabled={!canMutate}
-          onClick={() => setRequestKind("edit_time")}
+          onClick={() => openRequest("edit_time")}
         >
           Change Time
         </Button>
         <Button
           variant="secondary"
           disabled={!canMutate}
-          onClick={() => setRequestKind("pto")}
+          onClick={() => openRequest("pto")}
         >
           Request PTO
         </Button>
@@ -194,6 +215,7 @@ function MyTimeCard() {
         <TimeRequestModal
           open
           kind={requestKind}
+          initialDay={requestDay}
           onClose={() => setRequestKind(null)}
         />
       )}
