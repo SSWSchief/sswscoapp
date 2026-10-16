@@ -26,16 +26,19 @@ export function TimeRequestModal({
   open,
   kind,
   onClose,
+  initialDay,
 }: {
   open: boolean;
   kind: "edit_time" | "pto";
   onClose: () => void;
+  /** The day to open on, such as one left on the clock; today otherwise. */
+  initialDay?: string;
 }) {
   const { myRecentTimeEntries, createTimeRequest, canMutate } = useOperations();
   const { toast } = useToast();
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState({
-    requestedFor: pacificDate(new Date()),
+    requestedFor: initialDay ?? pacificDate(new Date()),
     hours: "8",
     reason: "",
     startedAt: "",
@@ -60,13 +63,13 @@ export function TimeRequestModal({
   React.useEffect(() => {
     if (open)
       setForm({
-        requestedFor: pacificDate(new Date()),
+        requestedFor: initialDay ?? pacificDate(new Date()),
         hours: "8",
         reason: "",
         startedAt: "",
         finishedAt: "",
       });
-  }, [open]);
+  }, [open, initialDay]);
 
   // Prefill with what is recorded so the driver edits a real shift rather than
   // typing one from memory, and so an unchanged field can be left alone.

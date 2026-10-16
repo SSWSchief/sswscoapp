@@ -7,6 +7,8 @@ import { useConfirm } from "@/components/system/ConfirmProvider";
 import {
   formatHoursDuration,
   formatPacificTime,
+  missedClockOut,
+  pacificDate as pacificDateKey,
   summarizeTime,
 } from "@/lib/time-clock";
 
@@ -22,8 +24,14 @@ import {
 export function useTimeClock() {
   const { toast } = useToast();
   const confirm = useConfirm();
-  const { currentUser, timeEntries, recordTimeEntry, canMutate } =
-    useOperations();
+  const {
+    currentUser,
+    timeEntries,
+    myRecentTimeEntries,
+    timeRequests,
+    recordTimeEntry,
+    canMutate,
+  } = useOperations();
 
   // Drives the running duration. One second is the coarsest tick that still
   // looks live on the seconds display the driver portal shows.
@@ -36,6 +44,13 @@ export function useTimeClock() {
   const summary = React.useMemo(
     () => summarizeTime(currentUser?.id ?? "", timeEntries, now),
     [currentUser?.id, timeEntries, now],
+  );
+
+  const missed = React.useMemo(
+    () => missedClockOut(currentUser?.id ?? "", myRecentTimeEntries, timeRequests, now),
+    // Day-granular: recomputing every second would only re-find the same day.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentUser?.id, myRecentTimeEntries, timeRequests, pacificDateKey(now)],
   );
 
   const elapsed = summary.workedSeconds;
@@ -78,6 +93,8 @@ export function useTimeClock() {
 
   return {
     summary,
+    /** An earlier day still on the clock, which needs a finish time added. */
+    missed,
     phase: summary.phase,
     canMutate,
     /** Wall-clock time worked today, formatted `h:mm:ss`. */

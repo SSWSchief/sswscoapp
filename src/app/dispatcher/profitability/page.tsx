@@ -48,6 +48,14 @@ function presetRange(preset: Exclude<Preset, "custom">, today: string) {
 
 const percent = (margin: number) => `${(margin * 100).toFixed(1)}%`;
 
+/** Which of a job's costs are still blank, in the words the banner uses. */
+const missingCosts = (row: ProfitRow) =>
+  [
+    row.dumpFeeCents === null && "dump fee",
+    row.fuelCents === null && "fuel",
+    row.laborCents === null && "labor",
+  ].filter((name): name is string => Boolean(name));
+
 function Amount({ cents, source }: { cents: number | null; source: CostSource | null }) {
   if (cents === null) return <span className="text-amber-700">Missing</span>;
   return (
@@ -176,7 +184,20 @@ export default function ProfitabilityPage() {
             </div>
             {rows && (sum.incompleteJobs > 0 || unbilled.length > 0) && (
               <Card className="p-4 text-sm text-amber-800">
-                {sum.incompleteJobs > 0 && <p>{sum.incompleteJobs} job{sum.incompleteJobs === 1 ? " is" : "s are"} missing a dump fee, fuel or labor figure, so profit is overstated until they&apos;re filled in.</p>}
+                {sum.incompleteJobs > 0 && (
+                  <>
+                    <p>Profit is overstated until these costs are filled in. Tap a job to enter them:</p>
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {shown.filter((row) => missingCosts(row).length > 0).map((row) => (
+                        <li key={row.jobId}>
+                          <button type="button" className="rounded border border-amber-300 bg-white px-3 py-1.5 font-medium text-amber-900 hover:bg-amber-50" onClick={() => setEditing(row)}>
+                            {row.reference}: no {missingCosts(row).join(", ")}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
                 {unbilled.length > 0 && <p>{unbilled.length} job{unbilled.length === 1 ? "" : "s"} completed in this period {unbilled.length === 1 ? "hasn't" : "haven't"} been invoiced yet.</p>}
               </Card>
             )}
@@ -208,7 +229,6 @@ export default function ProfitabilityPage() {
                       <TH>Labor</TH>
                       <TH>Other</TH>
                       <TH>Profit</TH>
-                      <TH />
                     </THead>
                     <TBody>
                       {shown.map((row) => {
@@ -218,6 +238,10 @@ export default function ProfitabilityPage() {
                             <TD className="whitespace-nowrap font-semibold">
                               <Link href={`/dispatcher/jobs/${row.jobId}`} className="text-brand-blue hover:underline">{row.reference}</Link>
                               <span className="block text-xs font-normal text-brand-steel">{pacificDate(row.completedAt)}</span>
+                              {/* Up front, not in a last column: on a phone the table scrolls sideways and a trailing button is off screen. */}
+                              <button type="button" className="mt-1 block text-xs font-medium text-brand-blue hover:underline" onClick={() => setEditing(row)}>
+                                {missingCosts(row).length > 0 ? "Add costs" : "Edit costs"}
+                              </button>
                             </TD>
                             <TD>{row.customerName}</TD>
                             <TD className="whitespace-nowrap">{row.dumpsterSize}</TD>
@@ -233,7 +257,6 @@ export default function ProfitabilityPage() {
                               {formatCurrency(profit)}
                               {row.revenueCents > 0 && <span className="block text-xs font-normal text-brand-steel">{percent(profit / row.revenueCents)}</span>}
                             </TD>
-                            <TD><button type="button" className="text-sm font-medium text-brand-blue hover:underline" onClick={() => setEditing(row)}>Costs</button></TD>
                           </TR>
                         );
                       })}

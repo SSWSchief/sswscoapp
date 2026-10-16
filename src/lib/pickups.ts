@@ -1,7 +1,7 @@
 import type { ContainerPlacement, Job } from "./types";
 import { pacificDate } from "./time-clock";
 
-export type PickupTiming = "overdue" | "today" | "upcoming" | "unscheduled";
+type PickupTiming = "overdue" | "today" | "upcoming" | "unscheduled";
 
 /** The rental a delivery opened, while its can is still at the jobsite. */
 export function openPlacementForJob(
