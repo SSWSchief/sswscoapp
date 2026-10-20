@@ -4,6 +4,7 @@ import * as React from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { RecordPickupButton } from "@/components/dispatcher/RecordPickup";
 import { daysOnSite } from "@/lib/billing/measures";
 import { formatDate } from "@/lib/utils";
 
@@ -63,6 +64,7 @@ export function OnSitePanel() {
               <TH>Jobsite</TH>
               <TH>Delivered</TH>
               <TH>Days Out</TH>
+              <TH />
             </THead>
             <TBody>
               {rows.map(({ placement, days, code, customer }) => (
@@ -74,6 +76,9 @@ export function OnSitePanel() {
                     {formatDate(placement.deliveredAt)}
                   </TD>
                   <TD className="font-semibold tabular-nums">{days}</TD>
+                  <TD>
+                    <RecordPickupButton placement={placement} code={code} />
+                  </TD>
                 </TR>
               ))}
             </TBody>
@@ -103,6 +108,7 @@ export function OnSitePanel() {
                 <p className="mt-2 break-words text-sm text-brand-steel">
                   {placement.address}
                 </p>
+                <RecordPickupButton placement={placement} code={code} />
               </li>
             ))}
           </ul>

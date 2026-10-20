@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { useOperations } from "@/components/system/OperationsProvider";
+import { RecordPickupButton } from "@/components/dispatcher/RecordPickup";
 import { pickupTiming } from "@/lib/pickups";
 import { formatDate } from "@/lib/utils";
 
@@ -62,6 +63,10 @@ export function PickupsDue() {
               <p className="mt-0.5 break-words text-brand-steel">
                 {dumpsters.find((item) => item.id === placement.dumpsterId)?.code ?? "—"} · {placement.address}
               </p>
+              <RecordPickupButton
+                placement={placement}
+                code={dumpsters.find((item) => item.id === placement.dumpsterId)?.code ?? "Dumpster"}
+              />
             </li>
           ))}
         </ul>

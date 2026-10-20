@@ -814,6 +814,10 @@ export interface Database {
         Args: { target_job_id: string; next_status: JobStatus; advance_reason: string };
         Returns: JobRow;
       };
+      record_pickup: {
+        Args: { target_placement_id: string; picked_up_on: string };
+        Returns: ContainerPlacementRow;
+      };
       correct_completed_job: {
         Args: { target_job_id: string; corrected_dumpster_id: string; correction_reason: string; corrected_pickup_at?: string | null };
         Returns: JobRow;
