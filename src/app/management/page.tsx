@@ -8,6 +8,8 @@ import { useExpandedOperations } from "@/components/system/ExpandedOperationsPro
 import { jobsForPacificDay } from "@/lib/job-dates";
 import { StaffHoursPanel } from "@/components/time/StaffHoursPanel";
 import { PtoQueue } from "@/components/management/PtoQueue";
+import { PickupsDue } from "@/components/dispatcher/PickupsDue";
+import { OnSitePanel } from "@/components/dispatcher/OnSitePanel";
 import { employeeDisplayStatus } from "@/lib/employee-status";
 
 const currency = new Intl.NumberFormat("en-US", {
@@ -105,6 +107,11 @@ export default function Page() {
             <MetricLink key={metric.label} {...metric} />
           ))}
         </div>
+
+        {/* Management lands here, not on the dispatch dashboard, so the cans
+            out and the pick-ups owed have to be here too (Austin, 2026-10-19). */}
+        <PickupsDue />
+        <OnSitePanel />
 
         <div className="grid gap-5 lg:grid-cols-2">
           <StaffHoursPanel />
