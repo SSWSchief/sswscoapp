@@ -70,7 +70,7 @@ export default function PostTripPage() {
   return (
     <>
       <MobileHeader title="Post-Trip Inspection" />
-      <div className="flex-1 overflow-y-auto bg-surface p-4">
+      <div className="flex-1 overflow-y-auto bg-surface p-4 dark:bg-gray-950 dark:text-gray-100">
         <Card>
           <CardHeader title={template ? `${template.title} · Post-trip` : "Post-trip inspection"} />
           {template ? <div className="space-y-4 p-4">
@@ -78,14 +78,14 @@ export default function PostTripPage() {
               <label className="text-sm font-medium">Truck<Select value={truckId} onChange={(event) => setTruckId(event.target.value)}><option value="">Select truck</option>{trucks.map((truck) => <option key={truck.id} value={truck.id}>{truck.number}</option>)}</Select></label>
               <label className="text-sm font-medium">Final mileage<Input type="number" min="0" value={mileage} onChange={(event) => setMileage(event.target.value)} /></label>
             </div>
-            <div className="space-y-2">{template.items.map((item) => <div key={item.id} className="grid gap-2 border-b border-brand-ice py-2 sm:grid-cols-[1fr_auto]"><span className="text-sm">{item.label}</span><div className="flex gap-3">{answers.map((answer) => <label key={answer.value} className="text-xs"><input type="radio" name={item.id} checked={results[item.id] === answer.value} onChange={() => setResults((current) => ({ ...current, [item.id]: answer.value }))} /> {answer.label}</label>)}</div></div>)}</div>
+            <div className="space-y-2">{template.items.map((item) => <div key={item.id} className="grid gap-2 border-b border-brand-ice py-2 dark:border-white/10 sm:grid-cols-[1fr_auto]"><span className="text-sm">{item.label}</span><div className="flex gap-3">{answers.map((answer) => <label key={answer.value} className="text-xs"><input type="radio" name={item.id} checked={results[item.id] === answer.value} onChange={() => setResults((current) => ({ ...current, [item.id]: answer.value }))} /> {answer.label}</label>)}</div></div>)}</div>
             <Textarea value={defectsFound} onChange={(event) => setDefectsFound(event.target.value)} placeholder="Defects found" aria-label="Defects found" />
             <Textarea value={repairsRequired} onChange={(event) => setRepairsRequired(event.target.value)} placeholder="Repairs required" aria-label="Repairs required" />
-            <label className="flex min-h-16 cursor-pointer items-center gap-3 rounded border-2 border-dashed border-brand-ice px-3 text-sm text-brand-steel"><Icon name="photo" width={20} height={20} /> Add condition photos<input className="sr-only" type="file" accept="image/*" multiple onChange={(event) => setFiles(Array.from(event.target.files ?? []))} /></label>
-            {files.length > 0 && <p className="text-xs text-brand-steel">{files.length} photo{files.length === 1 ? "" : "s"} selected</p>}
+            <label className="flex min-h-16 cursor-pointer items-center gap-3 rounded border-2 border-dashed border-brand-ice px-3 text-sm text-brand-steel dark:border-white/15 dark:text-gray-300"><Icon name="photo" width={20} height={20} /> Add condition photos<input className="sr-only" type="file" accept="image/*" multiple onChange={(event) => setFiles(Array.from(event.target.files ?? []))} /></label>
+            {files.length > 0 && <p className="text-xs text-brand-steel dark:text-gray-400">{files.length} photo{files.length === 1 ? "" : "s"} selected</p>}
             <Input value={signature} onChange={(event) => setSignature(event.target.value)} placeholder="Driver signature" aria-label="Driver signature" />
             <Button disabled={!canMutate || busy} onClick={() => void save()}>{busy ? "Submitting..." : "Submit post-trip inspection"}</Button>
-          </div> : <p className="p-4 text-sm text-brand-steel">No inspection template is published.</p>}
+          </div> : <p className="p-4 text-sm text-brand-steel dark:text-gray-400">No inspection template is published.</p>}
         </Card>
       </div>
     </>

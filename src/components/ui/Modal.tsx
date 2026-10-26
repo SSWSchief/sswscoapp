@@ -87,7 +87,12 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`relative flex h-[100dvh] w-full flex-col bg-white shadow-xl outline-none sm:h-auto sm:max-h-[calc(100dvh-4rem)] sm:rounded-card sm:border sm:border-brand-ice/70 ${widthClass}`}
+        /* The dialogs opened from the driver portal — the disposal ticket, a
+           time request — already styled their own text for night mode, but the
+           panel under it stayed white, so the words they had darkened were
+           washed out on it. The panel follows night mode too; nothing outside
+           the driver shell sets `.dark`, so the staff portal is unchanged. */
+        className={`relative flex h-[100dvh] w-full flex-col bg-white shadow-xl outline-none dark:bg-gray-900 dark:text-gray-100 sm:h-auto sm:max-h-[calc(100dvh-4rem)] sm:rounded-card sm:border sm:border-brand-ice/70 dark:sm:border-white/10 ${widthClass}`}
       >
         <div className="safe-header flex shrink-0 items-center justify-between bg-brand-navy px-4 pb-3 sm:min-h-0 sm:px-6 sm:py-4">
           <h2 className="font-heading text-base font-semibold uppercase tracking-wide text-white">
@@ -105,7 +110,7 @@ export function Modal({
           {children}
         </div>
         {footer && (
-          <div className="safe-area-bottom-padded grid shrink-0 grid-cols-2 items-center gap-3 border-t border-brand-ice/60 bg-brand-mist/40 px-4 pt-3 sm:flex sm:justify-end sm:px-6 sm:py-4 [&>button]:w-full sm:[&>button]:w-auto">
+          <div className="safe-area-bottom-padded grid shrink-0 grid-cols-2 items-center gap-3 border-t border-brand-ice/60 bg-brand-mist/40 px-4 pt-3 dark:border-white/10 dark:bg-white/5 sm:flex sm:justify-end sm:px-6 sm:py-4 [&>button]:w-full sm:[&>button]:w-auto">
             {footer}
           </div>
         )}

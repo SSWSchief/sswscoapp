@@ -2,8 +2,10 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Icon } from "./Icon";
 
+// The dark variants only ever apply inside the driver shell, which is the one
+// tree that sets `.dark`; the staff portal is unaffected by them.
 const baseControl =
-  "w-full min-h-11 rounded border border-brand-ice bg-white px-3 text-base sm:text-sm text-brand-charcoal placeholder:text-brand-silver focus:outline-none focus:ring-2 focus:ring-brand-skyline/40 focus:border-brand-blue disabled:bg-brand-mist disabled:text-brand-silver";
+  "w-full min-h-11 rounded border border-brand-ice bg-white px-3 text-base sm:text-sm text-brand-charcoal placeholder:text-brand-silver focus:outline-none focus:ring-2 focus:ring-brand-skyline/40 focus:border-brand-blue disabled:bg-brand-mist disabled:text-brand-silver dark:border-white/15 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500 dark:disabled:bg-white/5 dark:disabled:text-gray-500";
 
 export function Label({
   children,
@@ -25,7 +27,7 @@ export function Label({
   return (
     <label
       htmlFor={htmlFor}
-      className="block text-xs font-semibold text-brand-charcoal mb-1.5"
+      className="block text-xs font-semibold text-brand-charcoal mb-1.5 dark:text-gray-100"
     >
       {children}
       {required && !hideRequiredMark && (
@@ -136,7 +138,7 @@ export function FormField({
           role={error ? "alert" : undefined}
           className={cn(
             "text-xs mt-1",
-            error ? "text-red-600" : "text-brand-steel",
+            error ? "text-red-600 dark:text-red-400" : "text-brand-steel dark:text-gray-400",
           )}
         >
           {error ?? hint}
