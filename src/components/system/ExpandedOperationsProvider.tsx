@@ -61,6 +61,7 @@ import {
   type UnreadChannel,
 } from "@/lib/operations/unread-messages";
 import { log } from "@/lib/logger";
+import { mutationErrorMessage } from "@/lib/mutation-errors";
 import { requestNotificationDelivery } from "@/lib/push/notify-client";
 
 type State = {
@@ -76,16 +77,6 @@ type State = {
   priceList: PriceListItem[];
   priceListReady: boolean;
 };
-function mutationFailure(error: unknown): MutationResult<never> {
-  const candidate = error as { code?: string; message?: string };
-  return {
-    ok: false,
-    error: {
-      code: candidate?.code ?? "unexpected_error",
-      message: candidate?.message ?? "The operation could not be completed.",
-    },
-  };
-}
 type Value = State & {
   loading: boolean;
   /** Messages across all channels that are unread and not sent by you. */
@@ -195,14 +186,14 @@ const initial: State = {
     recordIds: {},
   },
 };
+/**
+ * A rejected write, put into words. Shares the operations provider's
+ * translation so a settings save and a job save fail the same way; see
+ * `mutationErrorMessage`.
+ */
 const fail = (e: unknown): MutationResult<never> => ({
   ok: false,
-  error: {
-    code: (e as { code?: string })?.code ?? "expanded_operation_failed",
-    message:
-      (e as { message?: string })?.message ??
-      "The operation could not be completed.",
-  },
+  error: mutationErrorMessage(e),
 });
 
 export function ExpandedOperationsProvider({
@@ -635,7 +626,7 @@ export function ExpandedOperationsProvider({
           }
           return { ok: true, data: undefined };
         } catch (error) {
-          return mutationFailure(error);
+          return fail(error);
         }
       },
       countersignPretrip: (input) =>
