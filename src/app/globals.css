@@ -31,6 +31,18 @@ body {
   overscroll-behavior-y: none;
 }
 
+/*
+ * Night mode is a wrapper class the driver shell sets, not a media query. This
+ * only tells the browser to render its own furniture — scrollbars, spinners,
+ * the caret — for a dark page; the readable text colour is set by the dark
+ * surfaces themselves (see `Card`, and the driver page containers), because
+ * setting it here would also recolour text sitting on the light surfaces
+ * inside that tree, such as a modal panel.
+ */
+.dark {
+  color-scheme: dark;
+}
+
 ::selection {
   background: #d9e8f5;
   color: #052f66;
