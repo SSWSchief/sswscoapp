@@ -5,7 +5,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/StatusBadge";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { formatDate } from "@/lib/utils";
-import { clocksIn } from "@/lib/time-clock";
+import { clocksIn, timeRequestTone } from "@/lib/time-clock";
 
 export default function AbsenceCalendarPage() {
   const {
@@ -89,7 +89,7 @@ export default function AbsenceCalendarPage() {
                     </div>
                   </div>
                   <Badge
-                    tone={request.status === "approved" ? "green" : "amber"}
+                    tone={timeRequestTone(request.status)}
                     label={request.status}
                   />
                 </div>

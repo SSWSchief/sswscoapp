@@ -17,6 +17,7 @@ import {
   summarizeDay,
   summarizeRange,
   summarizeTime,
+  timeRequestTone,
 } from "./time-clock";
 import type { TimeEntry, TimeEntryCorrection, TimeRequest, User } from "./types";
 const entry = (id: string, type: TimeEntry["type"], at: string): TimeEntry => ({
@@ -421,5 +422,15 @@ describe("missedClockOut", () => {
 
   it("ignores other people", () => {
     expect(missedClockOut("u2", forgotten, [], now)).toBeNull();
+  });
+});
+
+describe("timeRequestTone", () => {
+  it("separates a decision from a request still waiting for one", () => {
+    // Denied used to share amber with pending, so the only thing telling an
+    // answered request from an unanswered one was the word inside the pill.
+    expect(timeRequestTone("approved")).toBe("green");
+    expect(timeRequestTone("denied")).toBe("red");
+    expect(timeRequestTone("pending")).toBe("amber");
   });
 });

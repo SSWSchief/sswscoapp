@@ -384,6 +384,21 @@ export function summarizeTime(
 }
 
 /**
+ * The colour a request's own outcome should be read in.
+ *
+ * A denied request used to render amber, the same as one still waiting, so the
+ * only difference between "nobody has looked at this yet" and "the answer is
+ * no" was the word inside the pill. Someone scanning the list for a decision
+ * could not see one had been made.
+ */
+export function timeRequestTone(
+  status: TimeRequest["status"],
+): "green" | "amber" | "red" {
+  if (status === "approved") return "green";
+  return status === "denied" ? "red" : "amber";
+}
+
+/**
  * What a time request is actually asking for, in the words the person filing
  * it would use.
  *
