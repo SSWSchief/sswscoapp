@@ -48,6 +48,9 @@ function presetRange(preset: Exclude<Preset, "custom">, today: string) {
 
 const percent = (margin: number) => `${(margin * 100).toFixed(1)}%`;
 
+const bannerButton =
+  "rounded border border-amber-300 bg-white px-3 py-1.5 font-medium text-amber-900 hover:bg-amber-50";
+
 /** Which of a job's costs are still blank, in the words the banner uses. */
 const missingCosts = (row: ProfitRow) =>
   [
@@ -190,7 +193,7 @@ export default function ProfitabilityPage() {
                     <ul className="mt-2 flex flex-wrap gap-2">
                       {shown.filter((row) => missingCosts(row).length > 0).map((row) => (
                         <li key={row.jobId}>
-                          <button type="button" className="rounded border border-amber-300 bg-white px-3 py-1.5 font-medium text-amber-900 hover:bg-amber-50" onClick={() => setEditing(row)}>
+                          <button type="button" className={bannerButton} onClick={() => setEditing(row)}>
                             {row.reference}: no {missingCosts(row).join(", ")}
                           </button>
                         </li>
@@ -198,7 +201,25 @@ export default function ProfitabilityPage() {
                     </ul>
                   </>
                 )}
-                {unbilled.length > 0 && <p>{unbilled.length} job{unbilled.length === 1 ? "" : "s"} completed in this period {unbilled.length === 1 ? "hasn't" : "haven't"} been invoiced yet.</p>}
+                {unbilled.length > 0 && (
+                  // Counted by invoice date, these jobs are not in the list
+                  // below, so this is the only way to reach their costs
+                  // without switching to completion date (Austin, 2026-10-25).
+                  <div className={sum.incompleteJobs > 0 ? "mt-3" : undefined}>
+                    <p>
+                      {unbilled.length} job{unbilled.length === 1 ? "" : "s"} completed in this period {unbilled.length === 1 ? "hasn't" : "haven't"} been invoiced yet. Tap one to enter its costs now:
+                    </p>
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {unbilled.map((row) => (
+                        <li key={row.jobId}>
+                          <button type="button" className={bannerButton} onClick={() => setEditing(row)}>
+                            {row.reference}: {row.customerName}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </Card>
             )}
 
