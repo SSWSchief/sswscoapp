@@ -184,6 +184,25 @@ describe("POST /api/admin/employees conflicts", () => {
 });
 
 describe("POST /api/admin/employees invitation links", () => {
+  it("rolls back a failed SMTP invitation and offers a usable recovery path", async () => {
+    vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://sswscoapp.vercel.app");
+    supabase = fakeAdminClient({ users: [] });
+    vi.spyOn(supabase.client.auth.admin, "inviteUserByEmail").mockResolvedValueOnce({
+      data: {},
+      error: { code: "unexpected_failure", status: 500 },
+    } as never);
+
+    const result = await failure(await POST(request({ delivery: "invitation" })));
+
+    expect(result.status).toBe(502);
+    expect(result.code).toBe("invite_failed");
+    expect(result.message).toContain("Supabase SMTP");
+    expect(result.message).toContain("Resend");
+    expect(result.message).toContain("temporary password");
+    expect(supabase.tables.users).toEqual([]);
+  });
+
   it("tells Supabase where the invitation must land", async () => {
     // Without an explicit `redirectTo`, Supabase falls back to the project's
     // Site URL — a dashboard field that pointed at an SSO-protected Vercel

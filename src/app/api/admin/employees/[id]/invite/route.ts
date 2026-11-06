@@ -91,7 +91,7 @@ export async function POST(
   if (result.error)
     return fail(
       "invite_failed",
-      "The password setup email could not be sent.",
+      "The password setup email could not be sent. Check Supabase SMTP settings and verify the sender domain in Resend. You can issue a temporary password instead.",
       502,
     );
   await access.client.rpc("audit_admin_action", {

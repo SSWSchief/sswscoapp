@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Topbar } from "@/components/dispatcher/Topbar";
 import { useOperations } from "@/components/system/OperationsProvider";
 import { EmployeePhotoField } from "@/components/dispatcher/EmployeePhotoField";
+import { EmployeeDeleteAction } from "@/components/dispatcher/EmployeeDeleteAction";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
@@ -66,6 +67,7 @@ export default function EmployeeAccessPage({
   const [ptoDelta, setPtoDelta] = React.useState("");
   const [ptoReason, setPtoReason] = React.useState("");
   const [savingPto, setSavingPto] = React.useState(false);
+  const [deletedId, setDeletedId] = React.useState<string | null>(null);
   const employee = users.find((user) => user.id === id);
   React.useEffect(() => {
     if (employee)
@@ -82,6 +84,7 @@ export default function EmployeeAccessPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employee?.id]);
   if (!hydrated) return <div className="flex-1 bg-surface" />;
+  if (deletedId === id) return <div role="status" className="portal-content">Employee deleted. Returning to Employees…</div>;
   if (!employee) return notFound();
   const effective = effectivePermissions(employee);
   const owner = isProtectedAdministrator(employee, protectedAdministratorIds);
@@ -132,7 +135,7 @@ export default function EmployeeAccessPage({
 
   return (
     <>
-      <Topbar title="Employee Access Control" />
+      <Topbar title="Manage Employee" />
       <div className="portal-content space-y-5">
         <Link
           href="/dispatcher/employees"
@@ -317,7 +320,7 @@ export default function EmployeeAccessPage({
         </Card>
 
         <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-          <Card>
+          <Card className="order-2 lg:order-1">
             <CardHeader
               title="Module Permissions"
               action={
@@ -435,8 +438,8 @@ export default function EmployeeAccessPage({
             promised less than it delivered. Split so each card's title
             actually describes everything inside it.
           */}
-          <div className="space-y-5 self-start">
-            <Card>
+          <div className="order-1 flex flex-col gap-5 self-start lg:order-2">
+            <Card className="order-2">
               <CardHeader title="Effective Access Preview" />
               <div className="p-5 space-y-5">
                 <AccessList
@@ -458,7 +461,7 @@ export default function EmployeeAccessPage({
             </Card>
 
             {currentUser?.accessRole === "admin" && (
-              <Card>
+              <Card className="order-1">
                 <CardHeader title="Account Actions" />
                 <div className="p-5 space-y-2">
                   {issuedPassword && (
@@ -589,6 +592,11 @@ export default function EmployeeAccessPage({
                         : "Activate Employee"}
                     </Button>
                   )}
+                  <EmployeeDeleteAction
+                    employee={employee}
+                    protectedAdministrator={owner}
+                    onDeleted={() => setDeletedId(employee.id)}
+                  />
                 </div>
               </Card>
             )}

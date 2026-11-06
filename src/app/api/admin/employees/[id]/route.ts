@@ -6,7 +6,7 @@ import {
 } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { employeePatchSchema, jsonBodySizeAllowed } from "@/lib/validation";
+import { employeeDeleteSchema, employeePatchSchema, jsonBodySizeAllowed } from "@/lib/validation";
 import {
   employeeConflictMessage,
   isIncompatibleRole,
@@ -15,6 +15,69 @@ import {
 } from "@/lib/employee-conflict";
 
 const route = "/api/admin/employees/[id]";
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const startedAt = Date.now();
+  const requestIdValue = requestId(request);
+  const fail = (code: string, message: string, status: number) => {
+    logRequest(status >= 500 ? "error" : "warn", "admin_employee_delete_failed", {
+      requestId: requestIdValue, route, method: "DELETE", startedAt, status, code,
+    });
+    return apiFailure(code, message, status, requestIdValue);
+  };
+  const access = await requireAdmin();
+  if (!access.ok)
+    return fail(access.status === 401 ? "unauthorized" : "forbidden", access.error, access.status);
+  if (!jsonBodySizeAllowed(request))
+    return fail("payload_too_large", "Request body is too large.", 413);
+  let raw: unknown;
+  try { raw = await request.json(); }
+  catch { return fail("invalid_json", "Invalid JSON body.", 400); }
+  const parsed = employeeDeleteSchema.safeParse(raw);
+  if (!parsed.success)
+    return fail("invalid_confirmation", "Type the employee's email address to confirm deletion.", 400);
+  const { id } = await params;
+  if (id === access.actor.id)
+    return fail("self_deletion", "You cannot delete your own account.", 409);
+  const limited = await access.client.rpc("consume_api_rate_limit", {
+    rate_bucket: "admin:employee:delete", maximum_attempts: 10, window_seconds: 3600,
+  });
+  if (limited.error)
+    return fail("rate_limit_unavailable", "The request could not be safely processed.", 503);
+  if (!limited.data)
+    return fail("rate_limited", "Too many deletion requests. Try again later.", 429);
+
+  // Uses the caller's session, so database authorization, history checks,
+  // profile/Auth deletion, and the audit record share one transaction.
+  const result = await access.client.rpc("permanently_delete_employee", {
+    target_user_id: id, confirmation_email: parsed.data.confirmationEmail,
+  });
+  if (result.error)
+    return fail("employee_delete_failed", "The employee could not be deleted. No changes were saved.", 500);
+  const outcome = result.data as { deleted?: boolean; code?: string } | null;
+  if (outcome?.deleted !== true) {
+    const failures: Record<string, [string, number]> = {
+      forbidden: ["Administrator access is required.", 403],
+      self_deletion: ["You cannot delete your own account.", 409],
+      employee_not_found: ["Employee not found.", 404],
+      confirmation_mismatch: ["The email does not match this employee. Check it and try again.", 409],
+      administrator_protected: ["Protected administrators cannot be permanently deleted.", 409],
+      last_admin: ["At least one active administrator is required.", 409],
+      employee_has_history: ["This employee has job, time, or other business history. Deactivate the employee to remove access and keep those records.", 409],
+      employee_has_files: ["This employee owns uploaded files. Deactivate the employee to remove access and keep those files.", 409],
+    };
+    const failure = outcome?.code ? failures[outcome.code] : undefined;
+    if (failure) return fail(outcome!.code!, failure[0], failure[1]);
+    return fail("employee_delete_failed", "Deletion could not be confirmed. Refresh before trying again.", 500);
+  }
+  logRequest("info", "admin_employee_deleted", {
+    requestId: requestIdValue, route, method: "DELETE", startedAt, status: 200,
+  });
+  return apiSuccess({ id, deleted: true }, requestIdValue);
+}
 
 export async function PATCH(
   request: Request,

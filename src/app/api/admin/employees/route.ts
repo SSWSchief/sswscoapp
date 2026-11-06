@@ -376,8 +376,9 @@ export async function POST(request: Request) {
       );
     return fail(
       "invite_failed",
-      "The employee profile was rolled back because the invitation could not be sent.",
+      "The invitation could not be sent, so nothing was created. Check Supabase SMTP settings and verify the sender domain in Resend. You can create the employee with a temporary password instead.",
       502,
+      { providerCode: invite.error.code, providerStatus: invite.error.status },
     );
   }
   await access.client.rpc("audit_admin_action", {
