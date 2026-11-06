@@ -30,8 +30,8 @@ insert into storage.objects(bucket_id,name,owner_id)
  values('employee-delete-test','owned-file','35000000-0000-0000-0000-000000000005');
 insert into public.notifications(recipient_user_id,source_role,category,title,body)
  values('delete-clean','dispatcher','dispatch_update','Test notification','Disposable delivery state');
-create table auth.employee_deletion_test_sessions(user_id uuid references auth.users(id) on delete cascade);
-insert into auth.employee_deletion_test_sessions values('35000000-0000-0000-0000-000000000003');
+create table public.employee_deletion_test_sessions(user_id uuid references auth.users(id) on delete cascade);
+insert into public.employee_deletion_test_sessions values('35000000-0000-0000-0000-000000000003');
 
 set local role anon;
 select is(pg_temp.sqlstate_of($cmd$select public.permanently_delete_employee('delete-clean','delete-clean@example.invalid')$cmd$),'42501','anonymous callers cannot execute deletion');
@@ -63,18 +63,17 @@ drop table public.employee_deletion_test_history;
 
 -- Simulate an Auth failure AFTER profile/cascade removal: the whole operation
 -- must roll back rather than leaving a broken employee or lost notifications.
-create function pg_temp.reject_auth_deletion() returns trigger language plpgsql as $$
-begin raise exception 'Simulated Auth cleanup failure'; end;
-$$;
-create trigger reject_employee_deletion_test before delete on auth.users
- for each row execute function pg_temp.reject_auth_deletion();
+-- A restrictive Auth reference causes the same transaction failure without
+-- requiring DDL privileges on Supabase's managed auth schema.
+create table public.employee_deletion_test_auth_blocker(user_id uuid references auth.users(id));
+insert into public.employee_deletion_test_auth_blocker values('35000000-0000-0000-0000-000000000003');
 set local role authenticated;
-select is(pg_temp.sqlstate_of($cmd$select public.permanently_delete_employee('delete-clean','delete-clean@example.invalid')$cmd$),'P0001','Auth failure aborts the deletion');
+select is(pg_temp.sqlstate_of($cmd$select public.permanently_delete_employee('delete-clean','delete-clean@example.invalid')$cmd$),'23503','Auth failure aborts the deletion');
 reset role;
 select ok(exists(select 1 from public.users where id='delete-clean'),'Auth failure restores profile');
 select is((select count(*) from public.notifications where recipient_user_id='delete-clean'),1::bigint,'Auth failure restores cascaded delivery state');
 select ok(exists(select 1 from auth.users where id='35000000-0000-0000-0000-000000000003'),'Auth failure retains identity');
-drop trigger reject_employee_deletion_test on auth.users;
+drop table public.employee_deletion_test_auth_blocker;
 
 set local role authenticated;
 select is(public.permanently_delete_employee('delete-clean',' DELETE-CLEAN@example.invalid ')->>'deleted','true','administrator can delete a clean profile using confirmed email');
@@ -83,7 +82,7 @@ select is(public.permanently_delete_employee('delete-unlinked','delete-unlinked@
 reset role;
 select ok(not exists(select 1 from public.users where id='delete-clean'),'profile is permanently gone');
 select ok(not exists(select 1 from auth.users where id='35000000-0000-0000-0000-000000000003'),'sign-in identity is permanently gone');
-select is((select count(*) from auth.employee_deletion_test_sessions),0::bigint,'Auth session references cascade');
+select is((select count(*) from public.employee_deletion_test_sessions),0::bigint,'Auth session references cascade');
 select is((select count(*) from public.notifications where recipient_user_id='delete-clean'),0::bigint,'disposable notifications are removed');
 select ok(exists(select 1 from public.audit_log where entity_id='delete-clean'
  and action='employee_permanently_deleted' and actor_id='delete-admin'),'deletion is attributed to the administrator in audit history');
