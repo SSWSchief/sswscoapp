@@ -874,6 +874,10 @@ export interface Database {
         Args: { target_user_id: string; admin_action: string };
         Returns: undefined;
       };
+      permanently_delete_employee: {
+        Args: { target_user_id: string; confirmation_email: string };
+        Returns: Json;
+      };
       has_permission: { Args: { permission_key: string }; Returns: boolean };
       current_app_user_id: {
         Args: Record<PropertyKey, never>;
