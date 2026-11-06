@@ -9,7 +9,10 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-card bg-white border border-brand-ice/60 shadow-card dark:border-white/10 dark:bg-gray-900",
+        // Text inside a night-mode card inherits from here rather than from
+        // `body`, which is charcoal: a title that named no colour of its own
+        // used to render near-black on the near-black card.
+        "rounded-card bg-white border border-brand-ice/60 shadow-card dark:border-white/10 dark:bg-gray-900 dark:text-gray-100",
         className,
       )}
       {...props}

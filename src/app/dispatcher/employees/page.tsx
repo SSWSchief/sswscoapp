@@ -6,6 +6,7 @@ import { Topbar } from "@/components/dispatcher/Topbar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
+import { PhoneLink } from "@/components/ui/ContactLink";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/StatusBadge";
 import { Input } from "@/components/ui/Field";
@@ -106,7 +107,9 @@ export default function EmployeesPage() {
                       ? "Protected Admin"
                       : accessRoleLabel[employee.accessRole]}
                   </TD>
-                  <TD>{employee.phone}</TD>
+                  <TD>
+                    <PhoneLink phone={employee.phone} missingLabel="—" />
+                  </TD>
                   <TD>
                     <Badge
                       tone={employeeStatusTone[employeeDisplayStatus(employee)]}
@@ -145,12 +148,10 @@ export default function EmployeesPage() {
                     <p className="font-mono text-xs text-brand-steel">
                       {employee.employeeId}
                     </p>
-                    <a
-                      href={`tel:${employee.phone.replace(/[^\d+]/g, "")}`}
+                    <PhoneLink
+                      phone={employee.phone}
                       className="mt-1 flex min-h-11 items-center text-sm text-brand-blue"
-                    >
-                      {employee.phone}
-                    </a>
+                    />
                   </div>
                   <Badge
                     tone={employeeStatusTone[employeeDisplayStatus(employee)]}

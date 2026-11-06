@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { permissionKeys } from "./permissions";
 
+export const employeeDeleteSchema = z.object({
+  confirmationEmail: z.string().trim().pipe(z.email().max(254)),
+}).strict();
+
 export const employeeCreateSchema = z
   .object({
     /**

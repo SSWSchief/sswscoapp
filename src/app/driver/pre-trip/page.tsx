@@ -10,9 +10,9 @@ import { useToast } from "@/components/system/ToastProvider";
 import type { PretripResult, PretripTemplateItem } from "@/lib/types";
 
 const answers: Array<{ value: PretripResult; label: string; tone: string }> = [
-  { value: "pass", label: "Pass", tone: "text-emerald-800" },
-  { value: "fail", label: "Fail", tone: "text-red-700" },
-  { value: "na", label: "N/A", tone: "text-brand-steel" },
+  { value: "pass", label: "Pass", tone: "text-emerald-800 dark:text-emerald-400" },
+  { value: "fail", label: "Fail", tone: "text-red-700 dark:text-red-400" },
+  { value: "na", label: "N/A", tone: "text-brand-steel dark:text-gray-300" },
 ];
 
 /**
@@ -111,7 +111,7 @@ export default function Page() {
   return (
     <>
       <MobileHeader title="Electronic Pre-Trip" />
-      <div className="flex-1 overflow-y-auto bg-surface p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto bg-surface p-4 space-y-4 dark:bg-gray-950 dark:text-gray-100">
         {template ? (
           <Card>
             <CardHeader
@@ -122,7 +122,7 @@ export default function Page() {
                   className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
                     checkedCount === template.items.length
                       ? "bg-status-complete/15 text-status-complete"
-                      : "bg-brand-mist text-brand-steel"
+                      : "bg-brand-mist text-brand-steel dark:bg-white/10 dark:text-gray-300"
                   }`}
                 >
                   {checkedCount}/{template.items.length} checked
@@ -169,20 +169,20 @@ export default function Page() {
                 {groupSections(template.items).map(({ section, items }) => {
                   const done = items.filter((item) => results[item.id]).length;
                   return (
-                    <div key={section || "checklist"} className="rounded border border-brand-ice">
+                    <div key={section || "checklist"} className="rounded border border-brand-ice dark:border-white/10">
                       {section && (
-                        <div className="flex items-center justify-between gap-2 border-b border-brand-ice bg-brand-mist px-3 py-2">
-                          <h3 className="font-heading text-sm font-semibold uppercase tracking-wide text-brand-charcoal">
+                        <div className="flex items-center justify-between gap-2 border-b border-brand-ice bg-brand-mist px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                          <h3 className="font-heading text-sm font-semibold uppercase tracking-wide text-brand-charcoal dark:text-gray-100">
                             {section}
                           </h3>
                           <span
-                            className={`shrink-0 text-xs font-semibold ${done === items.length ? "text-status-complete" : "text-brand-steel"}`}
+                            className={`shrink-0 text-xs font-semibold ${done === items.length ? "text-status-complete" : "text-brand-steel dark:text-gray-400"}`}
                           >
                             {done}/{items.length}
                           </span>
                         </div>
                       )}
-                      <div className="divide-y divide-brand-ice">
+                      <div className="divide-y divide-brand-ice dark:divide-white/10">
                         {items.map((item) => (
                           <fieldset key={item.id} className="p-3">
                             <legend className="font-medium">{item.label}</legend>
@@ -192,8 +192,8 @@ export default function Page() {
                                   key={answer.value}
                                   className={`flex min-h-11 items-center justify-center gap-2 rounded border p-2 text-sm ${answer.tone} ${
                                     results[item.id] === answer.value
-                                      ? "border-brand-blue bg-brand-mist font-semibold"
-                                      : "border-brand-ice"
+                                      ? "border-brand-blue bg-brand-mist font-semibold dark:border-brand-skyline dark:bg-white/10"
+                                      : "border-brand-ice dark:border-white/15"
                                   }`}
                                 >
                                   <input
@@ -215,12 +215,12 @@ export default function Page() {
                   );
                 })}
               </div>
-              <div className="rounded border border-brand-ice p-3 space-y-3">
+              <div className="rounded border border-brand-ice p-3 space-y-3 dark:border-white/10">
                 {/* A real fieldset: two radios with only a neighbouring span for
                     context are not announced as one question. The legend has to
                     be the fieldset's first child to become its caption. */}
                 <fieldset>
-                  <legend className="font-heading text-sm font-semibold uppercase tracking-wide text-brand-charcoal">
+                  <legend className="font-heading text-sm font-semibold uppercase tracking-wide text-brand-charcoal dark:text-gray-100">
                     Vehicle safe to operate?
                   </legend>
                   <div className="mt-2 flex gap-2">
@@ -231,8 +231,8 @@ export default function Page() {
                           safeToOperate === value
                             ? value
                               ? "border-status-complete bg-status-complete/10 font-semibold text-status-complete"
-                              : "border-red-600 bg-red-50 font-semibold text-red-700"
-                            : "border-brand-ice text-brand-steel"
+                              : "border-red-600 bg-red-50 font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                            : "border-brand-ice text-brand-steel dark:border-white/15 dark:text-gray-300"
                         }`}
                       >
                         <input
@@ -247,7 +247,7 @@ export default function Page() {
                   </div>
                 </fieldset>
                 {anyFailed && (
-                  <p className="text-xs text-red-700">
+                  <p className="text-xs text-red-700 dark:text-red-400">
                     {overriddenUnsafe
                       ? "This inspection has a failed item but is marked safe to operate. Explain why below."
                       : "A failed item set this to No. Dispatch is alerted either way."}
@@ -288,13 +288,13 @@ export default function Page() {
             </div>
           </Card>
         ) : (
-          <Card className="p-6 text-center text-brand-steel">
+          <Card className="p-6 text-center text-brand-steel dark:text-gray-400">
             No published checklist is available. Contact an administrator.
           </Card>
         )}
         <Card>
           <CardHeader title="Recent Inspections" />
-          <div className="divide-y divide-brand-ice">
+          <div className="divide-y divide-brand-ice dark:divide-white/10">
             {pretripSubmissions
               .filter((s) => s.driverId === currentUser?.id)
               .slice(0, 5)
@@ -303,7 +303,9 @@ export default function Page() {
                   <span>{new Date(s.submittedAt).toLocaleString()}</span>
                   <span
                     className={
-                      s.hasFailures ? "text-red-700" : "text-emerald-700"
+                      s.hasFailures
+                        ? "text-red-700 dark:text-red-400"
+                        : "text-emerald-700 dark:text-emerald-400"
                     }
                   >
                     {s.hasFailures ? "Review required" : "Passed"}

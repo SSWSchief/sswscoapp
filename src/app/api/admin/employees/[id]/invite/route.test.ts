@@ -49,6 +49,24 @@ afterEach(() => {
 });
 
 describe("POST /api/admin/employees/[id]/invite", () => {
+  it("explains SMTP failure without changing the existing employee", async () => {
+    vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://sswscoapp.vercel.app");
+    supabase = fakeAdminClient({ users: [employee()] });
+    vi.spyOn(supabase.client.auth, "resetPasswordForEmail").mockResolvedValueOnce({
+      data: {},
+      error: { code: "unexpected_failure", status: 500 },
+    } as never);
+
+    const result = await failure(await invite());
+
+    expect(result.status).toBe(502);
+    expect(result.code).toBe("invite_failed");
+    expect(result.message).toContain("Supabase SMTP");
+    expect(result.message).toContain("temporary password");
+    expect(supabase.tables.users).toEqual([employee()]);
+  });
+
   it("refuses to report success for a reset email the deployment cannot deliver", async () => {
     vi.stubEnv("NEXT_PUBLIC_EMAIL_DELIVERY_ENABLED", "");
     supabase = fakeAdminClient({ users: [employee()] });

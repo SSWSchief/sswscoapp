@@ -5,6 +5,7 @@ import { Topbar } from "@/components/dispatcher/Topbar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
+import { EmailLink, PhoneLink } from "@/components/ui/ContactLink";
 import { Input } from "@/components/ui/Field";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { useOperations } from "@/components/system/OperationsProvider";
@@ -77,8 +78,12 @@ export default function CustomersPage() {
               {visible.map((c) => (
                 <TR key={c.id}>
                   <TD className="font-medium text-brand-charcoal">{c.name}</TD>
-                  <TD>{c.phone}</TD>
-                  <TD className="text-brand-steel">{c.email}</TD>
+                  <TD>
+                    <PhoneLink phone={c.phone} missingLabel="—" />
+                  </TD>
+                  <TD className="text-brand-steel">
+                    <EmailLink email={c.email} missingLabel="—" />
+                  </TD>
                   <TD>{c.activeJobs}</TD>
                   <TD className="text-right">
                     <button
@@ -136,18 +141,14 @@ export default function CustomersPage() {
                     <h2 className="font-semibold text-brand-charcoal">
                       {customer.name}
                     </h2>
-                    <a
-                      href={`tel:${customer.phone.replace(/[^\d+]/g, "")}`}
+                    <PhoneLink
+                      phone={customer.phone}
                       className="mt-2 flex min-h-11 items-center text-sm font-medium text-brand-blue"
-                    >
-                      {customer.phone}
-                    </a>
-                    <a
-                      href={`mailto:${customer.email}`}
+                    />
+                    <EmailLink
+                      email={customer.email}
                       className="flex min-h-11 items-center break-all text-sm text-brand-blue"
-                    >
-                      {customer.email}
-                    </a>
+                    />
                   </div>
                   <span className="rounded bg-brand-mist px-2.5 py-1 text-xs font-semibold text-brand-steel">
                     {customer.activeJobs} active

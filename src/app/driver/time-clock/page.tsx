@@ -12,6 +12,7 @@ import {
   formatHoursDuration,
   formatPacificDayLabel,
   formatPacificTime,
+  timeRequestTone,
 } from "@/lib/time-clock";
 import { TimeRequestModal } from "@/components/time/TimeRequestModal";
 
@@ -224,7 +225,7 @@ export default function DriverTimeClockPage() {
                   {describeTimeRequest(request)}
                 </span>
                 <Badge
-                  tone={request.status === "approved" ? "green" : "amber"}
+                  tone={timeRequestTone(request.status)}
                   label={request.status}
                 />
               </div>

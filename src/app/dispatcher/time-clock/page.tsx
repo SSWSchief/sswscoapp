@@ -19,6 +19,7 @@ import {
   pacificDate,
   reviewBlockedReason,
   summarizeTime,
+  timeRequestTone,
 } from "@/lib/time-clock";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/system/ToastProvider";
@@ -364,7 +365,7 @@ function RequestRow({
         )}
       </div>
       <Badge
-        tone={request.status === "approved" ? "green" : "amber"}
+        tone={timeRequestTone(request.status)}
         label={request.status}
       />
       {request.status === "pending" &&

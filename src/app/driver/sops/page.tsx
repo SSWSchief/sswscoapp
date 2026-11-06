@@ -27,7 +27,7 @@ export default function Page() {
   return (
     <>
       <MobileHeader title="SOPs" />
-      <div className="flex-1 space-y-3 overflow-y-auto bg-surface p-4">
+      <div className="flex-1 space-y-3 overflow-y-auto bg-surface p-4 dark:bg-gray-950 dark:text-gray-100">
         {published.map((s) => {
           const open = openId === s.id;
           return (
@@ -57,7 +57,7 @@ export default function Page() {
               </button>
               {open && (
                 <div className="border-t border-brand-ice p-4 pt-3 dark:border-white/10">
-                  <p className="whitespace-pre-wrap text-sm leading-6 text-brand-steel">
+                  <p className="whitespace-pre-wrap text-sm leading-6 text-brand-steel dark:text-gray-300">
                     {s.body}
                   </p>
                   {!s.acknowledged && (
@@ -79,7 +79,7 @@ export default function Page() {
           );
         })}
         {!published.length && (
-          <Card className="p-6 text-center text-brand-steel">
+          <Card className="p-6 text-center text-brand-steel dark:text-gray-400">
             No published SOPs.
           </Card>
         )}

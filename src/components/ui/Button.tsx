@@ -13,11 +13,12 @@ const variants: Record<Variant, string> = {
   primary:
     "bg-brand-blue text-white hover:bg-brand-navy focus-visible:ring-brand-blue",
   secondary:
-    "bg-white text-brand-blue border border-brand-blue/40 hover:bg-brand-mist focus-visible:ring-brand-blue",
+    "bg-white text-brand-blue border border-brand-blue/40 hover:bg-brand-mist focus-visible:ring-brand-blue dark:bg-transparent dark:text-brand-skyline dark:border-brand-skyline/50 dark:hover:bg-white/5",
   danger: "bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-600",
   success:
     "bg-status-complete text-white hover:bg-emerald-800 focus-visible:ring-status-complete",
-  ghost: "text-brand-steel hover:bg-brand-mist focus-visible:ring-brand-ice",
+  ghost:
+    "text-brand-steel hover:bg-brand-mist focus-visible:ring-brand-ice dark:text-gray-300 dark:hover:bg-white/5",
 };
 
 const sizes: Record<Size, string> = {
