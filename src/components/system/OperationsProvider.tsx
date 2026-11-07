@@ -240,11 +240,11 @@ interface Value extends State {
     id: string,
     reason?: string,
   ) => Promise<MutationResult<Job>>;
-  /** Office override: steps a job forward to `status`, with a reason on record. */
+  /** Office override: steps a job forward to `status` in one tap; a reason is optional. */
   advanceJobAsDispatcher: (
     id: string,
     status: "en_route" | "arrived" | "complete",
-    reason: string,
+    reason?: string,
   ) => Promise<MutationResult<Job>>;
   correctCompletedJob: (
     id: string,
@@ -406,7 +406,7 @@ export function OperationsProvider({
         const totals: Partial<State["totals"]> = {};
         let users: User[] = [profile];
         if (domains.has("people")) {
-          const [result, detail, protectedAdministrators] = await Promise.all([
+          const [result, detail, protectedAdministrators, removed] = await Promise.all([
             db
               .from("users")
               .select("*", { count: "exact" })
@@ -422,9 +422,18 @@ export function OperationsProvider({
                   .maybeSingle()
               : Promise.resolve({ data: null, error: null }),
             db.rpc("list_protected_administrator_ids"),
+            // Deleted employees who did work: kept only so history shows
+            // their name. Flagged `removed` and filtered out of every list.
+            db
+              .from("users")
+              .select("*")
+              .not("deleted_at", "is", null)
+              .limit(DIRECTORY_LIMIT),
           ]);
           if (result.error) throw result.error;
           const rows = result.data as UserRow[];
+          for (const row of (removed.error ? [] : removed.data ?? []) as UserRow[])
+            if (!rows.some((existing) => existing.id === row.id)) rows.push(row);
           const detailRow = detail.data as UserRow | null;
           if (detailRow && !rows.some((row) => row.id === detailRow.id))
             rows.push(detailRow);
@@ -909,7 +918,7 @@ export function OperationsProvider({
           const r = await createClient().rpc("advance_job_as_dispatch", {
             target_job_id: id,
             next_status: status,
-            advance_reason: reason,
+            advance_reason: reason?.trim() || undefined,
           });
           return { data: r.data ? mapJob(r.data) : null, error: r.error };
         })),

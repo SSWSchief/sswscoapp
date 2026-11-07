@@ -91,14 +91,14 @@ export function EmployeeModal({
         employeeId: idHolder
           ? employeeConflictMessage("employee_id", employeeId, {
               fullName: idHolder.fullName,
-              removed: false,
+              removed: Boolean(idHolder.removed),
               inactive: idHolder.status === "inactive",
             })
           : undefined,
         email: emailHolder
           ? employeeConflictMessage("email", email, {
               fullName: emailHolder.fullName,
-              removed: false,
+              removed: Boolean(emailHolder.removed),
               inactive: emailHolder.status === "inactive",
             })
           : undefined,

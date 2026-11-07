@@ -70,6 +70,7 @@ export function mapUser(row: UserRow): User {
     permissionOverrides: (row.permission_overrides ??
       {}) as User["permissionOverrides"],
     status: row.status,
+    removed: Boolean(row.deleted_at),
     initials: row.initials,
     avatarPath: row.avatar_path ?? null,
     activatedAt: row.activated_at ?? null,

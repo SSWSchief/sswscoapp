@@ -28,6 +28,7 @@ export default function EmployeesPage() {
   const [query, setQuery] = React.useState("");
   const [open, setOpen] = React.useState(false);
   const employees = users.filter((employee) =>
+    !employee.removed &&
     `${employee.employeeId} ${employee.fullName} ${employee.email}`
       .toLowerCase()
       .includes(query.trim().toLowerCase()),

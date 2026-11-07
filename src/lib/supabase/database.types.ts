@@ -811,7 +811,7 @@ export interface Database {
         Returns: JobRow;
       };
       advance_job_as_dispatch: {
-        Args: { target_job_id: string; next_status: JobStatus; advance_reason: string };
+        Args: { target_job_id: string; next_status: JobStatus; advance_reason?: string };
         Returns: JobRow;
       };
       record_pickup: {
