@@ -68,7 +68,7 @@ export default function EmployeeAccessPage({
   const [ptoReason, setPtoReason] = React.useState("");
   const [savingPto, setSavingPto] = React.useState(false);
   const [deletedId, setDeletedId] = React.useState<string | null>(null);
-  const employee = users.find((user) => user.id === id);
+  const employee = users.find((user) => user.id === id && !user.removed);
   React.useEffect(() => {
     if (employee)
       setDetailsForm({

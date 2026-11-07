@@ -69,7 +69,7 @@ function buildIndex(
     href: "/dispatcher/dumpsters",
     keywords: `${d.airTagId ?? ""} ${d.currentLocation}`,
   }));
-  const empItems: Item[] = users.map((u) => ({
+  const empItems: Item[] = users.filter((u) => !u.removed).map((u) => ({
     id: `emp-${u.id}`,
     label: u.fullName,
     sub: `${u.role} · ${u.phone}`,

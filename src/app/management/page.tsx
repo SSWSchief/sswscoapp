@@ -74,7 +74,7 @@ export default function Page() {
     },
     {
       label: "Inactive employees",
-      value: users.filter((user) => user.status === "inactive").length,
+      value: users.filter((user) => user.status === "inactive" && !user.removed).length,
       href: "/dispatcher/employees",
     },
     {

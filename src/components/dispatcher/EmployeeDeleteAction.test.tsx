@@ -31,7 +31,6 @@ const show = (protectedAdministrator = false) => render(
 );
 async function confirm(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Permanently Delete Employee" }));
-  await user.type(screen.getByLabelText("Confirm employee email"), employee.email);
 }
 
 describe("EmployeeDeleteAction", () => {
@@ -56,14 +55,14 @@ describe("EmployeeDeleteAction", () => {
     show();
     expect(screen.getByRole("button")).toBeDisabled();
   });
-  it("requires a matching typed email and supports cancelling without a request", async () => {
+  it("asks once with no typing, says records are kept, and can be cancelled", async () => {
     const user = userEvent.setup();
     show();
     await user.click(screen.getByRole("button"));
     expect(screen.getByRole("dialog")).toHaveTextContent("Test Driver");
-    expect(screen.getByRole("button", { name: "Delete Permanently" })).toBeDisabled();
-    await user.type(screen.getByLabelText("Confirm employee email"), "wrong@example.com");
-    expect(screen.getByRole("button", { name: "Delete Permanently" })).toBeDisabled();
+    expect(screen.getByRole("dialog")).toHaveTextContent("records are kept");
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -73,7 +72,7 @@ describe("EmployeeDeleteAction", () => {
     fetchMock.mockResolvedValue(Response.json({ data: { deleted: true } }));
     show();
     await confirm(user);
-    await user.click(screen.getByRole("button", { name: "Delete Permanently" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/dispatcher/employees"));
     expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/admin/employees/driver", {
       method: "DELETE", headers: { "content-type": "application/json" },
@@ -82,13 +81,13 @@ describe("EmployeeDeleteAction", () => {
     expect(onDeleted).toHaveBeenCalledOnce();
     expect(refresh).toHaveBeenCalledOnce();
   });
-  it("keeps a history refusal in the dialog without removing the employee", async () => {
+  it("keeps a server refusal in the dialog without removing the employee", async () => {
     const user = userEvent.setup();
-    fetchMock.mockResolvedValue(Response.json({ error: { message: "This employee has time history. Deactivate the employee instead." } }, { status: 409 }));
+    fetchMock.mockResolvedValue(Response.json({ error: { message: "At least one active administrator is required." } }, { status: 409 }));
     show();
     await confirm(user);
-    await user.click(screen.getByRole("button", { name: "Delete Permanently" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Deactivate");
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("administrator");
     expect(onDeleted).not.toHaveBeenCalled();
     expect(replace).not.toHaveBeenCalled();
   });
@@ -97,7 +96,7 @@ describe("EmployeeDeleteAction", () => {
     fetchMock.mockRejectedValue(new Error("offline"));
     show();
     await confirm(user);
-    await user.click(screen.getByRole("button", { name: "Delete Permanently" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Refresh the employee list");
     expect(onDeleted).not.toHaveBeenCalled();
   });

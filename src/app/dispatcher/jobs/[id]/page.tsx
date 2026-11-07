@@ -59,9 +59,8 @@ export default function JobDetailsPage({
   const [editOpen, setEditOpen] = React.useState(false);
   const [actionsOpen, setActionsOpen] = React.useState(false);
   const [reasonMode, setReasonMode] = React.useState<
-    "cancel" | "complete" | "archive" | "advance" | null
+    "cancel" | "complete" | "archive" | null
   >(null);
-  const [advanceTo, setAdvanceTo] = React.useState<ManualAdvanceTarget>("complete");
   const [busy, setBusy] = React.useState(false);
   const [correctionOpen, setCorrectionOpen] = React.useState(false);
   const [correctedDumpsterId, setCorrectedDumpsterId] = React.useState("");
@@ -111,15 +110,15 @@ export default function JobDetailsPage({
     });
     if (result.ok) setReasonMode(null);
   };
-  const advance = async (reason: string) => {
+  // One tap: the office marks the step and it is recorded as theirs.
+  const advance = async (target: ManualAdvanceTarget) => {
     if (busy) return;
     setBusy(true);
-    const result = await advanceJobAsDispatcher(job.id, advanceTo, reason);
+    const result = await advanceJobAsDispatcher(job.id, target);
     setBusy(false);
-    toast(result.ok ? `Job marked ${advanceLabels[advanceTo].toLowerCase()}` : result.error.message, {
+    toast(result.ok ? `Job marked ${advanceLabels[target].toLowerCase()}` : result.error.message, {
       tone: result.ok ? "success" : "error",
     });
-    if (result.ok) setReasonMode(null);
   };
   const cancel = async (reason: string) => {
     if (busy) return;
@@ -326,17 +325,14 @@ export default function JobDetailsPage({
             <CardHeader title="Update status from the office" />
             <div className="flex flex-wrap items-center gap-2 p-4">
               <p className="mr-2 text-sm text-brand-steel">
-                Use this when the driver did not tap the status, or no driver went. It is recorded with your reason.
+                Use this when the driver did not tap the status, or no driver went.
               </p>
               {manualAdvanceTargets(job.status).map((target) => (
                 <Button
                   key={target}
                   variant="secondary"
                   disabled={!canMutate || busy}
-                  onClick={() => {
-                    setAdvanceTo(target);
-                    setReasonMode("advance");
-                  }}
+                  onClick={() => void advance(target)}
                 >
                   Mark {advanceLabels[target]}
                 </Button>
@@ -596,15 +592,6 @@ export default function JobDetailsPage({
         title={`Archive ${job.reference}`}
         label="Archive reason"
         confirmLabel="Archive Job"
-      />
-      <ReasonDialog
-        open={reasonMode === "advance"}
-        onClose={() => setReasonMode(null)}
-        onSubmit={advance}
-        busy={busy}
-        title={`Mark ${job.reference} ${advanceLabels[advanceTo].toLowerCase()}`}
-        label="Reason, such as driver forgot to update"
-        confirmLabel={`Mark ${advanceLabels[advanceTo]}`}
       />
       <ReasonDialog
         open={reasonMode === "complete"}

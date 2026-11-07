@@ -69,6 +69,11 @@ export interface User {
   accessRole: AccessRole;
   permissionOverrides: Partial<Record<PermissionKey, boolean>>;
   status: EmployeeStatus;
+  /**
+   * Permanently deleted, but kept so their jobs, time and payroll still show
+   * their name. Never listed as an employee or offered in a picker.
+   */
+  removed?: boolean;
   /** initials shown in avatars when no photo is set */
   initials: string;
   /** Object key of their photo in the private bucket, when they have one. */

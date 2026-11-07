@@ -1,5 +1,5 @@
 begin;
-select plan(21);
+select plan(24);
 
 create function pg_temp.as_user(auth_id text) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', auth_id, 'role', 'authenticated', 'aal', 'aal1')::text, true);
@@ -10,14 +10,18 @@ insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_co
   ('00000000-0000-0000-0000-000000000000','50000000-0000-0000-0000-000000000002','authenticated','authenticated','adv-driver@example.invalid','',now(),'{}','{}',now(),now());
 insert into public.users(id,auth_user_id,employee_id,full_name,email,role,access_role,permission_overrides,status,initials) values
   ('adv-dispatch','50000000-0000-0000-0000-000000000001','ADV-DISP','Adv Dispatch','adv-dispatch@example.invalid','dispatcher','dispatcher','{}','active','AD'),
-  ('adv-driver','50000000-0000-0000-0000-000000000002','ADV-DRV','Adv Driver','adv-driver@example.invalid','driver','driver','{}','active','AV');
+  ('adv-driver','50000000-0000-0000-0000-000000000002','ADV-DRV','Adv Driver','adv-driver@example.invalid','driver','driver','{}','active','AV'),
+  ('adv-inactive',null,'ADV-OFF','Adv Inactive','adv-inactive@example.invalid','driver','driver','{}','active','AI');
 insert into public.customers(id,name) values ('adv-cust','Sold Not Delivered');
 insert into public.dumpsters(id,code,size) values ('adv-can','ADV-A','20 Yard');
 insert into public.jobs(id,customer_id,address,service_type,dumpster_size,assigned_driver_id,assigned_dumpster_id,scheduled_for) values
   ('no-driver','adv-cust','1 Sub Way','Delivery','20 Yard',null,null,now()),
   ('forgot-complete','adv-cust','2 Forgot Way','Delivery','20 Yard','adv-driver','adv-can',now()),
   ('forgot-arrive','adv-cust','3 Forgot Way','Delivery','20 Yard','adv-driver',null,now()),
-  ('closed-already','adv-cust','4 Done Way','Delivery','20 Yard','adv-driver',null,now());
+  ('closed-already','adv-cust','4 Done Way','Delivery','20 Yard','adv-driver',null,now()),
+  ('inactive-driver','adv-cust','5 Office Way','Delivery','20 Yard','adv-inactive',null,now());
+-- Assigned while active, then deactivated before anyone tapped the job.
+update public.users set status='inactive' where id='adv-inactive';
 
 set local role authenticated;
 
@@ -26,7 +30,7 @@ select pg_temp.as_user('50000000-0000-0000-0000-000000000001');
 select lives_ok($$select public.advance_job_as_dispatch('no-driver','complete','competitor delivered the can')$$,'dispatch completes a pending job with no driver');
 select is((select status::text from public.jobs where id='no-driver'),'complete','the job is complete');
 select is((select count(*) from public.job_events where job_id='no-driver'),3::bigint,'each skipped step is recorded as an event');
-select is((select count(*) from public.job_activities where job_id='no-driver' and body like 'Dispatch marked%: competitor delivered the can'),3::bigint,'each step names the reason in the history');
+select is((select count(*) from public.job_activities where job_id='no-driver' and body like 'Office marked%: competitor delivered the can'),3::bigint,'each step names the reason in the history');
 
 -- A driver-assigned job moves stepwise and keeps its assets in step.
 select lives_ok($$select public.advance_job_as_dispatch('forgot-arrive','arrived','driver forgot to tap')$$,'dispatch marks a job arrived');
@@ -40,7 +44,11 @@ select throws_ok($$select public.advance_job_as_dispatch('forgot-arrive','arrive
 select throws_ok($$select public.advance_job_as_dispatch('forgot-arrive','en_route','back')$$,'Choose a step after the current status','going backwards is refused');
 select throws_ok($$select public.advance_job_as_dispatch('no-driver','complete','twice')$$,'Only an open job can be advanced','a complete job is refused');
 select throws_ok($$select public.advance_job_as_dispatch('closed-already','pending','x y z')$$,'Choose en route, arrived or complete','pending is not a target');
-select throws_ok($$select public.advance_job_as_dispatch('closed-already','complete','  ')$$,'A reason is required','a blank reason is refused');
+-- One tap from the office: no reason, and the driver need not be active.
+select lives_ok($$select public.advance_job_as_dispatch('inactive-driver','arrived')$$,'dispatch marks arrived with no reason and an inactive driver');
+select is((select status::text from public.jobs where id='inactive-driver'),'arrived','the job is arrived');
+select is((select count(*) from public.job_activities where job_id='inactive-driver' and body='Office marked arrived'),1::bigint,'history reads cleanly without a reason');
+select lives_ok($$select public.advance_job_as_dispatch('inactive-driver','complete','  ')$$,'a blank reason is fine too');
 select throws_ok($$select public.advance_job_as_dispatch('missing','complete','no such job')$$,'Job not found','an unknown job is refused');
 select is((select status::text from public.jobs where id='closed-already'),'pending','refusals leave the job alone');
 

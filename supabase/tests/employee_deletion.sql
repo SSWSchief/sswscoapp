@@ -46,19 +46,35 @@ select is(public.permanently_delete_employee('delete-clean','wrong@example.inval
 select is(public.permanently_delete_employee('missing','missing@example.invalid')->>'code','employee_not_found','unknown employee is reported');
 select is(public.permanently_delete_employee('delete-admin','delete-admin@example.invalid')->>'code','self_deletion','administrator cannot delete themselves');
 select is(public.permanently_delete_employee('delete-protected','delete-protected@example.invalid')->>'code','administrator_protected','protected owner cannot be deleted');
-select is(public.permanently_delete_employee('delete-history','delete-history@example.invalid')->>'code','employee_has_history','time history blocks deletion despite CASCADE FK');
-select is(public.permanently_delete_employee('delete-storage','delete-storage@example.invalid')->>'code','employee_has_files','owned storage blocks deletion');
+select is(public.permanently_delete_employee('delete-history','delete-history@example.invalid')->>'records_kept','true','employee with time history is deleted and records are kept');
+select is(public.permanently_delete_employee('delete-storage','delete-storage@example.invalid')->>'records_kept','true','employee who owns files is deleted and files are kept');
 reset role;
 select is((select count(*) from public.time_entries where user_id='delete-history'),1::bigint,'payroll history remains');
-select ok(exists(select 1 from auth.users where id='35000000-0000-0000-0000-000000000004'),'history check retains sign-in account');
+select ok(not exists(select 1 from auth.users where id='35000000-0000-0000-0000-000000000004'),'sign-in account is removed');
+select is((select full_name from public.users where id='delete-history'),'Delete History','name stays on the records');
+select ok((select deleted_at is not null and status='inactive' and auth_user_id is null from public.users where id='delete-history'),'profile is hidden and inactive');
+select ok(exists(select 1 from storage.objects where name='owned-file'),'uploaded files remain');
+select ok(exists(select 1 from public.audit_log where entity_id='delete-history' and action='employee_permanently_deleted'
+ and old_values->>'email'='delete-history@example.invalid'),'audit keeps the original email');
+insert into public.users(id,employee_id,full_name,email,role,access_role,status,initials)
+ values('delete-history-again','DEL-HISTORY-2','Delete History','delete-history@example.invalid','driver','driver','active','DH');
+select ok(exists(select 1 from public.users where id='delete-history-again'),'the same email can be added again');
+set local role authenticated;
+select is(public.permanently_delete_employee('delete-history','removed-delete-history@deleted.invalid')->>'code','employee_not_found','an already removed employee cannot be deleted twice');
+reset role;
 
 -- An unseen future SET NULL FK must also block, preserving its attribution.
 create table public.employee_deletion_test_history(employee_id text references public.users(id) on delete set null);
 insert into public.employee_deletion_test_history values('delete-clean');
 set local role authenticated;
-select is(public.permanently_delete_employee('delete-clean','delete-clean@example.invalid')->>'code','employee_has_history','new nullable business FK is detected automatically');
+reset role;
+-- Detection of a new FK is exercised through a savepoint so delete-clean survives for the tests below.
+savepoint new_fk;
+set local role authenticated;
+select is(public.permanently_delete_employee('delete-clean','delete-clean@example.invalid')->>'records_kept','true','new nullable business FK is detected automatically');
 reset role;
 select is((select employee_id from public.employee_deletion_test_history),'delete-clean','nullable reference is not cleared');
+rollback to savepoint new_fk;
 drop table public.employee_deletion_test_history;
 
 -- Simulate an Auth failure AFTER profile/cascade removal: the whole operation
