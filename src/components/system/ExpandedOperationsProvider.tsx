@@ -196,6 +196,31 @@ const fail = (e: unknown): MutationResult<never> => ({
   error: mutationErrorMessage(e),
 });
 
+const INVOICE_LIMIT = 1000;
+const INVOICE_CHILD_CHUNK = 100;
+
+function invoiceHistoryStart(now = Date.now()) {
+  return new Date(now - 365 * 86400000).toISOString();
+}
+
+/** Line items and job links for exactly the invoices that were loaded. */
+async function loadInvoiceChildren(db: ReturnType<typeof createClient>, ids: string[]) {
+  const lineRows: InvoiceLineItemRow[] = [];
+  const jobRows: InvoiceJobRow[] = [];
+  for (let at = 0; at < ids.length; at += INVOICE_CHILD_CHUNK) {
+    const chunk = ids.slice(at, at + INVOICE_CHILD_CHUNK);
+    const [lines, jobs] = await Promise.all([
+      db.from("invoice_line_items").select("*").in("invoice_id", chunk).order("position"),
+      db.from("invoice_jobs").select("*").in("invoice_id", chunk),
+    ]);
+    if (lines.error) throw lines.error;
+    if (jobs.error) throw jobs.error;
+    lineRows.push(...((lines.data ?? []) as InvoiceLineItemRow[]));
+    jobRows.push(...((jobs.data ?? []) as InvoiceJobRow[]));
+  }
+  return { lineRows, jobRows };
+}
+
 export function ExpandedOperationsProvider({
   children,
 }: {
@@ -224,10 +249,17 @@ export function ExpandedOperationsProvider({
         const db = createClient();
         const patch: Partial<State> = {};
         if (domains.has("finance")) {
-          const [result, lines, invoiceJobs, prices] = await Promise.all([
-            db.from("invoices").select("*").order("due_date").limit(50),
-            db.from("invoice_line_items").select("*").order("position").limit(500),
-            db.from("invoice_jobs").select("*").limit(500),
+          // Every unpaid invoice, whatever its age, plus the last year of
+          // the rest. This used to be the 50 earliest by due date, so from
+          // the 51st invoice on the newest ones would have dropped off the
+          // Invoices page and out of receivables and revenue.
+          const [result, prices] = await Promise.all([
+            db
+              .from("invoices")
+              .select("*")
+              .or(`status.not.in.(paid,void),created_at.gte.${invoiceHistoryStart()}`)
+              .order("due_date")
+              .limit(INVOICE_LIMIT),
             db
               .from("price_list")
               .select("*")
@@ -235,10 +267,12 @@ export function ExpandedOperationsProvider({
               .order("service_type")
               .limit(100),
           ]);
-          const financeError = [result, lines, invoiceJobs, prices].find((r) => r.error)?.error;
+          const financeError = [result, prices].find((r) => r.error)?.error;
           if (financeError) throw financeError;
-          const lineRows = (lines.data ?? []) as InvoiceLineItemRow[];
-          const jobRows = (invoiceJobs.data ?? []) as InvoiceJobRow[];
+          const { lineRows, jobRows } = await loadInvoiceChildren(
+            db,
+            (result.data as InvoiceRow[]).map((row) => row.id),
+          );
           patch.invoices = (result.data as InvoiceRow[]).map((row) =>
             mapInvoice(
               row,

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as mappers from "./mappers";
 
 const base = {
@@ -343,5 +343,32 @@ describe("database mappers", () => {
         updated_at: base.updated_at,
       }).invoicePrefix,
     ).toBe("INV");
+  });
+});
+
+describe("invoice overdue status", () => {
+  afterEach(() => vi.useRealTimers());
+  const due = (dueDate: string) =>
+    mappers.mapInvoice({
+      id: "invoice",
+      status: "open",
+      due_date: dueDate,
+      amount_cents: 42500,
+      amount_paid_cents: 0,
+      payment_processing_at: null,
+      payment_failed_at: null,
+    } as Parameters<typeof mappers.mapInvoice>[0]).displayStatus;
+
+  it("is not overdue on the evening of its due date in Las Vegas", () => {
+    // 5 PM Pacific on Nov 8 is already Nov 9 in UTC.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-09T01:00:00Z"));
+    expect(due("2026-11-08")).toBe("open");
+  });
+
+  it("is overdue once the Pacific date has passed", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-09T09:00:00Z"));
+    expect(due("2026-11-08")).toBe("overdue");
   });
 });

@@ -1,3 +1,4 @@
+import { pacificDate } from "@/lib/time-clock";
 import type {
   AcknowledgementEntry,
   AppNotification,
@@ -347,7 +348,9 @@ function invoiceDisplayStatus(row: InvoiceRow): InvoiceRecord["displayStatus"] {
   if (row.payment_processing_at) return "processing";
   if (row.payment_failed_at) return "payment_failed";
   if (Number(row.amount_paid_cents) > 0) return "partially_paid";
-  if (row.due_date && row.due_date < new Date().toISOString().slice(0, 10))
+  // Compare with today's Pacific date: the UTC date rolls over at 4–5 PM in
+  // Las Vegas, which showed an invoice as overdue on the evening it was due.
+  if (row.due_date && row.due_date < pacificDate(new Date()))
     return "overdue";
   return "open";
 }
