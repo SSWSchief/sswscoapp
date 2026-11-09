@@ -21,16 +21,24 @@ six repeating classes, and each class is where the next report will come from:
 
 ## Findings, most urgent first
 
-### 1. Customer confirmation emails have failed since at least Nov 1 (config)
+### 1. Customer confirmation emails failed on Nov 1 and were never retried
 
 Production: the only confirmation ever delivered was #1067 on Oct 12. Every
-send since (#1068 ×3, #1069, #1070) failed with *Resend 403: The sswsco.com
-domain is not verified.* The DNS records for Resend are still published, so
-the most likely cause is that the deployed `RESEND_API_KEY` belongs to a
-Resend team where sswsco.com is not (or no longer) verified. Employee
-invitations go through Supabase SMTP and may be failing the same way.
-`docs/email-delivery-repair.md` has the repair steps. This is a dashboard and
-secrets task, not code, so it is Tehron's to do in Resend/Vercel.
+send on Nov 1 (#1068 ×3, #1069, #1070) failed with *Resend 403: The sswsco.com
+domain is not verified.*
+
+**Checked in Resend on Nov 8: the sender works again.** Both keys (`sswscoapp`
+for the app, `supabase-smtp-production` for Supabase invitations) are in the
+same Resend team, and sswsco.com is Verified there. The team's logs show eight
+403s on Nov 1, including an employee invitation. Three days later, on Nov 5,
+the same invitation from the same `notifications@sswsco.com` sender went
+through (200). So the domain was briefly unverified around Nov 1 and has been
+fixed since. No key or Vercel change is needed.
+
+What is still wrong: the failed confirmations just sit as "Email not sent"
+on the job until someone presses Resend. #1070 and #1071 are deliveries
+scheduled for Nov 9 with no delivered confirmation. Nothing alerts the
+office, and nothing retries.
 
 ### 2. Three pages read data their route never loads (fixed in this PR)
 
@@ -73,8 +81,7 @@ From "Update #4", under *Coming next* — Austin said yes to each:
 4. Quotes by email and text, from his sample quote, 7-day expiry.
 5. Charts on Profitability.
 
-Items 1–3 should wait for finding 1; built on a broken sender they would fail
-too. Item 2 and 3 need a small migration (a reminder-sent marker) and ride
+Items 2 and 3 need a small migration (a reminder-sent marker) and ride
 the existing 8 AM maintenance cron.
 
 ### 6. Usage gaps Austin probably doesn't know about (questions, not code)
@@ -101,9 +108,11 @@ the existing 8 AM maintenance cron.
 
 **Phase 1 — this PR (no migration):** findings 2, 3, 4, plus the guard test.
 
-**Phase 2 — config, Tehron:** repair the Resend sender (finding 1) using
-`docs/email-delivery-repair.md`, then ask dispatch to resend the #1070 confirmation and send one
-for #1071 (both are deliveries scheduled for Nov 9) from the job page and check an employee invitation arrives.
+**Phase 2 — catch up the confirmations:** the sender works again (finding 1).
+Dispatch resends the #1070 confirmation and sends one for #1071 from the job
+page. Then, in code: have the maintenance cron retry a failed confirmation for
+a job that hasn't happened yet, and show failed sends on the Dashboard, so a
+sender outage can't go unnoticed for a week again.
 
 **Phase 3 — the Oct 10 promises:** price on confirmations, cancellation and
 day-before reminder emails (one migration, cron-driven), then quotes, then
