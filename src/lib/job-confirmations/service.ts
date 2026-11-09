@@ -227,3 +227,59 @@ export async function respondToConfirmation(
     idempotencyKey: `job-confirmation:${confirmation.id}:change:${respondedAt}`,
   }).catch(() => undefined);
 }
+
+/** A confirmation that keeps failing stops being retried after this many tries. */
+export const CONFIRMATION_RETRY_LIMIT = 5;
+
+/**
+ * Send again every current confirmation that never went out, for a job that
+ * is still open and has not happened yet. Run from the morning maintenance
+ * cron. A Resend outage on Nov 1, 2026 left every confirmation that day as
+ * "Email not sent" until someone happened to open the job and press Resend;
+ * the sender was working again within days but nothing noticed.
+ *
+ * A failed send emails nobody, so retrying is safe. Each try is recorded as
+ * its own row, and a job is given up on after CONFIRMATION_RETRY_LIMIT tries,
+ * so a bad address cannot be retried forever.
+ */
+export async function retryFailedConfirmations(db: Db, now: Date = new Date()) {
+  const summary = { retried: 0, sent: 0, failed: 0, gaveUp: 0 };
+  if (!customerEmailConfigured()) return summary;
+  const failed = await db
+    .from("job_confirmations")
+    .select("id,job_id,recipient_email")
+    .is("superseded_at", null)
+    .is("sent_at", null)
+    .not("send_error", "is", null);
+  if (failed.error) throw failed.error;
+  if (!failed.data.length) return summary;
+
+  const jobIds = failed.data.map((row) => row.job_id);
+  const [jobs, attempts] = await Promise.all([
+    db.from("jobs").select("id,status,scheduled_for,deleted_at").in("id", jobIds),
+    db.from("job_confirmations").select("job_id").in("job_id", jobIds).not("send_error", "is", null),
+  ]);
+  if (jobs.error) throw jobs.error;
+  if (attempts.error) throw attempts.error;
+  const tries = new Map<string, number>();
+  for (const row of attempts.data) tries.set(row.job_id, (tries.get(row.job_id) ?? 0) + 1);
+
+  for (const row of failed.data) {
+    const job = jobs.data.find((item) => item.id === row.job_id);
+    if (!job || job.deleted_at || job.status === "cancelled" || job.status === "complete") continue;
+    if (new Date(job.scheduled_for).getTime() <= now.getTime()) continue;
+    if ((tries.get(row.job_id) ?? 0) >= CONFIRMATION_RETRY_LIMIT) {
+      summary.gaveUp += 1;
+      continue;
+    }
+    summary.retried += 1;
+    const result = await sendJobConfirmation(db, {
+      jobId: row.job_id,
+      email: row.recipient_email,
+      requestedById: null,
+    }).catch(() => ({ error: "retry failed" }));
+    if (result.error) summary.failed += 1;
+    else summary.sent += 1;
+  }
+  return summary;
+}

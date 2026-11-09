@@ -110,9 +110,14 @@ the existing 8 AM maintenance cron.
 
 **Phase 2 — catch up the confirmations:** the sender works again (finding 1).
 Dispatch resends the #1070 confirmation and sends one for #1071 from the job
-page. Then, in code: have the maintenance cron retry a failed confirmation for
-a job that hasn't happened yet, and show failed sends on the Dashboard, so a
-sender outage can't go unnoticed for a week again.
+page. Built in this PR so a sender outage can't go unnoticed for a week
+again:
+
+- The 8 AM maintenance cron retries any current confirmation that never went
+  out, for an open job that hasn't happened yet, up to 5 tries per job.
+- A "Confirmation Emails Not Sent" card on the Dispatch Dashboard and the
+  Management Overview lists those jobs with a Send again button. It is hidden
+  when there are none.
 
 **Phase 3 — the Oct 10 promises:** price on confirmations, cancellation and
 day-before reminder emails (one migration, cron-driven), then quotes, then
