@@ -8,7 +8,7 @@ vi.mock("@/lib/app-url", () => ({ resolveAppUrl: () => ({ url: "https://app.ssws
 const deliver = vi.fn(async () => ({ sent: 0 }));
 vi.mock("@/lib/push/deliver", () => ({ deliverPendingNotifications: () => deliver() }));
 
-const { loadConfirmation, respondToConfirmation, sendJobConfirmation } = await import("./service");
+const { loadConfirmation, respondToConfirmation, retryFailedConfirmations, sendJobConfirmation, CONFIRMATION_RETRY_LIMIT } = await import("./service");
 
 interface Sent { to: string[]; subject: string; text: string; reply_to?: string; key: string | null }
 let sent: Sent[] = [];
@@ -153,5 +153,72 @@ describe("the customer's answer", () => {
     const closed = await sentWorld();
     closed.fake.tables.jobs[0].status = "cancelled";
     await expect(respondToConfirmation(closed.db, closed.token, { action: "confirmed", note: "" })).rejects.toMatchObject({ problem: "job_closed" });
+  });
+});
+
+describe("retrying confirmations that never went out", () => {
+  const now = new Date("2026-11-08T15:00:00Z");
+  const failedRow = (overrides: Row = {}) => ({
+    id: "conf-1",
+    job_id: "job-1",
+    token_hash: "old",
+    recipient_email: "john@example.com",
+    scheduled_for: "2026-11-09T16:00:00Z",
+    sent_at: null,
+    send_error: "Email was not accepted (403: domain not verified)",
+    superseded_at: null,
+    response: null,
+    ...overrides,
+  });
+
+  it("sends again for an open job that has not happened yet", async () => {
+    const { fake, db } = world({ job: { scheduled_for: "2026-11-09T16:00:00Z" }, confirmations: [failedRow()] });
+    const summary = await retryFailedConfirmations(db, now);
+    expect(summary).toEqual({ retried: 1, sent: 1, failed: 0, gaveUp: 0 });
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toEqual(["john@example.com"]);
+    const current = fake.tables.job_confirmations.filter((row) => !row.superseded_at);
+    expect(current).toHaveLength(1);
+    expect(current[0].sent_at).toBeTruthy();
+  });
+
+  it("leaves past, closed and already-sent confirmations alone", async () => {
+    for (const job of [
+      { scheduled_for: "2026-11-07T16:00:00Z" },
+      { scheduled_for: "2026-11-09T16:00:00Z", status: "cancelled" },
+      { scheduled_for: "2026-11-09T16:00:00Z", status: "complete" },
+    ]) {
+      const { db } = world({ job, confirmations: [failedRow()] });
+      expect(await retryFailedConfirmations(db, now)).toMatchObject({ retried: 0 });
+    }
+    const { db } = world({
+      job: { scheduled_for: "2026-11-09T16:00:00Z" },
+      confirmations: [failedRow({ sent_at: "2026-11-01T10:00:00Z", send_error: null })],
+    });
+    expect(await retryFailedConfirmations(db, now)).toMatchObject({ retried: 0 });
+    expect(sent).toHaveLength(0);
+  });
+
+  it("records another failure without emailing, and gives up after the limit", async () => {
+    resendStatus = 403;
+    const { fake, db } = world({ job: { scheduled_for: "2026-11-09T16:00:00Z" }, confirmations: [failedRow()] });
+    expect(await retryFailedConfirmations(db, now)).toMatchObject({ retried: 1, failed: 1 });
+    // Earlier tries are superseded; only the last is current.
+    const failures = (count: number) =>
+      Array.from({ length: count }, (_, index) =>
+        failedRow({ id: `conf-${index}`, superseded_at: index < count - 1 ? "2026-11-02T00:00:00Z" : null }),
+      );
+    const limited = world({
+      job: { scheduled_for: "2026-11-09T16:00:00Z" },
+      confirmations: failures(CONFIRMATION_RETRY_LIMIT),
+    });
+    expect(await retryFailedConfirmations(limited.db, now)).toMatchObject({ retried: 0, gaveUp: 1 });
+    expect(fake.tables.job_confirmations.length).toBeGreaterThan(1);
+  });
+
+  it("does nothing while customer email is off", async () => {
+    delete process.env.RESEND_API_KEY;
+    const { db } = world({ job: { scheduled_for: "2026-11-09T16:00:00Z" }, confirmations: [failedRow()] });
+    expect(await retryFailedConfirmations(db, now)).toEqual({ retried: 0, sent: 0, failed: 0, gaveUp: 0 });
   });
 });

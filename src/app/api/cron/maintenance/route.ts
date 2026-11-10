@@ -9,6 +9,7 @@ import { log } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { reconcileNonterminalInvoices } from "@/lib/stripe/reconcile";
 import { stripeInvoicingEnabled } from "@/lib/stripe/client";
+import { retryFailedConfirmations } from "@/lib/job-confirmations/service";
 
 const route = "/api/cron/maintenance";
 
@@ -53,6 +54,7 @@ export async function GET(request: Request) {
   // only sends what is still fresh, so this cannot resurrect a stale backlog.
   let delivery = null;
   let invoiceReconciliation = null;
+  let confirmationRetries = null;
   try {
     delivery = await deliverPendingNotifications(admin);
   } catch (error) {
@@ -69,6 +71,16 @@ export async function GET(request: Request) {
       });
     }
   }
+  // Confirmations that failed to send (a sender outage, say) go out again
+  // here, for jobs that have not happened yet, instead of waiting for someone
+  // to notice "Email not sent" on the job page.
+  try {
+    confirmationRetries = await retryFailedConfirmations(admin);
+  } catch (error) {
+    log("warn", "scheduled_confirmation_retry_failed", {
+      message: error instanceof Error ? error.message : "unknown",
+    });
+  }
   logRequest("info", "scheduled_maintenance_complete", {
     requestId: requestIdValue,
     route,
@@ -77,7 +89,7 @@ export async function GET(request: Request) {
     status: 200,
   });
   return apiSuccess(
-    { status: "ok", result: result.data, delivery, invoiceReconciliation },
+    { status: "ok", result: result.data, delivery, invoiceReconciliation, confirmationRetries },
     requestIdValue,
   );
 }

@@ -668,7 +668,13 @@ export function OperationsProvider({
               .select("*")
               .order("created_at", { ascending: false })
               .limit(50),
-            db.from("absence_events").select("*").order("event_date").limit(50),
+            // Newest first: ascending with a cap would keep the oldest 50 and
+            // drop every absence logged after them from the calendar.
+            db
+              .from("absence_events")
+              .select("*")
+              .order("event_date", { ascending: false })
+              .limit(500),
             db
               .from("time_entries")
               .select("*")
@@ -692,7 +698,7 @@ export function OperationsProvider({
           patch.timeRequests = (requests.data as TimeRequestRow[]).map(
             mapTimeRequest,
           );
-          patch.absenceEvents = (absences.data as AbsenceRow[]).map(mapAbsence);
+          patch.absenceEvents = (absences.data as AbsenceRow[]).map(mapAbsence).reverse();
           patch.myRecentTimeEntries = applyTimeCorrections(
             ((mine.data ?? []) as TimeEntryRow[]).map(mapTimeEntry),
             mappedCorrections,

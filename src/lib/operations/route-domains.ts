@@ -59,9 +59,15 @@ export function coreDomainsForPath(pathname: string): Set<CoreDomain> {
   }
   if (
     pathname.startsWith("/dispatcher/dumpsters") ||
-    pathname.startsWith("/driver/pre-trip")
+    pathname.startsWith("/driver/pre-trip") ||
+    pathname.startsWith("/driver/post-trip")
   )
     domains.add("fleet");
+  // The office pre-trip review names each truck and the driver who signed.
+  if (pathname.startsWith("/dispatcher/pre-trip")) {
+    domains.add("fleet");
+    domains.add("people");
+  }
   // The on-site panel names the customer a container is standing with.
   if (pathname.startsWith("/dispatcher/dumpsters")) domains.add("customers");
   if (pathname.startsWith("/driver/profile")) domains.add("fleet");
@@ -95,9 +101,14 @@ export function expandedDomainsForPath(pathname: string): Set<ExpandedDomain> {
   if (pathname.startsWith("/dispatcher/invoices")) domains.add("settings");
   if (
     pathname.startsWith("/driver/pre-trip") ||
+    pathname.startsWith("/driver/post-trip") ||
+    pathname.startsWith("/dispatcher/pre-trip") ||
     pathname.startsWith("/driver/sops")
   )
     domains.add("compliance");
+  // Pricing & Terms shows the rate card, which belongs to finance; without it
+  // a fresh load of the page said "Loading rates…" forever.
+  if (pathname.startsWith("/dispatcher/pricing")) domains.add("finance");
   if (pathname.startsWith("/dispatcher/settings")) {
     domains.add("compliance");
     domains.add("settings");

@@ -9,6 +9,7 @@ import { jobsForPacificDay } from "@/lib/job-dates";
 import { StaffHoursPanel } from "@/components/time/StaffHoursPanel";
 import { PtoQueue } from "@/components/management/PtoQueue";
 import { PickupsDue } from "@/components/dispatcher/PickupsDue";
+import { UnsentConfirmations } from "@/components/dispatcher/UnsentConfirmations";
 import { OnSitePanel } from "@/components/dispatcher/OnSitePanel";
 import { employeeDisplayStatus } from "@/lib/employee-status";
 
@@ -110,6 +111,7 @@ export default function Page() {
 
         {/* Management lands here, not on the dispatch dashboard, so the cans
             out and the pick-ups owed have to be here too (Austin, 2026-10-19). */}
+        <UnsentConfirmations />
         <PickupsDue />
         <OnSitePanel />
 
