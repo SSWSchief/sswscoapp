@@ -905,7 +905,7 @@ export interface Database {
         Returns: undefined;
       };
       reserve_job_assets: {
-        Args: { next_job: JobRow };
+        Args: { next_job: JobRow; office_override?: boolean };
         Returns: undefined;
       };
       consume_api_rate_limit: {
