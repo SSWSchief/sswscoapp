@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(30);
 
 create function pg_temp.as_user(auth_id text) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', auth_id, 'role', 'authenticated', 'aal', 'aal1')::text, true);
@@ -14,12 +14,18 @@ insert into public.users(id,auth_user_id,employee_id,full_name,email,role,access
   ('adv-inactive',null,'ADV-OFF','Adv Inactive','adv-inactive@example.invalid','driver','driver','{}','active','AI');
 insert into public.customers(id,name) values ('adv-cust','Sold Not Delivered');
 insert into public.dumpsters(id,code,size) values ('adv-can','ADV-A','20 Yard');
+insert into public.trucks(id,number,type,status) values ('adv-truck','ADV-T1','Roll-Off','in_use'),('adv-down','ADV-T2','Roll-Off','down');
 insert into public.jobs(id,customer_id,address,service_type,dumpster_size,assigned_driver_id,assigned_dumpster_id,scheduled_for) values
   ('no-driver','adv-cust','1 Sub Way','Delivery','20 Yard',null,null,now()),
   ('forgot-complete','adv-cust','2 Forgot Way','Delivery','20 Yard','adv-driver','adv-can',now()),
   ('forgot-arrive','adv-cust','3 Forgot Way','Delivery','20 Yard','adv-driver',null,now()),
   ('closed-already','adv-cust','4 Done Way','Delivery','20 Yard','adv-driver',null,now()),
   ('inactive-driver','adv-cust','5 Office Way','Delivery','20 Yard','adv-inactive',null,now());
+insert into public.jobs(id,customer_id,address,service_type,dumpster_size,assigned_driver_id,assigned_truck_id,scheduled_for) values
+  ('truck-old','adv-cust','6 Old Way','Delivery','20 Yard','adv-driver','adv-truck',now()),
+  ('truck-next','adv-cust','7 Next Way','Delivery','20 Yard','adv-driver','adv-truck',now()),
+  ('truck-after','adv-cust','8 After Way','Delivery','20 Yard','adv-driver','adv-truck',now()),
+  ('truck-down','adv-cust','9 Down Way','Delivery','20 Yard','adv-driver','adv-down',now());
 -- Assigned while active, then deactivated before anyone tapped the job.
 update public.users set status='inactive' where id='adv-inactive';
 
@@ -38,6 +44,23 @@ select is((select status::text from public.jobs where id='forgot-arrive'),'arriv
 select lives_ok($$select public.advance_job_as_dispatch('forgot-complete','complete','driver forgot to tap')$$,'dispatch completes a driver job without a photo');
 select is((select status::text from public.dumpsters where id='adv-can'),'out','a completed delivery leaves its can out at the site');
 select is((select count(*) from public.container_placements where dumpster_id='adv-can' and retrieved_at is null),1::bigint,'the completed delivery opens the rental');
+
+-- A truck left pointing at an old job (never released) is not busy.
+reset role;
+update public.jobs set status='en_route' where id='truck-old';
+update public.jobs set status='arrived' where id='truck-old';
+update public.jobs set status='complete' where id='truck-old';
+update public.trucks set current_job_id='truck-old' where id='adv-truck';
+select pg_temp.as_user('50000000-0000-0000-0000-000000000001');
+set local role authenticated;
+select lives_ok($$select public.advance_job_as_dispatch('truck-next','arrived')$$,'a stale truck pointer does not block marking arrived');
+select is((select current_job_id from public.trucks where id='adv-truck'),'truck-next','the truck now belongs to the new job');
+-- The office can take a truck the driver never released from a live job.
+select lives_ok($$select public.advance_job_as_dispatch('truck-after','arrived')$$,'the office takes over a truck still on an arrived job');
+select is((select current_job_id from public.trucks where id='adv-truck'),'truck-after','the truck moved to the job the office marked');
+-- A truck that is down is refused, with an honest message.
+select throws_ok($$select public.advance_job_as_dispatch('truck-down','arrived')$$,'Selected truck is down, in the shop or removed','a down truck is refused');
+select is((select status::text from public.jobs where id='truck-down'),'pending','the refusal leaves the job alone');
 
 -- Guard rails.
 select throws_ok($$select public.advance_job_as_dispatch('forgot-arrive','arrived','again')$$,'Choose a step after the current status','the same status is refused');
